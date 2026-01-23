@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Products collection rules
+    match /products/{productId} {
+      allow read: if true; // Anyone can read products
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Categories collection rules
+    match /categories/{categoryId} {
+      allow read: if true; // Anyone can read categories
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Foam collection rules
+    match /foam/{foamId} {
+      allow read: if true; // Anyone can read foam types
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Dimension Rules collection rules
+    match /dimensionRules/{ruleId} {
+      allow read: if true; // Anyone can read dimension rules
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Foam Grades collection rules
+    match /foamGrades/{gradeId} {
+      allow read: if true; // Anyone can read foam grades
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+    
+    // Fibre Wrap collection rules
+    match /fibreWrap/{wrapId} {
+      allow read: if true; // Anyone can read fibre wraps
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+  }
+}
