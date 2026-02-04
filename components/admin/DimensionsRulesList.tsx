@@ -53,6 +53,7 @@ export default function DimensionsRulesList() {
   const [allowFractions, setAllowFractions] = useState(true);
   const [minValue, setMinValue] = useState<number | undefined>(undefined);
   const [maxValue, setMaxValue] = useState<number | undefined>(undefined);
+  const [maxBlockLength, setMaxBlockLength] = useState<number | undefined>(undefined);
   const [ranges, setRanges] = useState<RangeRule[]>([]);
 
   // Range form state
@@ -86,6 +87,7 @@ export default function DimensionsRulesList() {
     setAllowFractions(true);
     setMinValue(undefined);
     setMaxValue(undefined);
+    setMaxBlockLength(undefined);
     setRanges([]);
     setFormOpen(true);
   };
@@ -96,6 +98,7 @@ export default function DimensionsRulesList() {
     setAllowFractions(rule.allowFractions);
     setMinValue(rule.minValue);
     setMaxValue(rule.maxValue);
+    setMaxBlockLength(rule.maxBlockLength);
     setRanges([...rule.ranges]);
     setFormOpen(true);
   };
@@ -125,6 +128,7 @@ export default function DimensionsRulesList() {
         allowFractions,
         minValue,
         maxValue,
+        maxBlockLength: (dimensionType === 'depth' || dimensionType === 'width') ? maxBlockLength : undefined,
         ranges: ranges.sort((a, b) => a.min - b.min), // Sort ranges by min
       };
 
@@ -272,6 +276,11 @@ export default function DimensionsRulesList() {
                           Max Value: {rule.maxValue} inches
                         </Typography>
                       )}
+                      {rule.maxBlockLength !== undefined && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Max Block Length: {rule.maxBlockLength} inches
+                        </Typography>
+                      )}
                       {rule.ranges.length > 0 && (
                         <Box sx={{ mt: 2 }}>
                           <Typography variant="subtitle2" gutterBottom>
@@ -368,6 +377,20 @@ export default function DimensionsRulesList() {
               inputProps={{ step: '0.1' }}
               helperText="Leave empty for no maximum"
             />
+
+            {(dimensionType === 'depth' || dimensionType === 'width') && (
+              <TextField
+                label="Max Block Length (inches)"
+                type="number"
+                value={maxBlockLength ?? ''}
+                onChange={(e) =>
+                  setMaxBlockLength(e.target.value ? parseFloat(e.target.value) : undefined)
+                }
+                inputProps={{ step: '0.1', min: 0 }}
+                helperText="Default: 88 inches. Shows join message if dimension exceeds this value."
+                placeholder="88"
+              />
+            )}
 
             <Box>
               <Box

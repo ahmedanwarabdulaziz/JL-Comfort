@@ -63,6 +63,7 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
   const [wrapEnabled, setWrapEnabled] = useState<boolean>(false);
   const [foamGrades, setFoamGrades] = useState<FoamGrade[]>([]);
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
+  const [quantity, setQuantity] = useState<number>(1);
 
   // Fetch dimension rules and fibre wraps on component mount
   useEffect(() => {
@@ -141,6 +142,7 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
     setSelectedWrapId('');
     setWrapEnabled(false);
     setSelectedGradeId('');
+    setQuantity(1);
   };
 
   const handleTypeChange = (typeId: string) => {
@@ -186,7 +188,7 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
     return warnings.length > 0 ? warnings.join('. ') : null;
   };
 
-  const calculateVolume = (): { volume: number; totalPrice: number | null; wrapPrice: number | null; thickness: number; depth: number; width: number } | null => {
+  const calculateVolume = () => {
     if (!selectedType) {
       return null;
     }
@@ -298,6 +300,8 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
       thickness: roundedThickness,
       depth: roundedDepth,
       width: roundedWidth,
+      rawDepth: maxDepth,
+      rawWidth: maxWidth,
     };
   };
 
@@ -532,8 +536,8 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
                   </Box>
                 </Grid>
 
-                {/* Right Column: Dimensions */}
-                <Grid item xs={12} md={7}>
+                {/* Middle Column: Dimensions */}
+                <Grid item xs={12} md={4}>
                   <Box>
                     <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
                       Customize Dimensions
@@ -702,76 +706,224 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
                       )}
                     </Box>
 
-                    {/* Calculation Display */}
-                    <Box sx={{ mt: 4, p: 2, bgcolor: 'primary.light', border: 1, borderColor: 'primary.main', borderRadius: 1 }}>
+                    {/* Quantity Selection */}
+                    <Box sx={{ mt: 4 }}>
+                      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                        Quantity
+                      </Typography>
+                      <TextField
+                        type="number"
+                        label="Quantity"
+                        value={quantity}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 1;
+                          setQuantity(Math.max(1, value));
+                        }}
+                        inputProps={{
+                          min: 1,
+                          step: 1,
+                        }}
+                        sx={{ width: 250 }}
+                      />
+                    </Box>
+
+                  </Box>
+                </Grid>
+
+                {/* Right Column: Receipt-style Calculations */}
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ position: 'sticky', top: 20 }}>
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        p: 3,
+                        bgcolor: '#ffffff',
+                        border: '2px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        fontFamily: 'monospace',
+                      }}
+                    >
                       {(() => {
                         const result = calculateVolume();
                         console.log('Display render - result:', result);
                         if (result === null) {
                           return (
-                            <>
-                              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                Calculation
+                            <Box sx={{ textAlign: 'center', py: 4 }}>
+                              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                                ORDER SUMMARY
                               </Typography>
+                              <Divider sx={{ my: 2 }} />
                               <Typography variant="body2" color="text.secondary">
-                                Please enter all dimensions (Thickness, Depth, Width) to calculate volume
+                                Please enter all dimensions to calculate
                               </Typography>
-                            </>
+                            </Box>
                           );
                         }
-                        console.log('Rendering calculation box with volume:', result.volume);
+                        
+                        const foamPrice = result.totalPrice || 0;
+                        const wrapPriceValue = result.wrapPrice || 0;
+                        const unitTotal = foamPrice + wrapPriceValue;
+                        const orderTotal = unitTotal * quantity;
+                        const selectedGrade = foamGrades.find((g) => g.id === selectedGradeId);
+                        const selectedWrap = selectedWrapId ? fibreWraps.find((w) => w.id === selectedWrapId) : null;
+                        
+                        // Check if depth or width exceeds max block length
+                        const depthRule = getRuleForDimension('depth');
+                        const widthRule = getRuleForDimension('width');
+                        const depthMaxBlockLength = depthRule?.maxBlockLength ?? 88;
+                        const widthMaxBlockLength = widthRule?.maxBlockLength ?? 88;
+                        const depthExceeds = result.rawDepth > depthMaxBlockLength;
+                        const widthExceeds = result.rawWidth > widthMaxBlockLength;
+                        
                         return (
-                          <>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                              Calculation
-                            </Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.dark', mb: 1 }}>
-                              Volume: {result.volume.toFixed(2)} cubic feet
-                            </Typography>
-                            {result.totalPrice !== null ? (
-                              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.secondary', mb: 0.5 }}>
-                                Foam Price: ${result.totalPrice.toFixed(2)}
+                          <Box>
+                            {/* Receipt Header */}
+                            <Box sx={{ textAlign: 'center', mb: 3 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 'bold', letterSpacing: 1, mb: 0.5 }}>
+                                JL COMFORT
                               </Typography>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                Select a grade to calculate foam price
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                ORDER SUMMARY
                               </Typography>
-                            )}
-                            {result.wrapPrice !== null && (
-                              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.secondary', mb: 0.5 }}>
-                                Wrap Price: ${result.wrapPrice.toFixed(2)}
+                              <Divider sx={{ my: 2 }} />
+                            </Box>
+
+                            {/* Product Info */}
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                {selectedType.name}
                               </Typography>
-                            )}
-                            {wrapEnabled && selectedWrapId === '' && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                Select a wrap to calculate wrap price
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                {result.thickness.toFixed(2)}&quot; × {result.depth.toFixed(2)}&quot; × {result.width.toFixed(2)}&quot;
                               </Typography>
-                            )}
-                            {(() => {
-                              const foamPrice = result.totalPrice || 0;
-                              const wrapPriceValue = result.wrapPrice || 0;
-                              const grandTotal = foamPrice + wrapPriceValue;
-                              return grandTotal > 0 ? (
-                                <Box sx={{ mt: 2, pt: 2, borderTop: 2, borderColor: 'primary.main' }}>
-                                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.dark' }}>
-                                    Total: ${grandTotal.toFixed(2)}
+                            </Box>
+
+                            <Divider sx={{ my: 2 }} />
+
+                            {/* Volume */}
+                            <Box sx={{ mb: 2 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Volume:
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {result.volume.toFixed(2)} cu ft
+                                </Typography>
+                              </Box>
+                            </Box>
+
+                            {/* Grade */}
+                            {selectedGrade && (
+                              <Box sx={{ mb: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Grade:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    {selectedGrade.brand} {selectedGrade.gradeName}
                                   </Typography>
                                 </Box>
-                              ) : null;
-                            })()}
-                            <Typography variant="body2" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                              {result.thickness.toFixed(2)} × {result.depth.toFixed(2)} × {result.width.toFixed(2)} inches
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              Foam: ((Thickness × Depth × Width) / 144) × Grade Price
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              Wrap: Wrap Value × ((Thickness × Depth × Width) / 144)
-                            </Typography>
-                          </>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    @ ${selectedGrade.price.toFixed(2)}/cu ft
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    ${foamPrice.toFixed(2)}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            )}
+
+                            {/* Wrap */}
+                            {wrapEnabled && selectedWrap && (
+                              <Box sx={{ mb: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Wrap:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    {selectedWrap.fibreThickness}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    @ ${selectedWrap.value.toFixed(2)}/cu ft
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    ${wrapPriceValue.toFixed(2)}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            )}
+
+                            {/* Join Warning */}
+                            {(depthExceeds || widthExceeds) && (
+                              <Box sx={{ mb: 2, p: 1.5, bgcolor: 'warning.light', borderRadius: 1, border: '1px solid', borderColor: 'warning.main' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.dark', display: 'block', mb: 0.5 }}>
+                                  ⚠ JOIN REQUIRED
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                  Blocks are {Math.max(depthMaxBlockLength, widthMaxBlockLength)}&quot; long
+                                </Typography>
+                              </Box>
+                            )}
+
+                            <Divider sx={{ my: 2 }} />
+
+                            {/* Totals */}
+                            {unitTotal > 0 ? (
+                              <>
+                                <Box sx={{ mb: 1.5 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Unit Total:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                      ${unitTotal.toFixed(2)}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Quantity:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                      × {quantity}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+
+                                <Divider sx={{ my: 2, borderWidth: 2 }} />
+
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    TOTAL:
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                    ${orderTotal.toFixed(2)}
+                                  </Typography>
+                                </Box>
+                              </>
+                            ) : (
+                              <Box sx={{ textAlign: 'center', py: 2 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Select grade to see pricing
+                                </Typography>
+                              </Box>
+                            )}
+
+                            <Divider sx={{ my: 2 }} />
+
+                            {/* Footer */}
+                            <Box sx={{ textAlign: 'center', mt: 3 }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+                                Thank you for your order
+                              </Typography>
+                            </Box>
+                          </Box>
                         );
                       })()}
-                    </Box>
+                    </Paper>
                   </Box>
                 </Grid>
               </Grid>

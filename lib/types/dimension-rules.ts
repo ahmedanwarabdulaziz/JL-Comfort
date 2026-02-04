@@ -13,6 +13,7 @@ export interface DimensionRule {
   allowFractions: boolean; // Whether to accept fractional values
   minValue?: number; // Minimum allowed value in inches (optional)
   maxValue?: number; // Maximum allowed value in inches (optional)
+  maxBlockLength?: number; // Maximum block length in inches (for depth/width only, default 88)
   ranges: RangeRule[]; // Array of range rules for rounding calculations
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
@@ -23,5 +24,6 @@ export interface DimensionRuleInput {
   allowFractions: boolean;
   minValue?: number;
   maxValue?: number;
+  maxBlockLength?: number;
   ranges: RangeRule[];
 }

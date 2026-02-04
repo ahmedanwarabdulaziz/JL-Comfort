@@ -31,6 +31,7 @@ const docToDimensionRule = (docId: string, data: any): DimensionRule => {
     allowFractions: data.allowFractions ?? true,
     minValue: data.minValue ?? undefined,
     maxValue: data.maxValue ?? undefined,
+    maxBlockLength: data.maxBlockLength ?? undefined,
     ranges: data.ranges || [],
     createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
     updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
