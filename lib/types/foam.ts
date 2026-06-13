@@ -14,19 +14,23 @@ export interface FoamType {
   id: string;
   categoryId: string; // Reference to category document ID
   name: string;
-  description?: string;
+  description: string;
   imageUrl: string | null;
+  svgId?: string; // e.g., 'rectangle', 'chair-seat-b', or 'custom'
+  customSvgContent?: string; // raw SVG string if svgId is 'custom'
   dimensions: FoamDimension[]; // Array of dimensions for this foam type
-  sortOrder: number; // Order for sorting/displaying
-  createdAt: Timestamp | Date;
-  updatedAt: Timestamp | Date;
+  sortOrder?: number; // Order for sorting/displaying
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface FoamTypeInput {
   categoryId: string;
   name: string;
-  description?: string;
+  description: string;
   imageUrl: string | null;
+  svgId?: string;
+  customSvgContent?: string;
   dimensions: FoamDimension[];
   sortOrder?: number; // Optional, will be set automatically if not provided
 }

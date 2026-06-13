@@ -39,10 +39,16 @@ export default function ProductsList() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const data = await getProducts();
+      // Add a 10 second timeout in case Firebase hangs
+      const timeoutPromise = new Promise<Product[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Firebase request timed out after 10 seconds')), 10000);
+      });
+      
+      const data = await Promise.race([getProducts(), timeoutPromise]);
       setProducts(data);
     } catch (error) {
       console.error('Error loading products:', error);
+      setProducts([]); // Clear products on error to avoid infinite loading perception
     } finally {
       setLoading(false);
     }

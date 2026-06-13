@@ -49,20 +49,22 @@ export default function FoamTypeForm({
     name: '',
     description: '',
     imageUrl: null,
+    svgId: '',
+    customSvgContent: '',
     dimensions: [],
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       try {
         const cats = await getCategories();
         setCategories(cats);
       } catch (error) {
-        console.error('Error loading categories:', error);
+        console.error('Error loading form data:', error);
       }
     };
-    loadCategories();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function FoamTypeForm({
         name: foamType.name,
         description: foamType.description || '',
         imageUrl: foamType.imageUrl,
+        svgId: foamType.svgId || '',
         dimensions: foamType.dimensions || [],
       });
       setImagePreview(foamType.imageUrl);
@@ -81,6 +84,7 @@ export default function FoamTypeForm({
         name: '',
         description: '',
         imageUrl: null,
+        svgId: '',
         dimensions: [],
       });
       setImagePreview(null);
@@ -152,6 +156,21 @@ export default function FoamTypeForm({
         setLoading(false);
       }
     }
+  };
+
+  const handleSvgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setFormData((prev) => ({
+        ...prev,
+        customSvgContent: content,
+      }));
+    };
+    reader.readAsText(file);
   };
 
   const handleAddDimension = () => {
@@ -250,6 +269,39 @@ export default function FoamTypeForm({
                   placeholder="e.g., Square, Rectangle, Angel End Seat"
                   helperText="Enter a descriptive name for this foam type"
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ p: 2, border: '1px dashed grey', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Interactive SVG Shape (Optional)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    If you want an interactive shape, upload your .svg file here. Leave this blank to just use the static image above.
+                  </Typography>
+                  <Button variant="outlined" component="label" sx={{ mb: 2 }}>
+                    Upload .svg File
+                    <input
+                      type="file"
+                      accept=".svg"
+                      onChange={handleSvgUpload}
+                      hidden
+                    />
+                  </Button>
+                  <TextField
+                    fullWidth
+                    label="Raw SVG Content"
+                    name="customSvgContent"
+                    value={formData.customSvgContent || ''}
+                    onChange={handleChange}
+                    multiline
+                    rows={6}
+                    placeholder="<svg>...</svg>"
+                    helperText="You can also manually paste or edit the SVG code here. Make sure to use {{A}}, {{B}}, etc. for dynamic dimensions."
+                    InputProps={{
+                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                    }}
+                  />
+                </Box>
               </Grid>
               <Grid item xs={12}>
                 <TextField

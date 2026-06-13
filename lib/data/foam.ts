@@ -71,6 +71,8 @@ const docToFoamType = (docId: string, data: any): FoamType => {
     name: data.name || '',
     description: data.description || '',
     imageUrl: data.imageUrl || null,
+    svgId: data.svgId || '',
+    customSvgContent: data.customSvgContent || '',
     dimensions: normalizedDimensions,
     sortOrder: data.sortOrder ?? 0,
     createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),

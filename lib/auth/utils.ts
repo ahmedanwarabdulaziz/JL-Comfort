@@ -14,12 +14,22 @@ export const useAuth = () => {
       return;
     }
 
+    // Add a timeout to prevent infinite loading if Firebase hangs
+    const timer = setTimeout(() => {
+      console.warn('Firebase Auth initialization timed out. Check your internet connection or Firebase config.');
+      setLoading(false);
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timer);
       setUser(user);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   return { user, loading };

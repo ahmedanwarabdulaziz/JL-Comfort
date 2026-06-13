@@ -20,9 +20,27 @@ import { Category } from '@/lib/types/category';
 import {
   getCategories,
   deleteCategory as deleteCategoryApi,
+  updateCategoriesOrder,
 } from '@/lib/data/categories';
 import CategoryForm from './CategoryForm';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
+import SortableCategoryRow from './SortableCategoryRow';
+
+// Import drag-and-drop libraries
+import {
+  DndContext,
+  useSensors,
+  useSensor,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 export default function CategoriesList() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,6 +50,13 @@ export default function CategoriesList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   const loadCategories = async () => {
@@ -88,6 +113,43 @@ export default function CategoriesList() {
     handleFormClose();
   };
 
+  const handleDragEnd = async (event: any) => {
+    if (!arrayMove || !updateCategoriesOrder) return;
+    
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = categories.findIndex((item) => item.id === active.id);
+      const newIndex = categories.findIndex((item) => item.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newOrder = arrayMove(categories, oldIndex, newIndex);
+      
+      // Update local state immediately for better UX
+      setCategories((prev) => {
+        const reordered = arrayMove(prev, oldIndex, newIndex);
+        return reordered.map((item: Category, index: number) => ({
+          ...item,
+          sortOrder: index,
+        }));
+      });
+
+      // Update in Firestore
+      try {
+        const reorderedCategories = newOrder.map((item: Category, index: number) => ({
+          ...item,
+          sortOrder: index,
+        }));
+        await updateCategoriesOrder(reorderedCategories);
+      } catch (error) {
+        console.error('Error updating order:', error);
+        // Reload on error to revert
+        await loadCategories();
+      }
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -98,57 +160,51 @@ export default function CategoriesList() {
       </Box>
 
       <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={3} align="center">
-                  Loading...
-                </TableCell>
+                <TableCell width={50}>Order</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
-            ) : categories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} align="center">
-                  No categories found
-                </TableCell>
-              </TableRow>
-            ) : (
-              categories.map((category) => (
-                <TableRow key={category.id}>
-                  <TableCell>
-                    <Typography variant="body1" fontWeight="medium">
-                      {category.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {category.description || '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(category)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(category)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    No categories found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <SortableContext
+                  items={categories.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {categories.map((category) => (
+                    <SortableCategoryRow
+                      key={category.id}
+                      category={category}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </SortableContext>
+              )}
+            </TableBody>
+          </Table>
+        </DndContext>
       </TableContainer>
 
       <CategoryForm

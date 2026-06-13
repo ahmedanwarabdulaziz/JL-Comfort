@@ -10,6 +10,7 @@ import {
   Timestamp,
   query,
   orderBy,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase/config';
 import { Category, CategoryInput } from '@/lib/types/category';
@@ -53,6 +54,7 @@ const docToCategory = (docId: string, data: any): Category => {
     id: docId,
     name: data.name || '',
     description: data.description || '',
+    sortOrder: data.sortOrder || 0,
     createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
     updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
   };
@@ -65,9 +67,16 @@ export const getCategories = async (): Promise<Category[]> => {
 
   try {
     const categoriesRef = collection(db, 'categories');
-    const q = query(categoriesRef, orderBy('name', 'asc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => docToCategory(doc.id, doc.data()));
+    const snapshot = await getDocs(categoriesRef);
+    const categories = snapshot.docs.map((doc) => docToCategory(doc.id, doc.data()));
+    
+    // Sort locally to avoid needing Firestore composite indexes, and handle missing sortOrder gracefully
+    return categories.sort((a, b) => {
+      const orderA = a.sortOrder ?? 999;
+      const orderB = b.sortOrder ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return mockCategories;
@@ -166,6 +175,35 @@ export const deleteCategory = async (id: string): Promise<void> => {
     await deleteDoc(categoryRef);
   } catch (error) {
     console.error('Error deleting category:', error);
+    throw error;
+  }
+};
+
+export const updateCategoriesOrder = async (categories: Category[]): Promise<void> => {
+  if (!isFirebaseConfigured() || !db) {
+    // For mock data, just update the in-memory array
+    categories.forEach(cat => {
+      const index = mockCategories.findIndex(m => m.id === cat.id);
+      if (index !== -1) {
+        mockCategories[index] = { ...mockCategories[index], sortOrder: cat.sortOrder };
+      }
+    });
+    mockCategories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return;
+  }
+
+  try {
+    const batch = writeBatch(db!);
+    categories.forEach((cat) => {
+      const ref = doc(db!, 'categories', cat.id);
+      batch.update(ref, { 
+        sortOrder: cat.sortOrder,
+        updatedAt: serverTimestamp()
+      });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error('Error updating categories order:', error);
     throw error;
   }
 };

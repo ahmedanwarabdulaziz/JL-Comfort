@@ -41,5 +41,11 @@ service cloud.firestore {
       allow read: if true; // Anyone can read fibre wraps
       allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
     }
+    
+    // Custom Shapes collection rules
+    match /custom_shapes/{shapeId} {
+      allow read: if true; // Anyone can read custom shapes
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
   }
 }

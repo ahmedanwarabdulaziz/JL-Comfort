@@ -30,10 +30,18 @@ import {
   Tooltip,
   Switch,
   FormControlLabel,
+  List,
+  ListItemButton,
+  ListItemText,
 } from '@mui/material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CircleIcon from '@mui/icons-material/Circle';
+import CircularProgress from '@mui/material/CircularProgress';
+import DynamicSVG from '@/components/foam-shapes/DynamicSVG';
 import Link from 'next/link';
+import { useCart } from '@/lib/context/CartContext';
+import CartDrawer from '@/components/cart/CartDrawer';
 import { Category } from '@/lib/types/category';
 import { FoamType, FoamDimension, DimensionType } from '@/lib/types/foam';
 import { getFoamTypes } from '@/lib/data/foam';
@@ -50,6 +58,7 @@ interface FoamPageClientProps {
 
 export default function FoamPageClient({ categories }: FoamPageClientProps) {
   const router = useRouter();
+  const { addToCart, setIsCartOpen } = useCart();
   const [activeStep, setActiveStep] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedTypeId, setSelectedTypeId] = useState<string>('');
@@ -134,6 +143,12 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
     }
   }, [selectedTypeId, foamTypes]);
 
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategoryId) {
+      handleCategoryChange(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
+
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategoryId(categoryId);
     setSelectedTypeId('');
@@ -143,10 +158,12 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
     setWrapEnabled(false);
     setSelectedGradeId('');
     setQuantity(1);
+    // Do not change activeStep here since Category & Type are on step 0
   };
 
   const handleTypeChange = (typeId: string) => {
     setSelectedTypeId(typeId);
+    setActiveStep(1);
   };
 
   const getRuleForDimension = (dimensionType: DimensionType): DimensionRule | null => {
@@ -305,19 +322,54 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
     };
   };
 
+  const handleAddToCart = () => {
+    const result = calculateVolume();
+    if (!result || !selectedType || !selectedCategoryId || !selectedGradeId) return;
+
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    const selectedGrade = foamGrades.find(g => g.id === selectedGradeId);
+    const selectedWrap = wrapEnabled && selectedWrapId ? fibreWraps.find(w => w.id === selectedWrapId) : null;
+    
+    const foamPrice = result.totalPrice || 0;
+    const wrapPriceValue = result.wrapPrice || 0;
+    const unitTotal = foamPrice + wrapPriceValue;
+    const orderTotal = unitTotal * quantity;
+
+    addToCart({
+      categoryId: selectedCategoryId,
+      categoryName: selectedCategory?.name || '',
+      typeId: selectedType.id,
+      typeName: selectedType.name,
+      dimensions: {
+        thickness: result.thickness,
+        depth: result.depth,
+        width: result.width,
+        rawDepth: result.rawDepth,
+        rawWidth: result.rawWidth,
+      },
+      gradeId: selectedGrade?.id,
+      gradeName: selectedGrade ? `${selectedGrade.brand} - ${selectedGrade.gradeName}` : undefined,
+      wrapId: selectedWrap?.id,
+      wrapName: selectedWrap?.fibreThickness,
+      quantity,
+      unitPrice: unitTotal,
+      totalPrice: orderTotal,
+    });
+  };
+
   const handleNext = () => {
-    if (activeStep === 0 && selectedCategoryId && selectedTypeId) {
+    if (activeStep === 0 && selectedTypeId) {
       setActiveStep(1);
     }
   };
 
   const handleBack = () => {
-    if (activeStep === 1) {
-      setActiveStep(0);
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
     }
   };
 
-  const steps = ['Choose Category & Type', 'Enter Dimensions'];
+  const steps = ['Choose Shape', 'Enter Dimensions'];
 
   return (
     <>
@@ -345,138 +397,96 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
           </Typography>
         </Box>
 
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Paper>
-
-        {/* Step 1: Category & Type Selection */}
+        {/* Step 1: Shape Selection (Combined Categories & Types) */}
         {activeStep === 0 && (
-          <Box>
-            {/* Category Selection */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-                Choose Foam Category
-              </Typography>
-              <Grid container spacing={3}>
-                {categories.map((category) => (
-                  <Grid item xs={12} sm={6} md={4} key={category.id}>
-                    <Card
+          <Grid container spacing={4}>
+            {/* Left Sidebar: Categories */}
+            <Grid item xs={12} md={3}>
+              <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
+                <Box sx={{ p: 2, bgcolor: 'grey.50', borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold' }}>
+                    Categories
+                  </Typography>
+                </Box>
+                <List disablePadding>
+                  {categories.map((category) => (
+                    <ListItemButton
+                      key={category.id}
+                      selected={selectedCategoryId === category.id}
+                      onClick={() => handleCategoryChange(category.id)}
                       sx={{
-                        cursor: 'pointer',
-                        border: selectedCategoryId === category.id ? 2 : 1,
-                        borderColor:
-                          selectedCategoryId === category.id
-                            ? 'primary.main'
-                            : 'divider',
-                        '&:hover': {
-                          boxShadow: 4,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        '&.Mui-selected': {
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
+                          },
+                          '& .MuiListItemIcon-root': {
+                            color: 'white',
+                          }
                         },
                       }}
-                      onClick={() => handleCategoryChange(category.id)}
                     >
-                      <CardContent>
-                        <Typography variant="h6" component="h3" gutterBottom>
-                          {category.name}
-                        </Typography>
-                        {category.description && (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                            }}
-                          >
-                            {category.description}
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
+                      <ListItemText primary={category.name} />
+                      <ChevronRightIcon sx={{ color: selectedCategoryId === category.id ? 'white' : 'action.active' }} />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Paper>
+            </Grid>
 
-            {/* Type Selection */}
-            {selectedCategoryId && (
-              <Box>
-                <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-                  Choose Foam Type
+            {/* Right Side: Foam Types Grid */}
+            <Grid item xs={12} md={9}>
+              {loading ? (
+                <Typography>Loading shapes...</Typography>
+              ) : foamTypes.length === 0 ? (
+                <Typography color="text.secondary">
+                  No foam shapes available for this category.
                 </Typography>
-                {loading ? (
-                  <Typography>Loading foam types...</Typography>
-                ) : foamTypes.length === 0 ? (
-                  <Typography color="text.secondary">
-                    No foam types available for this category.
-                  </Typography>
-                ) : (
-                  <>
-                    <Grid container spacing={3} sx={{ mb: 3 }}>
-                      {foamTypes.map((type) => (
-                        <Grid item xs={12} sm={6} md={4} key={type.id}>
-                          <Card
-                            sx={{
-                              cursor: 'pointer',
-                              border: selectedTypeId === type.id ? 2 : 1,
-                              borderColor:
-                                selectedTypeId === type.id
-                                  ? 'primary.main'
-                                  : 'divider',
-                              '&:hover': {
-                                boxShadow: 4,
-                              },
-                            }}
-                            onClick={() => handleTypeChange(type.id)}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" component="h3" gutterBottom>
-                                {type.name}
-                              </Typography>
-                              {type.description && (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                  }}
-                                >
-                                  {type.description}
-                                </Typography>
-                              )}
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
+              ) : (
+                <Grid container spacing={2}>
+                  {foamTypes.map((type) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={type.id}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          cursor: 'pointer',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          border: selectedTypeId === type.id ? 2 : 1,
+                          borderColor:
+                            selectedTypeId === type.id
+                              ? 'primary.main'
+                              : 'divider',
+                          '&:hover': {
+                            boxShadow: 3,
+                          },
+                        }}
+                        onClick={() => handleTypeChange(type.id)}
+                      >
+                        <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2, minHeight: 120 }}>
+                          {type.imageUrl ? (
+                            <img src={type.imageUrl} alt={type.name} style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }} />
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">No Image</Typography>
+                          )}
+                        </Box>
+                        <Divider />
+                        <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="subtitle2" component="h3" sx={{ fontWeight: 'bold' }}>
+                            {type.name}
+                          </Typography>
+                        </CardContent>
+                      </Card>
                     </Grid>
-                    {selectedTypeId && (
-                      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                        <Button
-                          variant="contained"
-                          onClick={handleNext}
-                          disabled={!selectedCategoryId || !selectedTypeId}
-                        >
-                          Next
-                        </Button>
-                      </Box>
-                    )}
-                  </>
-                )}
-              </Box>
-            )}
-          </Box>
+                  ))}
+                </Grid>
+              )}
+            </Grid>
+          </Grid>
         )}
 
         {/* Step 2: Dimensions Input */}
@@ -491,34 +501,55 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
                 <Grid item xs={12} md={5}>
                   <Box sx={{ position: 'sticky', top: 20 }}>
                     <Card variant="outlined">
-                      {selectedType.imageUrl ? (
-                        <CardMedia
-                          component="img"
-                          image={selectedType.imageUrl}
-                          alt={selectedType.name}
-                          sx={{
-                            width: '100%',
-                            height: 'auto',
-                            maxHeight: 400,
-                            objectFit: 'contain',
-                          }}
-                        />
-                      ) : (
-                        <CardMedia
-                          component="div"
-                          sx={{
-                            height: 300,
-                            backgroundColor: 'grey.200',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Typography color="text.secondary">
-                            No Image Available
-                          </Typography>
-                        </CardMedia>
-                      )}
+                      {(() => {
+                        const shapeDimensions = selectedType.dimensions.reduce((acc, dim) => {
+                          if (dim.letterShortcut) {
+                            acc[dim.letterShortcut] = dimensions[dim.name] || 0;
+                          }
+                          return acc;
+                        }, {} as Record<string, number>);
+
+                        if (selectedType.customSvgContent) {
+                          return (
+                            <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', backgroundColor: 'grey.50' }}>
+                              <DynamicSVG svgContent={selectedType.customSvgContent} dimensions={shapeDimensions} />
+                            </Box>
+                          );
+                        }
+
+                        if (selectedType.imageUrl) {
+                          return (
+                            <CardMedia
+                              component="img"
+                              image={selectedType.imageUrl}
+                              alt={selectedType.name}
+                              sx={{
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: 400,
+                                objectFit: 'contain',
+                              }}
+                            />
+                          );
+                        }
+
+                        return (
+                          <CardMedia
+                            component="div"
+                            sx={{
+                              height: 300,
+                              backgroundColor: 'grey.200',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Typography color="text.secondary">
+                              No Image Available
+                            </Typography>
+                          </CardMedia>
+                        );
+                      })()}
                       <CardContent>
                         <Typography variant="h4" component="h2" gutterBottom>
                           {selectedType.name}
@@ -931,14 +962,19 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
                 <Button variant="outlined" onClick={handleBack}>
                   Back
                 </Button>
-                <Button variant="contained" disabled>
-                  Continue (Coming Soon)
+                <Button 
+                  variant="contained" 
+                  onClick={handleAddToCart}
+                  disabled={calculateVolume() === null || !selectedGradeId}
+                >
+                  Add to Cart
                 </Button>
               </Box>
             </CardContent>
           </Card>
         )}
       </Container>
+      <CartDrawer />
     </>
   );
 }
