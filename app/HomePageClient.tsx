@@ -26,6 +26,13 @@ interface HomePageClientProps {
 
 const CATEGORIES = [
   {
+    title: '✨ AI Fabric Visualizer',
+    description: 'Upload a photo of your furniture and see it reimagined with any fabric — powered by Google Gemini AI.',
+    image: '/images/ai-visualizer.png',
+    link: '/visualizer',
+    highlight: true,
+  },
+  {
     title: 'High-Quality Foam',
     description: 'Premium upholstery foam cut to your exact specifications.',
     image: '/images/foam.png',

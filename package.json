@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
+    "@google/generative-ai": "^0.24.1",
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@stripe/stripe-js": "^9.8.0",
