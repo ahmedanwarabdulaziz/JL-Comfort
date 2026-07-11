@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to
 
 export async function POST(req: Request) {
   try {
-    const { items } = await req.json();
+    const { items, origin: clientOrigin } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -32,15 +32,18 @@ export async function POST(req: Request) {
       };
     });
 
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const host = req.headers.get('host');
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const serverOrigin = host ? `${protocol}://${host}` : 'http://localhost:3000';
+    const finalOrigin = clientOrigin || req.headers.get('origin') || serverOrigin;
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/foam`,
+      success_url: `${finalOrigin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${finalOrigin}/foam`,
       metadata: {
         // You can store custom metadata here if needed for webhook processing
         order_source: 'jl_comfort_custom_foam',

@@ -30,6 +30,9 @@ const docToFoamGrade = (docId: string, data: any): FoamGrade => {
     brand: data.brand || '',
     gradeName: data.gradeName || '',
     price: data.price ?? 0,
+    density: data.density || '',
+    firmness: data.firmness || '',
+    warranty: data.warranty || '',
     createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
     updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
   };

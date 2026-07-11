@@ -53,6 +53,9 @@ export default function FoamGradesList() {
   const [brand, setBrand] = useState('');
   const [gradeName, setGradeName] = useState('');
   const [price, setPrice] = useState<number>(0);
+  const [density, setDensity] = useState('');
+  const [firmness, setFirmness] = useState('');
+  const [warranty, setWarranty] = useState('');
   const [isNewBrand, setIsNewBrand] = useState(false);
 
   const filteredGrades =
@@ -85,6 +88,9 @@ export default function FoamGradesList() {
     setBrand('');
     setGradeName('');
     setPrice(0);
+    setDensity('');
+    setFirmness('');
+    setWarranty('');
     setIsNewBrand(false);
     setFormOpen(true);
   };
@@ -94,6 +100,9 @@ export default function FoamGradesList() {
     setBrand(grade.brand);
     setGradeName(grade.gradeName);
     setPrice(grade.price);
+    setDensity(grade.density || '');
+    setFirmness(grade.firmness || '');
+    setWarranty(grade.warranty || '');
     setIsNewBrand(!brands.includes(grade.brand));
     setFormOpen(true);
   };
@@ -122,6 +131,9 @@ export default function FoamGradesList() {
         brand: brand.trim(),
         gradeName: gradeName.trim(),
         price: price,
+        density: density.trim(),
+        firmness: firmness.trim(),
+        warranty: warranty.trim(),
       };
 
       if (editingGrade) {
@@ -144,6 +156,9 @@ export default function FoamGradesList() {
     setBrand('');
     setGradeName('');
     setPrice(0);
+    setDensity('');
+    setFirmness('');
+    setWarranty('');
     setIsNewBrand(false);
   };
 
@@ -179,6 +194,7 @@ export default function FoamGradesList() {
             <TableRow>
               <TableCell>Brand</TableCell>
               <TableCell>Grade Name</TableCell>
+              <TableCell>Details</TableCell>
               <TableCell align="right">Price</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -186,13 +202,13 @@ export default function FoamGradesList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : filteredGrades.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   No foam grades found
                 </TableCell>
               </TableRow>
@@ -203,6 +219,11 @@ export default function FoamGradesList() {
                     <Chip label={grade.brand} size="small" color="primary" variant="outlined" />
                   </TableCell>
                   <TableCell>{grade.gradeName}</TableCell>
+                  <TableCell>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Density: {grade.density || 'N/A'} | Firmness: {grade.firmness || 'N/A'} | Life Expectancy: {grade.warranty || 'N/A'}
+                    </Typography>
+                  </TableCell>
                   <TableCell align="right">
                     ${grade.price.toFixed(2)}
                   </TableCell>
@@ -295,6 +316,27 @@ export default function FoamGradesList() {
               InputProps={{
                 startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
               }}
+            />
+            <TextField
+              label="Density"
+              value={density}
+              onChange={(e) => setDensity(e.target.value)}
+              fullWidth
+              helperText="e.g., 1.8 lb/ft3"
+            />
+            <TextField
+              label="Firmness"
+              value={firmness}
+              onChange={(e) => setFirmness(e.target.value)}
+              fullWidth
+              helperText="e.g., Medium Firm"
+            />
+            <TextField
+              label="Life Expectancy"
+              value={warranty}
+              onChange={(e) => setWarranty(e.target.value)}
+              fullWidth
+              helperText="e.g., 8 Yr Seat / 10 Yr Mattress"
             />
           </Box>
         </DialogContent>
