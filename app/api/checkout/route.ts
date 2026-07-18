@@ -15,15 +15,33 @@ export async function POST(req: Request) {
 
     // Prepare line items for Stripe
     const lineItems = items.map((item: any) => {
-      // Build a detailed description of the custom foam order
-      const description = `Dims: ${item.dimensions.thickness}" x ${item.dimensions.rawDepth}" x ${item.dimensions.rawWidth}" | Grade: ${item.gradeName || 'None'}${item.wrapName ? ` | Wrap: ${item.wrapName}` : ''}`;
+      let name: string;
+      let description: string;
+
+      if (item.productType === 'benchCushion') {
+        name = item.cushionStyleName || 'Bench Cushion';
+        const dims = item.cushionDimensions
+          ? Object.entries(item.cushionDimensions)
+              .map(([dimName, value]) => `${dimName}: ${value}"`)
+              .join(', ')
+          : '';
+        const options = (item.cushionOptions || [])
+          .map((o: { groupName: string; choiceLabel: string }) => `${o.groupName}: ${o.choiceLabel}`)
+          .join(', ');
+        const fabric = item.fabric ? `Fabric: ${item.fabric.name}` : '';
+        description = [dims, options, fabric].filter(Boolean).join(' | ');
+      } else {
+        // Build a detailed description of the custom foam order
+        name = `${item.categoryName} - ${item.typeName}`;
+        description = `Dims: ${item.dimensions.thickness}" x ${item.dimensions.rawDepth}" x ${item.dimensions.rawWidth}" | Grade: ${item.gradeName || 'None'}${item.wrapName ? ` | Wrap: ${item.wrapName}` : ''}`;
+      }
 
       return {
         price_data: {
           currency: 'usd', // Adjust currency as needed (e.g. 'egp' if supported, but usually 'usd' for demo)
           product_data: {
-            name: `${item.categoryName} - ${item.typeName}`,
-            description: description,
+            name,
+            description,
           },
           // Stripe requires the unit amount in cents (or the smallest currency unit)
           unit_amount: Math.round(item.unitPrice * 100),

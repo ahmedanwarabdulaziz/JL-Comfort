@@ -105,7 +105,9 @@ export default function CheckoutPage() {
                   <ListItem disablePadding sx={{ py: 3, display: 'block' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="h6" fontWeight="bold">
-                        {item.categoryName} - {item.typeName}
+                        {item.productType === 'benchCushion'
+                          ? item.cushionStyleName
+                          : `${item.categoryName} - ${item.typeName}`}
                       </Typography>
                       <IconButton edge="end" onClick={() => removeFromCart(item.id)} sx={{ color: 'error.main' }}>
                         <DeleteOutlineIcon />
@@ -114,18 +116,42 @@ export default function CheckoutPage() {
 
                     <Grid container spacing={2}>
                       <Grid item xs={12} sm={8}>
-                        <Typography variant="body1" color="text.secondary" paragraph>
-                          Dimensions: {item.dimensions.thickness}&quot; × {item.dimensions.rawDepth}&quot; × {item.dimensions.rawWidth}&quot;
-                        </Typography>
-                        {item.gradeName && (
-                          <Typography variant="body2" color="text.secondary">
-                            Grade: {item.gradeName}
-                          </Typography>
-                        )}
-                        {item.wrapName && (
-                          <Typography variant="body2" color="text.secondary">
-                            Wrap: {item.wrapName}
-                          </Typography>
+                        {item.productType === 'benchCushion' ? (
+                          <>
+                            {item.cushionDimensions && Object.keys(item.cushionDimensions).length > 0 && (
+                              <Typography variant="body1" color="text.secondary" paragraph>
+                                Dimensions: {Object.entries(item.cushionDimensions)
+                                  .map(([name, value]) => `${name}: ${value}"`)
+                                  .join(', ')}
+                              </Typography>
+                            )}
+                            {item.cushionOptions?.map((option) => (
+                              <Typography key={option.groupName} variant="body2" color="text.secondary">
+                                {option.groupName}: {option.choiceLabel}
+                              </Typography>
+                            ))}
+                            {item.fabric && (
+                              <Typography variant="body2" color="text.secondary">
+                                Fabric: {item.fabric.name}
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <Typography variant="body1" color="text.secondary" paragraph>
+                              Dimensions: {item.dimensions?.thickness}&quot; × {item.dimensions?.rawDepth}&quot; × {item.dimensions?.rawWidth}&quot;
+                            </Typography>
+                            {item.gradeName && (
+                              <Typography variant="body2" color="text.secondary">
+                                Grade: {item.gradeName}
+                              </Typography>
+                            )}
+                            {item.wrapName && (
+                              <Typography variant="body2" color="text.secondary">
+                                Wrap: {item.wrapName}
+                              </Typography>
+                            )}
+                          </>
                         )}
                       </Grid>
                       <Grid item xs={12} sm={4} sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', sm: 'flex-end' }, justifyContent: 'center' }}>

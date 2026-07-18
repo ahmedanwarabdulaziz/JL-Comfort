@@ -89,25 +89,51 @@ export default function CartDrawer() {
                   <ListItem disablePadding sx={{ py: 2, display: 'block' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="subtitle1" fontWeight="bold">
-                        {item.categoryName} - {item.typeName}
+                        {item.productType === 'benchCushion'
+                          ? item.cushionStyleName
+                          : `${item.categoryName} - ${item.typeName}`}
                       </Typography>
                       <IconButton edge="end" size="small" onClick={() => removeFromCart(item.id)} sx={{ color: 'error.main' }}>
                         <DeleteOutlineIcon />
                       </IconButton>
                     </Box>
 
-                    <Typography variant="body2" color="text.secondary">
-                      Dimensions: {item.dimensions.thickness}&quot; × {item.dimensions.rawDepth}&quot; × {item.dimensions.rawWidth}&quot;
-                    </Typography>
-                    {item.gradeName && (
-                      <Typography variant="body2" color="text.secondary">
-                        Grade: {item.gradeName}
-                      </Typography>
-                    )}
-                    {item.wrapName && (
-                      <Typography variant="body2" color="text.secondary">
-                        Wrap: {item.wrapName}
-                      </Typography>
+                    {item.productType === 'benchCushion' ? (
+                      <>
+                        {item.cushionDimensions && Object.keys(item.cushionDimensions).length > 0 && (
+                          <Typography variant="body2" color="text.secondary">
+                            Dimensions: {Object.entries(item.cushionDimensions)
+                              .map(([name, value]) => `${name}: ${value}"`)
+                              .join(', ')}
+                          </Typography>
+                        )}
+                        {item.cushionOptions?.map((option) => (
+                          <Typography key={option.groupName} variant="body2" color="text.secondary">
+                            {option.groupName}: {option.choiceLabel}
+                          </Typography>
+                        ))}
+                        {item.fabric && (
+                          <Typography variant="body2" color="text.secondary">
+                            Fabric: {item.fabric.name}
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          Dimensions: {item.dimensions?.thickness}&quot; × {item.dimensions?.rawDepth}&quot; × {item.dimensions?.rawWidth}&quot;
+                        </Typography>
+                        {item.gradeName && (
+                          <Typography variant="body2" color="text.secondary">
+                            Grade: {item.gradeName}
+                          </Typography>
+                        )}
+                        {item.wrapName && (
+                          <Typography variant="body2" color="text.secondary">
+                            Wrap: {item.wrapName}
+                          </Typography>
+                        )}
+                      </>
                     )}
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>

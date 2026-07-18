@@ -33,6 +33,7 @@ const guideLinks = [
 
 const primaryLinks = [
   { label: 'Order Foam', href: '/foam' },
+  { label: 'Bench Cushions', href: '/bench-cushions' },
   { label: 'About', href: '/about' },
   { label: 'FAQ', href: '/faq' },
 ];
@@ -99,6 +100,10 @@ export default function SiteHeader() {
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
             <Button component={Link} href="/foam" sx={navLinkSx(isActive('/foam'))}>
               Order Foam
+            </Button>
+
+            <Button component={Link} href="/bench-cushions" sx={navLinkSx(isActive('/bench-cushions'))}>
+              Bench Cushions
             </Button>
 
             <Button

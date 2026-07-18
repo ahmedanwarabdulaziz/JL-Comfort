@@ -47,5 +47,11 @@ service cloud.firestore {
       allow read: if true; // Anyone can read custom shapes
       allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
     }
+
+    // Bench Cushions collection rules
+    match /benchCushions/{styleId} {
+      allow read: if true; // Anyone can read bench cushion styles
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
   }
 }

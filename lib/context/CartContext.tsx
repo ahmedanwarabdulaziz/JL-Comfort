@@ -2,13 +2,31 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export interface CushionCartOption {
+  groupName: string;
+  choiceLabel: string;
+  priceModifier: number;
+  imageUrl?: string | null;
+}
+
+export interface CushionFabricSelection {
+  id: string;
+  name: string;
+  imageUrl: string;
+  source: 'charlotte-fabrics' | 'jl-comfort';
+  productUrl?: string;
+}
+
 export interface CartItem {
   id: string;
-  categoryId: string;
-  categoryName: string;
-  typeId: string;
-  typeName: string;
-  dimensions: {
+  productType?: 'foam' | 'benchCushion'; // absent means 'foam', for backward compatibility
+
+  // Foam-specific fields
+  categoryId?: string;
+  categoryName?: string;
+  typeId?: string;
+  typeName?: string;
+  dimensions?: {
     thickness: number;
     depth: number;
     width: number;
@@ -19,6 +37,14 @@ export interface CartItem {
   gradeName?: string;
   wrapId?: string;
   wrapName?: string;
+
+  // Bench cushion-specific fields
+  cushionStyleId?: string;
+  cushionStyleName?: string;
+  cushionDimensions?: Record<string, number>;
+  cushionOptions?: CushionCartOption[];
+  fabric?: CushionFabricSelection;
+
   quantity: number;
   unitPrice: number;
   totalPrice: number;

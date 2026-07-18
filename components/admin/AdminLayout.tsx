@@ -27,6 +27,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import RuleIcon from '@mui/icons-material/Rule';
 import StarIcon from '@mui/icons-material/Star';
 import LayersIcon from '@mui/icons-material/Layers';
+import WeekendIcon from '@mui/icons-material/Weekend';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { auth } from '@/lib/firebase/config';
@@ -46,8 +47,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam'
-  >(pathname?.includes('/foam') ? 'foam' : 'products');
+    'dashboard' | 'products' | 'foam' | 'bench-cushions'
+  >(
+    pathname?.includes('/foam')
+      ? 'foam'
+      : pathname?.includes('/bench-cushions')
+      ? 'bench-cushions'
+      : 'products'
+  );
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -173,6 +180,20 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
             </ListItemButton>
           </List>
         </Collapse>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/bench-cushions')}
+            onClick={() => {
+              router.push('/admin/bench-cushions');
+              setSelectedView('bench-cushions');
+            }}
+          >
+            <ListItemIcon>
+              <WeekendIcon />
+            </ListItemIcon>
+            <ListItemText primary="Bench Cushions" />
+          </ListItemButton>
+        </ListItem>
       </List>
     </Box>
   );
