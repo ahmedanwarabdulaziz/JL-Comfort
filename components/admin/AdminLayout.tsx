@@ -28,6 +28,8 @@ import RuleIcon from '@mui/icons-material/Rule';
 import StarIcon from '@mui/icons-material/Star';
 import LayersIcon from '@mui/icons-material/Layers';
 import WeekendIcon from '@mui/icons-material/Weekend';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { auth } from '@/lib/firebase/config';
@@ -47,10 +49,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-price-tiers' | 'fabric-catalog'
   >(
     pathname?.includes('/foam')
       ? 'foam'
+      : pathname?.includes('/fabric-price-tiers')
+      ? 'fabric-price-tiers'
+      : pathname?.includes('/fabric-catalog')
+      ? 'fabric-catalog'
       : pathname?.includes('/bench-cushions')
       ? 'bench-cushions'
       : 'products'
@@ -192,6 +198,34 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <WeekendIcon />
             </ListItemIcon>
             <ListItemText primary="Bench Cushions" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/fabric-price-tiers')}
+            onClick={() => {
+              router.push('/admin/fabric-price-tiers');
+              setSelectedView('fabric-price-tiers');
+            }}
+          >
+            <ListItemIcon>
+              <AttachMoneyIcon />
+            </ListItemIcon>
+            <ListItemText primary="Fabric Pricing" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/fabric-catalog')}
+            onClick={() => {
+              router.push('/admin/fabric-catalog');
+              setSelectedView('fabric-catalog');
+            }}
+          >
+            <ListItemIcon>
+              <CloudSyncIcon />
+            </ListItemIcon>
+            <ListItemText primary="Fabric Catalog Sync" />
           </ListItemButton>
         </ListItem>
       </List>

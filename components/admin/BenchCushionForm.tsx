@@ -55,6 +55,7 @@ const emptyFormData: BenchCushionStyleInput = {
   variables: [],
   basePrice: 0,
   currency: 'usd',
+  estimatedYards: 0,
 };
 
 export default function BenchCushionForm({
@@ -76,6 +77,7 @@ export default function BenchCushionForm({
         variables: style.variables || [],
         basePrice: style.basePrice ?? 0,
         currency: style.currency || 'usd',
+        estimatedYards: style.estimatedYards ?? 0,
       });
     } else {
       setFormData(emptyFormData);
@@ -278,7 +280,7 @@ export default function BenchCushionForm({
                   helperText="Enter a descriptive name for this cushion style"
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2}>
                 <TextField
                   fullWidth
                   label="Base Price"
@@ -298,7 +300,7 @@ export default function BenchCushionForm({
                   }}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2}>
                 <TextField
                   fullWidth
                   select
@@ -311,6 +313,26 @@ export default function BenchCushionForm({
                   <option value="usd">USD</option>
                   <option value="cad">CAD</option>
                 </TextField>
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  label="Estimated Fabric Yardage"
+                  name="estimatedYards"
+                  type="number"
+                  value={formData.estimatedYards}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      estimatedYards: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  inputProps={{ step: '0.25', min: '0' }}
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">yd</InputAdornment>,
+                  }}
+                  helperText="Used to calculate fabric cost"
+                />
               </Grid>
               <Grid item xs={12}>
                 <TextField

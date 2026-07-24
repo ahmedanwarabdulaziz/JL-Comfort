@@ -1,0 +1,571 @@
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa' }}>
+      <AppBar position="sticky" sx={{ bgcolor: '#000000', color: '#ffffff' }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', letterSpacing: 2 }}>
+            <span style={{ color: '#e3c29a' }}>JL</span> COMFORT
+          </Typography>
+          <Button color="inherit" component={Link} href="/" sx={{ '&:hover': { color: '#e3c29a' }}}>
+            Home
+          </Button>
+          <Button color="inherit" component={Link} href="/admin" sx={{ '&:hover': { color: '#e3c29a' }}}>
+            Admin
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      {/* Hero Section */}
+      <Box sx={{ bgcolor: '#e3c29a', color: '#000', py: { xs: 4, md: 6 }, px: 2, textAlign: 'center' }}>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Custom Foam Replacement
+        </Typography>
+        <Typography variant="h6" sx={{ maxWidth: 600, mx: 'auto', fontWeight: 'normal', opacity: 0.9 }}>
+          Design your perfect cushion in 3 easy steps. Select a shape, enter your dimensions, and choose your premium foam grade.
+        </Typography>
+      </Box>
+
+      <Container maxWidth="xl" sx={{ py: 6 }}>
+        <Grid container spacing={4}>
+          
+          {/* Main Content Area */}
+          <Grid item xs={12} lg={8}>
+            
+            {/* Step 1: Shape Selection */}
+            {activeStep === 0 && (
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Step 1: Choose Your Shape</Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>Select the shape that best matches your project.</Typography>
+                
+                <Grid container spacing={4}>
+                  {/* Left Sidebar: Categories */}
+                  <Grid item xs={12} md={4}>
+                    <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
+                      <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderBottom: 1, borderColor: 'divider' }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                          Categories
+                        </Typography>
+                      </Box>
+                      <List disablePadding>
+                        {categories.map((category) => (
+                          <ListItemButton
+                            key={category.id}
+                            selected={selectedCategoryId === category.id}
+                            onClick={() => handleCategoryChange(category.id)}
+                            sx={{
+                              borderBottom: 1,
+                              borderColor: 'divider',
+                              py: 2,
+                              '&.Mui-selected': {
+                                bgcolor: '#000000',
+                                color: '#e3c29a',
+                                '&:hover': {
+                                  bgcolor: '#1a1a1a',
+                                },
+                                '& .MuiListItemIcon-root': {
+                                  color: '#e3c29a',
+                                }
+                              },
+                              '&:hover': {
+                                bgcolor: 'rgba(227, 194, 154, 0.1)',
+                              }
+                            }}
+                          >
+                            <ListItemText primary={category.name} primaryTypographyProps={{ fontWeight: selectedCategoryId === category.id ? 'bold' : 'normal' }} />
+                            <ChevronRightIcon sx={{ color: selectedCategoryId === category.id ? '#e3c29a' : 'action.active' }} />
+                          </ListItemButton>
+                        ))}
+                      </List>
+                    </Paper>
+                  </Grid>
+
+                  {/* Right Side: Foam Types Grid */}
+                  <Grid item xs={12} md={8}>
+                    {loading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+                        <CircularProgress sx={{ color: '#e3c29a' }} />
+                      </Box>
+                    ) : foamTypes.length === 0 ? (
+                      <Typography color="text.secondary" sx={{ textAlign: 'center', py: 5 }}>
+                        No foam shapes available for this category.
+                      </Typography>
+                    ) : (
+                      <Grid container spacing={3}>
+                        {foamTypes.map((type) => (
+                          <Grid item xs={12} sm={6} key={type.id}>
+                            <Card
+                              elevation={selectedTypeId === type.id ? 4 : 0}
+                              sx={{
+                                cursor: 'pointer',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderRadius: 3,
+                                border: '2px solid',
+                                borderColor: selectedTypeId === type.id ? '#e3c29a' : 'divider',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                  transform: 'translateY(-4px)',
+                                  boxShadow: 4,
+                                  borderColor: '#e3c29a',
+                                },
+                              }}
+                              onClick={() => handleTypeChange(type.id)}
+                            >
+                              <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3, minHeight: 160, bgcolor: '#ffffff' }}>
+                                {type.imageUrl ? (
+                                  <img src={type.imageUrl} alt={type.name} style={{ maxWidth: '100%', maxHeight: 140, objectFit: 'contain' }} />
+                                ) : type.customSvgContent ? (
+                                  <DynamicSVG svgContent={type.customSvgContent} dimensions={{}} />
+                                ) : (
+                                  <Typography variant="caption" color="text.secondary">No Image</Typography>
+                                )}
+                              </Box>
+                              <Divider />
+                              <CardContent sx={{ textAlign: 'center', py: 2, bgcolor: selectedTypeId === type.id ? 'rgba(227, 194, 154, 0.1)' : '#fafafa' }}>
+                                <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 'bold' }}>
+                                  {type.name}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    )}
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+
+            {/* Step 2: Customization */}
+            {activeStep === 1 && selectedType && (
+              <Box>
+                <Button 
+                  startIcon={<ChevronRightIcon sx={{ transform: 'rotate(180deg)' }} />} 
+                  onClick={handleBack}
+                  sx={{ color: '#000', mb: 3, fontWeight: 'bold', '&:hover': { bgcolor: 'rgba(227, 194, 154, 0.2)' } }}
+                >
+                  Back to Shapes
+                </Button>
+                
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Step 2: Customize Your Foam</Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>Enter dimensions and select your foam quality.</Typography>
+                
+                <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, border: '1px solid', borderColor: 'divider', mb: 4 }}>
+                  <Grid container spacing={6}>
+                    {/* Shape Visualization */}
+                    <Grid item xs={12} md={5}>
+                      <Box sx={{ position: 'sticky', top: 24 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>{selectedType.name}</Typography>
+                        {selectedType.description && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            {selectedType.description}
+                          </Typography>
+                        )}
+                        <Box sx={{ 
+                          p: 4, 
+                          bgcolor: '#f8f9fa', 
+                          borderRadius: 3, 
+                          display: 'flex', 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          border: '1px solid',
+                          borderColor: 'divider'
+                        }}>
+                          {(() => {
+                            const shapeDimensions = selectedType.dimensions.reduce((acc, dim) => {
+                              if (dim.letterShortcut) {
+                                acc[dim.letterShortcut] = dimensions[dim.name] || 0;
+                              }
+                              return acc;
+                            }, {} as Record<string, number>);
+
+                            if (selectedType.customSvgContent) {
+                              return <DynamicSVG svgContent={selectedType.customSvgContent} dimensions={shapeDimensions} />;
+                            }
+                            if (selectedType.imageUrl) {
+                              return <img src={selectedType.imageUrl} alt={selectedType.name} style={{ width: '100%', height: 'auto', maxHeight: 300, objectFit: 'contain' }} />;
+                            }
+                            return <Typography color="text.secondary">No Image Available</Typography>;
+                          })()}
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                    {/* Configuration Options */}
+                    <Grid item xs={12} md={7}>
+                      
+                      {/* Dimensions Input */}
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Dimensions (Inches)</Typography>
+                      <Grid container spacing={3} sx={{ mb: 5 }}>
+                        {selectedType.dimensions.map((dimension) => {
+                          const rule = getRuleForDimension(dimension.type);
+                          const minValue = rule?.minValue ?? 0;
+                          const maxValue = rule?.maxValue;
+                          const step = rule?.allowFractions !== false ? 0.1 : 1;
+                          const currentValue = dimensions[dimension.name] || 0;
+                          const warningMessage = validateDimensionValue(currentValue, dimension.type);
+                          const hasError = warningMessage !== null;
+                          const shortcutLetter = dimension.letterShortcut?.trim().toUpperCase() || null;
+
+                          return (
+                            <Grid item xs={12} sm={6} key={dimension.name}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#000' }}>
+                                  {dimension.name}
+                                </Typography>
+                                {shortcutLetter && (
+                                  <Chip 
+                                    label={shortcutLetter} 
+                                    size="small" 
+                                    sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold', bgcolor: '#000', color: '#e3c29a' }} 
+                                  />
+                                )}
+                              </Box>
+                              <TextField
+                                type="number"
+                                fullWidth
+                                placeholder="0.0"
+                                value={dimensions[dimension.name] ?? ''}
+                                onChange={(e) => {
+                                  const inputStr = e.target.value;
+                                  if (inputStr === '' || inputStr === '-') {
+                                    handleDimensionChange(dimension.name, 0, dimension.type);
+                                  } else {
+                                    const inputValue = parseFloat(inputStr);
+                                    if (!isNaN(inputValue)) {
+                                      handleDimensionChange(dimension.name, inputValue, dimension.type);
+                                    } else {
+                                      handleDimensionChange(dimension.name, 0, dimension.type);
+                                    }
+                                  }
+                                }}
+                                inputProps={{ step, min: minValue, max: maxValue }}
+                                InputProps={{
+                                  endAdornment: <InputAdornment position="end">in</InputAdornment>,
+                                  sx: { borderRadius: 2, bgcolor: '#fff' }
+                                }}
+                                error={hasError}
+                                helperText={warningMessage || ''}
+                              />
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+
+                      <Divider sx={{ mb: 5 }} />
+
+                      {/* Foam Grade Selection */}
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Select Foam Grade</Typography>
+                      {foamGrades.length === 0 ? (
+                        <Typography color="text.secondary">No foam grades available.</Typography>
+                      ) : (
+                        <Grid container spacing={2} sx={{ mb: 5 }}>
+                          {foamGrades.map((grade) => (
+                            <Grid item xs={12} sm={6} key={grade.id}>
+                              <Card
+                                onClick={() => setSelectedGradeId(grade.id)}
+                                elevation={0}
+                                sx={{
+                                  cursor: 'pointer',
+                                  borderRadius: 3,
+                                  border: '2px solid',
+                                  borderColor: selectedGradeId === grade.id ? '#e3c29a' : 'divider',
+                                  bgcolor: selectedGradeId === grade.id ? 'rgba(227, 194, 154, 0.05)' : '#fff',
+                                  transition: 'all 0.2s',
+                                  height: '100%',
+                                  '&:hover': {
+                                    borderColor: '#e3c29a',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                  }
+                                }}
+                              >
+                                <CardContent sx={{ p: 2.5 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                    <Box>
+                                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        {grade.brand}
+                                      </Typography>
+                                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#000' }}>
+                                        {grade.gradeName}
+                                      </Typography>
+                                    </Box>
+                                    <CheckCircleIcon sx={{ color: selectedGradeId === grade.id ? '#e3c29a' : 'transparent', transition: 'color 0.2s' }} />
+                                  </Box>
+                                  <Box sx={{ mt: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                    {grade.density && (
+                                      <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Density</Typography>
+                                        <Typography variant="body2" fontWeight="medium">{grade.density}</Typography>
+                                      </Box>
+                                    )}
+                                    {grade.firmness && (
+                                      <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Firmness</Typography>
+                                        <Typography variant="body2" fontWeight="medium">{grade.firmness}</Typography>
+                                      </Box>
+                                    )}
+                                    {grade.warranty && (
+                                      <Box sx={{ gridColumn: 'span 2' }}>
+                                        <Typography variant="caption" color="text.secondary" display="block">Warranty</Typography>
+                                        <Typography variant="body2" fontWeight="medium">{grade.warranty}</Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                  <Divider sx={{ my: 2 }} />
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                    ${grade.price.toFixed(2)} <Typography component="span" variant="caption" color="text.secondary">/ cu ft</Typography>
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      )}
+
+                      <Divider sx={{ mb: 5 }} />
+
+                      {/* Fibre Wrap */}
+                      <Box sx={{ mb: 5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                          <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Dacron / Fibre Wrap</Typography>
+                            <Typography variant="body2" color="text.secondary">Adds a rounded, plush look to your cushions.</Typography>
+                          </Box>
+                          <Switch
+                            checked={wrapEnabled}
+                            onChange={(e) => {
+                              setWrapEnabled(e.target.checked);
+                              if (!e.target.checked) setSelectedWrapId('');
+                            }}
+                            sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#e3c29a' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#e3c29a' } }}
+                          />
+                        </Box>
+                        {wrapEnabled && (
+                          <Grid container spacing={2}>
+                            {fibreWraps.map((wrap) => (
+                              <Grid item xs={12} sm={6} key={wrap.id}>
+                                <Card
+                                  onClick={() => setSelectedWrapId(wrap.id)}
+                                  elevation={0}
+                                  sx={{
+                                    cursor: 'pointer',
+                                    borderRadius: 3,
+                                    border: '2px solid',
+                                    borderColor: selectedWrapId === wrap.id ? '#000' : 'divider',
+                                    bgcolor: selectedWrapId === wrap.id ? '#000' : '#fff',
+                                    color: selectedWrapId === wrap.id ? '#fff' : '#000',
+                                    transition: 'all 0.2s',
+                                  }}
+                                >
+                                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{wrap.fibreThickness}</Typography>
+                                      {selectedWrapId === wrap.id && <CheckCircleIcon sx={{ color: '#e3c29a', fontSize: 20 }} />}
+                                    </Box>
+                                    <Typography variant="caption" sx={{ color: selectedWrapId === wrap.id ? 'rgba(255,255,255,0.7)' : 'text.secondary' }}>
+                                      +${wrap.value.toFixed(2)} / cu ft
+                                    </Typography>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        )}
+                      </Box>
+                      
+                      {/* Quantity */}
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Quantity</Typography>
+                        <TextField
+                          type="number"
+                          value={quantity}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 1;
+                            setQuantity(Math.max(1, val));
+                          }}
+                          inputProps={{ min: 1, step: 1 }}
+                          sx={{ width: 120, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                        />
+                      </Box>
+
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Box>
+            )}
+          </Grid>
+
+          {/* Right Column: Order Summary (Sticky) */}
+          <Grid item xs={12} lg={4}>
+            <Box sx={{ position: 'sticky', top: 24 }}>
+              <Paper
+                elevation={6}
+                sx={{
+                  p: 4,
+                  borderRadius: 4,
+                  bgcolor: '#000000',
+                  color: '#ffffff',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Decorative background accent */}
+                <Box sx={{ position: 'absolute', top: -50, right: -50, width: 150, height: 150, borderRadius: '50%', bgcolor: 'rgba(227, 194, 154, 0.1)', filter: 'blur(30px)' }} />
+                
+                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3, letterSpacing: 1 }}>
+                  ORDER SUMMARY
+                </Typography>
+                
+                {(() => {
+                  if (activeStep === 0) {
+                    return (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                          Please select a shape to begin your custom order.
+                        </Typography>
+                      </Box>
+                    );
+                  }
+
+                  const result = calculateVolume();
+                  if (result === null) {
+                    return (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                          Enter all dimensions to see your live price.
+                        </Typography>
+                      </Box>
+                    );
+                  }
+
+                  const foamPrice = result.totalPrice || 0;
+                  const wrapPriceValue = result.wrapPrice || 0;
+                  const unitTotal = foamPrice + wrapPriceValue;
+                  const orderTotal = unitTotal * quantity;
+                  const selectedGrade = foamGrades.find((g) => g.id === selectedGradeId);
+                  const selectedWrap = selectedWrapId ? fibreWraps.find((w) => w.id === selectedWrapId) : null;
+                  
+                  const depthRule = getRuleForDimension('depth');
+                  const widthRule = getRuleForDimension('width');
+                  const depthMaxBlockLength = depthRule?.maxBlockLength ?? 88;
+                  const widthMaxBlockLength = widthRule?.maxBlockLength ?? 88;
+                  const depthExceeds = result.rawDepth > depthMaxBlockLength;
+                  const widthExceeds = result.rawWidth > widthMaxBlockLength;
+
+                  return (
+                    <Box sx={{ position: 'relative', zIndex: 1 }}>
+                      {/* Product Name & Dims */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>
+                          {selectedType?.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace', mt: 0.5 }}>
+                          {result.thickness.toFixed(2)}" H × {result.depth.toFixed(2)}" D × {result.width.toFixed(2)}" W
+                        </Typography>
+                      </Box>
+
+                      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
+
+                      {/* Calculations */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Total Volume</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{result.volume.toFixed(2)} cu ft</Typography>
+                        </Box>
+                        
+                        {selectedGrade && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <Box>
+                              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Foam Grade</Typography>
+                              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
+                                {selectedGrade.gradeName} (@ ${selectedGrade.price.toFixed(2)}/cu ft)
+                              </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${foamPrice.toFixed(2)}</Typography>
+                          </Box>
+                        )}
+                        
+                        {wrapEnabled && selectedWrap && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <Box>
+                              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Fibre Wrap</Typography>
+                              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
+                                {selectedWrap.fibreThickness} (@ ${selectedWrap.value.toFixed(2)}/cu ft)
+                              </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${wrapPriceValue.toFixed(2)}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+
+                      {(depthExceeds || widthExceeds) && (
+                        <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(227, 194, 154, 0.1)', borderRadius: 2, borderLeft: '4px solid #e3c29a' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#e3c29a', mb: 0.5 }}>
+                            ⚠ JOIN REQUIRED
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                            Blocks are {Math.max(depthMaxBlockLength, widthMaxBlockLength)}" long. Your foam will be expertly glued.
+                          </Typography>
+                        </Box>
+                      )}
+
+                      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
+
+                      {/* Totals */}
+                      {unitTotal > 0 ? (
+                        <Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Unit Price</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${unitTotal.toFixed(2)}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Quantity</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>× {quantity}</Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>TOTAL</Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>${orderTotal.toFixed(2)}</Typography>
+                          </Box>
+
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            size="large"
+                            onClick={handleAddToCart}
+                            disabled={!selectedGradeId}
+                            sx={{
+                              bgcolor: '#e3c29a',
+                              color: '#000',
+                              py: 1.5,
+                              fontWeight: 'bold',
+                              fontSize: '1.1rem',
+                              '&:hover': {
+                                bgcolor: '#d4b087',
+                              },
+                              '&.Mui-disabled': {
+                                bgcolor: 'rgba(227, 194, 154, 0.3)',
+                                color: 'rgba(0,0,0,0.5)',
+                              }
+                            }}
+                          >
+                            Add to Cart
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', py: 2 }}>
+                          Select a foam grade to view pricing.
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })()}
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
+      </Container>
+      <CartDrawer />
+    </Box>
+  );
+}

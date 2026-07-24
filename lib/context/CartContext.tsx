@@ -15,6 +15,10 @@ export interface CushionFabricSelection {
   imageUrl: string;
   source: 'charlotte-fabrics' | 'jl-comfort';
   productUrl?: string;
+  tierName?: string;
+  pricePerYard?: number;
+  estimatedYards?: number;
+  cost?: number;
 }
 
 export interface CartItem {

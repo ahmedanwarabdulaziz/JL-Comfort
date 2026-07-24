@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -16,6 +16,10 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { FabricItem } from '@/lib/types/fabric';
+import { CharlotteFabric } from '@/lib/types/charlotteFabric';
+import { FabricPriceTier } from '@/lib/types/fabricPriceTier';
+import { getFabricPriceTiers } from '@/lib/data/fabricPriceTiers';
+import { getCharlotteFabrics, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
 import {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
@@ -24,54 +28,85 @@ import {
 
 interface FabricGalleryStepProps {
   selectedFabric: FabricItem | null;
-  onSelect: (fabric: FabricItem | null) => void;
+  onSelect: (fabric: FabricItem | null, tier: FabricPriceTier | null) => void;
+  estimatedYards: number;
 }
 
-export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGalleryStepProps) {
+const PAGE_SIZE = 24;
+
+const toFabricItem = (fabric: CharlotteFabric): FabricItem => ({
+  id: fabric.id,
+  name: fabric.name,
+  imageUrl: fabric.imageUrl,
+  color: fabric.color,
+  style: fabric.pattern,
+  fabricType: fabric.material[0] || 'Upholstery',
+  source: 'charlotte-fabrics',
+  productUrl: fabric.productUrl,
+  price: 'See website',
+  description: `Premium upholstery fabric from Charlotte Fabrics. ${fabric.name}.`,
+  tags: ['charlotte-fabrics', ...fabric.color, ...fabric.pattern, ...fabric.material],
+});
+
+export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedYards }: FabricGalleryStepProps) {
   const [color, setColor] = useState('');
   const [pattern, setPattern] = useState('');
   const [material, setMaterial] = useState('');
-  const [fabrics, setFabrics] = useState<FabricItem[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [application, setApplication] = useState('');
+  const [market, setMarket] = useState('');
+
+  const [allFabrics, setAllFabrics] = useState<CharlotteFabric[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchFabrics = async (pageNum: number, replace: boolean) => {
-    if (replace) {
-      setLoading(true);
-      setError(null);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (color) params.set('color', color);
-      if (pattern) params.set('pattern', pattern);
-      if (material) params.set('material', material);
-      params.set('page', String(pageNum));
-
-      const response = await fetch(`/api/fabric-catalog?${params.toString()}`);
-      const data = await response.json();
-
-      setFabrics((prev) => (replace ? data.fabrics || [] : [...prev, ...(data.fabrics || [])]));
-      setHasMore(!!data.hasMore);
-      setPage(pageNum);
-    } catch (err) {
-      console.error('Error loading fabric catalog:', err);
-      setError('Failed to load fabrics from Charlotte Fabrics. Please try again.');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+  const [tiers, setTiers] = useState<FabricPriceTier[]>([]);
 
   useEffect(() => {
-    fetchFabrics(1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [color, pattern, material]);
+    getFabricPriceTiers()
+      .then(setTiers)
+      .catch((err) => console.error('Error loading fabric price tiers:', err));
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getCharlotteFabrics()
+      .then(setAllFabrics)
+      .catch((err) => {
+        console.error('Error loading Charlotte Fabrics catalog:', err);
+        setError('Failed to load fabrics. Please try again.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const activeTier = useMemo<FabricPriceTier | null>(() => {
+    if (material) {
+      const matched = tiers.find((t) => t.materials.includes(material));
+      if (matched) return matched;
+    }
+    return tiers.find((t) => t.isDefault) || tiers[0] || null;
+  }, [material, tiers]);
+
+  const applicationOptions = useMemo(
+    () => Array.from(new Set(allFabrics.flatMap((f) => f.applications))).sort(),
+    [allFabrics]
+  );
+  const marketOptions = useMemo(
+    () => Array.from(new Set(allFabrics.flatMap((f) => f.markets))).sort(),
+    [allFabrics]
+  );
+
+  const filtered = useMemo(
+    () => filterFabrics(allFabrics, { color, pattern, material, application, market }),
+    [allFabrics, color, pattern, material, application, market]
+  );
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [color, pattern, material, application, market]);
+
+  const visibleFabrics = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
 
   return (
     <Box>
@@ -84,7 +119,7 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
 
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={4} md={2.4}>
           <TextField
             fullWidth
             select
@@ -99,7 +134,7 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={4} md={2.4}>
           <TextField
             fullWidth
             select
@@ -114,7 +149,7 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={4} md={2.4}>
           <TextField
             fullWidth
             select
@@ -129,7 +164,57 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
             ))}
           </TextField>
         </Grid>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <TextField
+            fullWidth
+            select
+            size="small"
+            label="Application"
+            value={application}
+            onChange={(e) => setApplication(e.target.value)}
+          >
+            <MenuItem value="">Any Application</MenuItem>
+            {applicationOptions.map((a) => (
+              <MenuItem key={a} value={a}>{a}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <TextField
+            fullWidth
+            select
+            size="small"
+            label="Market"
+            value={market}
+            onChange={(e) => setMarket(e.target.value)}
+          >
+            <MenuItem value="">Any Market</MenuItem>
+            {marketOptions.map((m) => (
+              <MenuItem key={m} value={m}>{m}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
       </Grid>
+
+      {/* Price hint for the currently active filter/tier */}
+      {tiers.length > 0 && estimatedYards > 0 && (
+        <Box sx={{ mb: 3, p: 1.5, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            {material ? (
+              <>
+                Priced as <strong>{activeTier?.name}</strong> — ${activeTier?.pricePerYard.toFixed(2)}/yd × {estimatedYards} yd ≈{' '}
+                <strong>${((activeTier?.pricePerYard || 0) * estimatedYards).toFixed(2)}</strong>
+              </>
+            ) : (
+              <>
+                No material filter selected — fabrics you pick will default to <strong>{activeTier?.name}</strong> pricing
+                (${activeTier?.pricePerYard.toFixed(2)}/yd ≈ ${((activeTier?.pricePerYard || 0) * estimatedYards).toFixed(2)}).
+                Filter by Material above for exact tier pricing.
+              </>
+            )}
+          </Typography>
+        </Box>
+      )}
 
       {/* Selected fabric summary */}
       {selectedFabric && (
@@ -140,7 +225,7 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Selected: {selectedFabric.name}</Typography>
           </Box>
-          <Button size="small" onClick={() => onSelect(null)}>Clear</Button>
+          <Button size="small" onClick={() => onSelect(null, null)}>Clear</Button>
         </Box>
       )}
 
@@ -154,17 +239,18 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress sx={{ color: '#e3c29a' }} />
         </Box>
-      ) : fabrics.length === 0 ? (
+      ) : visibleFabrics.length === 0 ? (
         <Typography color="text.secondary" sx={{ textAlign: 'center', py: 5 }}>
           No fabrics found for this combination of filters.
         </Typography>
       ) : (
         <>
           <Grid container spacing={2}>
-            {fabrics.map((fabric) => {
-              const isSelected = selectedFabric?.id === fabric.id;
+            {visibleFabrics.map((fabric) => {
+              const fabricItem = toFabricItem(fabric);
+              const isSelected = selectedFabric?.id === fabricItem.id;
               return (
-                <Grid item xs={6} sm={4} md={3} key={fabric.id}>
+                <Grid item xs={6} sm={4} md={3} key={fabricItem.id}>
                   <Card
                     elevation={0}
                     sx={{
@@ -176,11 +262,11 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
                       height: '100%',
                       '&:hover': { borderColor: '#e3c29a' },
                     }}
-                    onClick={() => onSelect(fabric)}
+                    onClick={() => onSelect(fabricItem, activeTier)}
                   >
                     <Box sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#fff' }}>
-                      {fabric.imageUrl ? (
-                        <img src={fabric.imageUrl} alt={fabric.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {fabricItem.imageUrl ? (
+                        <img src={fabricItem.imageUrl} alt={fabricItem.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Typography variant="caption" color="text.secondary">No Image</Typography>
@@ -192,12 +278,17 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
                     </Box>
                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                       <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }} noWrap>
-                        {fabric.name}
+                        {fabricItem.name}
                       </Typography>
-                      {fabric.productUrl && (
+                      {(fabric.fiberContent || fabric.durability) && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>
+                          {fabric.fiberContent || fabric.durability}
+                        </Typography>
+                      )}
+                      {fabricItem.productUrl && (
                         <Box
                           component="a"
-                          href={fabric.productUrl}
+                          href={fabricItem.productUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -218,11 +309,9 @@ export default function FabricGalleryStep({ selectedFabric, onSelect }: FabricGa
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
               <Button
                 variant="outlined"
-                onClick={() => fetchFabrics(page + 1, false)}
-                disabled={loadingMore}
-                startIcon={loadingMore ? <CircularProgress size={16} /> : undefined}
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
               >
-                {loadingMore ? 'Loading...' : 'Load More'}
+                Load More
               </Button>
             </Box>
           )}

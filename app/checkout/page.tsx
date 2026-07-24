@@ -133,6 +133,8 @@ export default function CheckoutPage() {
                             {item.fabric && (
                               <Typography variant="body2" color="text.secondary">
                                 Fabric: {item.fabric.name}
+                                {item.fabric.tierName ? ` (${item.fabric.tierName})` : ''}
+                                {typeof item.fabric.cost === 'number' ? ` — +$${item.fabric.cost.toFixed(2)}` : ''}
                               </Typography>
                             )}
                           </>

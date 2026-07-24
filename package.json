@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup-admin": "node scripts/setup-admin-user.js"
+    "setup-admin": "node scripts/setup-admin-user.js",
+    "sync-charlotte-fabrics": "node scripts/sync-charlotte-fabrics.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",

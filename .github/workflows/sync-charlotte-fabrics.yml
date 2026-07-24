@@ -1,0 +1,37 @@
+name: Sync Charlotte Fabrics catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      facet_groups:
+        description: 'Which facets to sync this run (split into phases to keep runs short)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - color
+          - pattern
+          - material
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Charlotte Fabrics sync
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CF_SYNC_FACET_GROUPS: ${{ inputs.facet_groups == 'all' && 'color,pattern,material' || inputs.facet_groups }}
+        run: node scripts/sync-charlotte-fabrics.js

@@ -28,7 +28,11 @@ export async function POST(req: Request) {
         const options = (item.cushionOptions || [])
           .map((o: { groupName: string; choiceLabel: string }) => `${o.groupName}: ${o.choiceLabel}`)
           .join(', ');
-        const fabric = item.fabric ? `Fabric: ${item.fabric.name}` : '';
+        const fabric = item.fabric
+          ? `Fabric: ${item.fabric.name}${item.fabric.tierName ? ` (${item.fabric.tierName})` : ''}${
+              typeof item.fabric.cost === 'number' ? ` +$${item.fabric.cost.toFixed(2)}` : ''
+            }`
+          : '';
         description = [dims, options, fabric].filter(Boolean).join(' | ');
       } else {
         // Build a detailed description of the custom foam order

@@ -53,5 +53,23 @@ service cloud.firestore {
       allow read: if true; // Anyone can read bench cushion styles
       allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
     }
+
+    // Fabric Price Tiers collection rules
+    match /fabricPriceTiers/{tierId} {
+      allow read: if true; // Anyone can read fabric price tiers
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+
+    // Charlotte Fabrics catalog collection rules (synced monthly from charlottefabrics.com)
+    match /charlotteFabrics/{fabricId} {
+      allow read: if true; // Anyone can read the fabric catalog
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users/admin scripts can modify
+    }
+
+    // Charlotte Fabrics sync run history — operational data, admin-only
+    match /charlotteFabricsSyncRuns/{runId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only written by the admin-SDK sync script, which bypasses rules
+    }
   }
 }

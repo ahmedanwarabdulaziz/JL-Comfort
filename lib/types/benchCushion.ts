@@ -21,6 +21,7 @@ export interface BenchCushionStyle {
   variables: CushionVariable[]; // cushion-specific style options
   basePrice: number;
   currency: string;
+  estimatedYards: number; // fabric yardage estimate used to calculate fabric cost
   sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
@@ -34,5 +35,6 @@ export interface BenchCushionStyleInput {
   variables: CushionVariable[];
   basePrice: number;
   currency: string;
+  estimatedYards: number;
   sortOrder?: number;
 }

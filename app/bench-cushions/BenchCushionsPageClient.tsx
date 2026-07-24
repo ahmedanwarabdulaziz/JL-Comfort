@@ -21,6 +21,7 @@ import { useCart } from '@/lib/context/CartContext';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { BenchCushionStyle, CushionVariableOption } from '@/lib/types/benchCushion';
 import { FabricItem } from '@/lib/types/fabric';
+import { FabricPriceTier } from '@/lib/types/fabricPriceTier';
 import FabricGalleryStep from '@/components/bench-cushions/FabricGalleryStep';
 
 interface BenchCushionsPageClientProps {
@@ -35,6 +36,7 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
   const [selectedOptions, setSelectedOptions] = useState<Record<string, CushionVariableOption>>({});
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedFabric, setSelectedFabric] = useState<FabricItem | null>(null);
+  const [selectedFabricTier, setSelectedFabricTier] = useState<FabricPriceTier | null>(null);
 
   const selectedStyle = styles.find((s) => s.id === selectedStyleId) || null;
   const primaryImage = selectedStyle?.images?.[0] || null;
@@ -50,7 +52,13 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
     setSelectedOptions({});
     setQuantity(1);
     setSelectedFabric(null);
+    setSelectedFabricTier(null);
     setActiveStep(1);
+  };
+
+  const handleSelectFabric = (fabric: FabricItem | null, tier: FabricPriceTier | null) => {
+    setSelectedFabric(fabric);
+    setSelectedFabricTier(fabric ? tier : null);
   };
 
   const handleBackToStyles = () => {
@@ -83,7 +91,10 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
     (sum, opt) => sum + (opt.priceModifier || 0),
     0
   );
-  const unitPrice = (selectedStyle?.basePrice || 0) + optionsTotal;
+  const estimatedYards = selectedStyle?.estimatedYards || 0;
+  const fabricCost =
+    selectedFabric && selectedFabricTier ? estimatedYards * selectedFabricTier.pricePerYard : 0;
+  const unitPrice = (selectedStyle?.basePrice || 0) + optionsTotal + fabricCost;
   const orderTotal = unitPrice * quantity;
 
   const handleAddToCart = () => {
@@ -107,6 +118,10 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
             imageUrl: selectedFabric.imageUrl,
             source: selectedFabric.source,
             productUrl: selectedFabric.productUrl,
+            tierName: selectedFabricTier?.name,
+            pricePerYard: selectedFabricTier?.pricePerYard,
+            estimatedYards,
+            cost: fabricCost,
           }
         : undefined,
       quantity,
@@ -398,7 +413,11 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
                 </Typography>
 
                 <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, border: '1px solid', borderColor: 'divider', mb: 4 }}>
-                  <FabricGalleryStep selectedFabric={selectedFabric} onSelect={setSelectedFabric} />
+                  <FabricGalleryStep
+                    selectedFabric={selectedFabric}
+                    onSelect={handleSelectFabric}
+                    estimatedYards={estimatedYards}
+                  />
                 </Paper>
               </Box>
             )}
@@ -451,22 +470,28 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${selectedStyle.basePrice.toFixed(2)}</Typography>
                       </Box>
                       {Object.entries(selectedOptions).map(([groupName, option]) => (
-                        <Box key={groupName} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                          <Box>
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>{groupName}</Typography>
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
+                        <Box key={groupName} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 1 }}>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2" noWrap sx={{ color: 'rgba(255,255,255,0.7)' }}>{groupName}</Typography>
+                            <Typography variant="caption" noWrap sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
                               {option.label}
                             </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', flexShrink: 0 }}>
                             {option.priceModifier >= 0 ? '+' : '-'}${Math.abs(option.priceModifier).toFixed(2)}
                           </Typography>
                         </Box>
                       ))}
                       {selectedFabric && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Fabric</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>{selectedFabric.name}</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 1 }}>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2" noWrap sx={{ color: 'rgba(255,255,255,0.7)' }}>Fabric</Typography>
+                            <Typography variant="caption" noWrap sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
+                              {selectedFabric.name}
+                              {selectedFabricTier ? ` (${selectedFabricTier.name}, ${estimatedYards} yd)` : ''}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', flexShrink: 0 }}>+${fabricCost.toFixed(2)}</Typography>
                         </Box>
                       )}
                     </Box>
