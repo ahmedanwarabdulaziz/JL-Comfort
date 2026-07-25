@@ -47,6 +47,7 @@ export interface CharlotteFabricFilters {
 }
 
 export type CharlotteFabricsSyncRunStatus = 'running' | 'success' | 'failed';
+export type CharlotteFabricsSyncPhase = 'crawling-facets' | 'fetching-products' | 'diffing' | 'done';
 
 export interface CharlotteFabricsSyncRunTotals {
   scanned: number;
@@ -55,13 +56,17 @@ export interface CharlotteFabricsSyncRunTotals {
   deactivated: number;
   brokenImages: number;
   errors: number;
+  structuralWarnings: number; // pages that returned 200 but didn't match expected markup — site layout may have changed
 }
 
 export interface CharlotteFabricsSyncRun {
   id: string;
   startedAt: Date;
   finishedAt: Date | null;
+  lastUpdatedAt: Date; // bumped on every checkpoint; used to detect a run that silently died
   status: CharlotteFabricsSyncRunStatus;
+  phase: CharlotteFabricsSyncPhase;
+  discovered: number; // total unique products found in Phase A; 0 until that phase completes
   totals: CharlotteFabricsSyncRunTotals;
   errorLog: string[];
 }

@@ -32,16 +32,29 @@ const {
   CHARLOTTE_FABRIC_PATTERNS,
   CHARLOTTE_FABRIC_MATERIALS,
 } = require('./lib/charlotteFabricFacets');
+const {
+  fetchWithRetry,
+  checkImageOk,
+  extractProductLinks,
+  validateListingPage,
+  parseJsonLd,
+  parseSpecTable,
+  validateProductPage,
+} = require('./lib/charlotteFabricsScraper');
 
 const BASE_URL = 'https://www.charlottefabrics.com/product-category/fabric/';
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const REQUEST_DELAY_MS = 300;
-const MAX_PAGES_PER_FACET = 30; // safety cap against an infinite loop
+const REQUEST_DELAY_MS = 250;
+const MAX_PAGES_PER_FACET = 250; // safety cap against an infinite loop; catalog is ~150 pages, some facets (e.g. Abstract & Geometric) alone need ~35
 const PAGE_SIZE = 48; // Charlotte Fabrics renders 48 products/page; a short page means "last page"
+const PRODUCT_CONCURRENCY = 6; // Phase B fetches this many product pages in parallel
+const PROGRESS_CHECKPOINT_INTERVAL = 10; // write live progress to Firestore every N completed products
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nowTs() {
+  return admin.firestore.Timestamp.fromDate(new Date());
 }
 
 function initFirebase() {
@@ -56,94 +69,9 @@ function initFirebase() {
   }
 }
 
-async function fetchHtml(url) {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Cache-Control': 'no-cache',
-      },
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-}
-
-async function checkImageOk(imageUrl) {
-  if (!imageUrl) return false;
-  try {
-    const res = await fetch(imageUrl, { method: 'HEAD', headers: { 'User-Agent': USER_AGENT } });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function extractProductLinks(html) {
-  const regex = /href="(https:\/\/www\.charlottefabrics\.com\/shop\/[^"]+)"\s+class="product-images"/g;
-  const links = new Set();
-  let match;
-  while ((match = regex.exec(html)) !== null) {
-    links.add(match[1]);
-  }
-  return Array.from(links);
-}
-
 function slugFromProductUrl(url) {
   const match = url.match(/\/shop\/([^/]+)\/?$/);
   return match ? match[1] : url;
-}
-
-function decodeEntities(str) {
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
-}
-
-/** Parses the schema.org Product JSON-LD block for name/sku/image/availability. */
-function parseJsonLd(html) {
-  const regex = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g;
-  let match;
-  while ((match = regex.exec(html)) !== null) {
-    try {
-      const data = JSON.parse(match[1]);
-      const nodes = data['@graph'] || [data];
-      const product = nodes.find((n) => n['@type'] === 'Product');
-      if (product) {
-        const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
-        const availability = offer?.availability || '';
-        return {
-          name: product.name || '',
-          sku: product.sku || '',
-          imageUrl: product.image || '',
-          availability: availability.includes('OutOfStock') ? 'OutOfStock' : 'InStock',
-        };
-      }
-    } catch {
-      // malformed block, try the next one
-    }
-  }
-  return null;
-}
-
-/** Parses the product page's "Product Specs" table: left-side-specs / right-side-specs td pairs. */
-function parseSpecTable(html) {
-  const regex = /<td class="left-side-specs">([^<]*)<\/td><td class="right-side-specs">([^<]*)/g;
-  const specs = {};
-  let match;
-  while ((match = regex.exec(html)) !== null) {
-    const label = decodeEntities(match[1].trim());
-    const value = decodeEntities(match[2].trim());
-    if (label) specs[label] = value;
-  }
-  return specs;
 }
 
 function splitList(value) {
@@ -173,15 +101,20 @@ function flattenSpecs(specs) {
 }
 
 /** Phase A: crawl every color/pattern/material facet value and record which products appear under each. */
-async function crawlFacetValue(paramName, facetValue) {
+async function crawlFacetValue(paramName, facetValue, totals) {
   const productUrls = [];
   let page = 1;
   while (page <= MAX_PAGES_PER_FACET) {
     const basePath = page > 1 ? `${BASE_URL}page/${page}/` : BASE_URL;
     const url = `${basePath}?${paramName}=${encodeURIComponent(facetValue)}`;
-    const html = await fetchHtml(url);
+    const html = await fetchWithRetry(url);
     await sleep(REQUEST_DELAY_MS);
     if (!html) break;
+    if (!validateListingPage(html)) {
+      totals.structuralWarnings += 1;
+      console.warn(`Structural warning: unexpected listing page layout at ${url} — site markup may have changed.`);
+      break;
+    }
     const links = extractProductLinks(html);
     if (links.length === 0) break;
     productUrls.push(...links);
@@ -200,7 +133,7 @@ function resolveSelectedFacetGroups() {
   return valid.length > 0 ? valid : ALL_FACET_GROUP_KEYS;
 }
 
-async function crawlAllFacets(limitFacets, selectedGroups) {
+async function crawlAllFacets(limitFacets, selectedGroups, totals) {
   const facetGroups = [
     { param: '_color', values: CHARLOTTE_FABRIC_COLORS, key: 'color' },
     { param: '_pattern', values: CHARLOTTE_FABRIC_PATTERNS, key: 'pattern' },
@@ -213,7 +146,7 @@ async function crawlAllFacets(limitFacets, selectedGroups) {
     const values = limitFacets ? group.values.slice(0, limitFacets) : group.values;
     for (const option of values) {
       console.log(`Crawling facet ${group.param}=${option.value}...`);
-      const productUrls = await crawlFacetValue(group.param, option.value);
+      const productUrls = await crawlFacetValue(group.param, option.value, totals);
       for (const url of productUrls) {
         if (!tagsByProduct.has(url)) {
           tagsByProduct.set(url, { color: new Set(), pattern: new Set(), material: new Set() });
@@ -239,36 +172,45 @@ async function main() {
   );
 
   const runRef = db.collection('charlotteFabricsSyncRuns').doc();
-  const startedAt = admin.firestore.Timestamp.fromDate(new Date());
+  const startedAt = nowTs();
   await runRef.set({
     startedAt,
     finishedAt: null,
     status: 'running',
-    totals: { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0 },
+    phase: 'crawling-facets',
+    discovered: 0,
+    totals: { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0, structuralWarnings: 0 },
     errorLog: [],
+    lastUpdatedAt: startedAt,
   });
 
-  const totals = { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0 };
+  const totals = { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0, structuralWarnings: 0 };
   const errorLog = [];
 
   try {
     console.log('Phase A: crawling selected facets...');
-    const tagsByProduct = await crawlAllFacets(limitFacets, selectedGroups);
+    const tagsByProduct = await crawlAllFacets(limitFacets, selectedGroups, totals);
     console.log(`Discovered ${tagsByProduct.size} unique products across facets.`);
+    await runRef.update({ phase: 'fetching-products', discovered: tagsByProduct.size, lastUpdatedAt: nowTs() });
 
-    console.log('Phase B: fetching product pages for specs...');
+    console.log(`Phase B: fetching product pages for specs (${PRODUCT_CONCURRENCY} at a time)...`);
     const seenIds = new Set();
-    let count = 0;
-    for (const [productUrl, tags] of tagsByProduct.entries()) {
-      count += 1;
+    const entries = Array.from(tagsByProduct.entries());
+    let nextIndex = 0;
+    let completed = 0;
+
+    const processOne = async (productUrl, tags) => {
       const id = slugFromProductUrl(productUrl);
       seenIds.add(id);
-      console.log(`[${count}/${tagsByProduct.size}] ${id}`);
 
       try {
-        const html = await fetchHtml(productUrl);
+        const html = await fetchWithRetry(productUrl);
         await sleep(REQUEST_DELAY_MS);
         if (!html) throw new Error('empty response fetching product page');
+        if (!validateProductPage(html)) {
+          totals.structuralWarnings += 1;
+          throw new Error('unexpected product page layout — site markup may have changed');
+        }
 
         const jsonLd = parseJsonLd(html);
         const specs = parseSpecTable(html);
@@ -317,10 +259,29 @@ async function main() {
         errorLog.push(`${id}: ${err.message}`);
         console.error(`Error processing ${id}:`, err.message);
       }
-    }
+
+      completed += 1;
+      console.log(`[${completed}/${entries.length}] ${id}`);
+      if (completed % PROGRESS_CHECKPOINT_INTERVAL === 0 || completed === entries.length) {
+        // Best-effort progress checkpoint — a failed write here shouldn't fail the run.
+        runRef.update({ totals, lastUpdatedAt: nowTs() }).catch(() => {});
+      }
+    };
+
+    const worker = async () => {
+      while (nextIndex < entries.length) {
+        const myIndex = nextIndex;
+        nextIndex += 1;
+        const [productUrl, tags] = entries[myIndex];
+        await processOne(productUrl, tags);
+      }
+    };
+
+    await Promise.all(Array.from({ length: PRODUCT_CONCURRENCY }, () => worker()));
 
     if (isFullRun) {
       console.log('Full sweep — diffing against previously active products...');
+      await runRef.update({ phase: 'diffing', lastUpdatedAt: nowTs() });
       const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
       let batch = db.batch();
       let batchCount = 0;
@@ -342,20 +303,24 @@ async function main() {
     }
 
     await runRef.update({
-      finishedAt: admin.firestore.Timestamp.fromDate(new Date()),
+      finishedAt: nowTs(),
       status: 'success',
+      phase: 'done',
       totals,
       errorLog,
+      lastUpdatedAt: nowTs(),
     });
 
     console.log('Sync complete:', totals);
   } catch (err) {
     console.error('Sync failed:', err);
     await runRef.update({
-      finishedAt: admin.firestore.Timestamp.fromDate(new Date()),
+      finishedAt: nowTs(),
       status: 'failed',
+      phase: 'done',
       totals,
       errorLog: [...errorLog, err.message],
+      lastUpdatedAt: nowTs(),
     });
     process.exitCode = 1;
   }

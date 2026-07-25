@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase/config';
 import {
   CharlotteFabric,
@@ -84,8 +84,19 @@ const docToSyncRun = (docId: string, data: any): CharlotteFabricsSyncRun => ({
   id: docId,
   startedAt: convertTimestamp(data.startedAt),
   finishedAt: data.finishedAt ? convertTimestamp(data.finishedAt) : null,
+  lastUpdatedAt: convertTimestamp(data.lastUpdatedAt || data.startedAt),
   status: data.status || 'running',
-  totals: data.totals || { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0 },
+  phase: data.phase || 'crawling-facets',
+  discovered: data.discovered ?? 0,
+  totals: {
+    scanned: data.totals?.scanned ?? 0,
+    added: data.totals?.added ?? 0,
+    updated: data.totals?.updated ?? 0,
+    deactivated: data.totals?.deactivated ?? 0,
+    brokenImages: data.totals?.brokenImages ?? 0,
+    errors: data.totals?.errors ?? 0,
+    structuralWarnings: data.totals?.structuralWarnings ?? 0,
+  },
   errorLog: data.errorLog || [],
 });
 
@@ -106,4 +117,36 @@ export const getLatestSyncRun = async (): Promise<CharlotteFabricsSyncRun | null
     console.error('Error fetching latest Charlotte Fabrics sync run:', error);
     return null;
   }
+};
+
+/**
+ * Live-subscribes to the most recent sync run, for real-time progress in the admin dashboard.
+ * Returns an unsubscribe function; call it on cleanup (e.g. a useEffect return).
+ */
+export const subscribeToLatestSyncRun = (
+  onChange: (run: CharlotteFabricsSyncRun | null) => void
+): (() => void) => {
+  if (!isFirebaseConfigured() || !db) {
+    onChange(null);
+    return () => {};
+  }
+
+  const ref = collection(db, 'charlotteFabricsSyncRuns');
+  const q = query(ref, orderBy('startedAt', 'desc'), limit(1));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      if (snapshot.empty) {
+        onChange(null);
+        return;
+      }
+      const first = snapshot.docs[0];
+      onChange(docToSyncRun(first.id, first.data()));
+    },
+    (error) => {
+      console.error('Error subscribing to latest Charlotte Fabrics sync run:', error);
+      onChange(null);
+    }
+  );
 };
