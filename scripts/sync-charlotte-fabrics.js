@@ -32,6 +32,7 @@
  * (site markup changed), in which case that step is skipped for that run.
  */
 
+const zlib = require('zlib');
 const admin = require('firebase-admin');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const {
@@ -279,17 +280,23 @@ async function publishSnapshot(db) {
     };
   });
 
+  // pub-*.r2.dev doesn't apply on-the-fly compression, so a ~6-10MB raw JSON snapshot means a
+  // slow fetch for every visitor. Gzip it ourselves — fetch() (browser and Node) transparently
+  // decompresses a Content-Encoding: gzip response, so no change is needed on the read side.
+  const gzipped = zlib.gzipSync(JSON.stringify(items));
+
   await r2.client.send(
     new PutObjectCommand({
       Bucket: r2.bucketName,
       Key: SNAPSHOT_R2_KEY,
-      Body: JSON.stringify(items),
+      Body: gzipped,
       ContentType: 'application/json',
+      ContentEncoding: 'gzip',
       CacheControl: SNAPSHOT_CACHE_CONTROL,
     })
   );
 
-  console.log(`Published snapshot: ${items.length} active product(s) to ${SNAPSHOT_R2_KEY}`);
+  console.log(`Published snapshot: ${items.length} active product(s) to ${SNAPSHOT_R2_KEY} (${gzipped.length} bytes gzipped)`);
   return { published: true, count: items.length };
 }
 
