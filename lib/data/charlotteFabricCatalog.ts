@@ -6,9 +6,10 @@ import {
   CharlotteFabricsSyncRun,
 } from '@/lib/types/charlotteFabric';
 
-const convertTimestamp = (timestamp: Timestamp | Date | null | undefined): Date => {
+const convertTimestamp = (timestamp: Timestamp | Date | string | null | undefined): Date => {
   if (!timestamp) return new Date();
   if (timestamp instanceof Date) return timestamp;
+  if (typeof timestamp === 'string') return new Date(timestamp);
   return timestamp.toDate();
 };
 
@@ -55,6 +56,35 @@ export const getCharlotteFabrics = async (): Promise<CharlotteFabric[]> => {
     return snapshot.docs.map((d) => docToCharlotteFabric(d.id, d.data()));
   } catch (error) {
     console.error('Error fetching Charlotte Fabrics catalog:', error);
+    return [];
+  }
+};
+
+// Same public R2 bucket URL/fallback as lib/cloudflare/r2.ts, exposed with the NEXT_PUBLIC_
+// prefix since this fetch runs in the browser (the gallery is a client component).
+const R2_PUBLIC_URL =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-7e5f5ae157894c8c95bbc5f77e2929f0.r2.dev';
+const CATALOG_SNAPSHOT_URL = `${R2_PUBLIC_URL}/catalog/charlotte-fabrics.json`;
+
+/**
+ * Fetches the pre-synced catalog snapshot scripts/sync-charlotte-fabrics.js publishes to R2
+ * after each run. Used by the public storefront so a visitor page view never queries Firestore
+ * directly — unlike getCharlotteFabrics() below, which the low-traffic admin table still uses
+ * for the freshest data. Returns [] (rather than throwing) if no snapshot has been published yet.
+ */
+export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabric[]> => {
+  try {
+    // `next.revalidate` matches the R2 object's own Cache-Control window (see
+    // SNAPSHOT_CACHE_CONTROL in scripts/sync-charlotte-fabrics.js) — lets server-side callers
+    // (fabric-search API route) reuse the response instead of re-fetching this ~10MB file on
+    // every request. Ignored harmlessly by the browser's native fetch on the client.
+    const res = await fetch(CATALOG_SNAPSHOT_URL, { next: { revalidate: 1800 } });
+    if (!res.ok) return [];
+    const items = await res.json();
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => docToCharlotteFabric(item.id, item));
+  } catch (error) {
+    console.error('Error fetching Charlotte Fabrics catalog snapshot:', error);
     return [];
   }
 };

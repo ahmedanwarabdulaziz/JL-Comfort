@@ -35,6 +35,7 @@ import {
 const formatDate = (date: Date | null) => (date ? date.toLocaleString() : '—');
 
 const PHASE_LABELS: Record<CharlotteFabricsSyncRun['phase'], string> = {
+  'discovering-catalog': 'Discovering full catalog…',
   'crawling-facets': 'Crawling color/pattern/material facets…',
   'fetching-products': 'Fetching product pages…',
   diffing: 'Checking for removed products…',

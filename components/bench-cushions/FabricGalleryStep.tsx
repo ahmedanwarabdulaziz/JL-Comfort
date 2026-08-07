@@ -19,7 +19,7 @@ import { FabricItem } from '@/lib/types/fabric';
 import { CharlotteFabric } from '@/lib/types/charlotteFabric';
 import { FabricPriceTier } from '@/lib/types/fabricPriceTier';
 import { getFabricPriceTiers } from '@/lib/data/fabricPriceTiers';
-import { getCharlotteFabrics, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
+import { getCharlotteFabricsSnapshot, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
 import {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
@@ -70,7 +70,7 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getCharlotteFabrics()
+    getCharlotteFabricsSnapshot()
       .then(setAllFabrics)
       .catch((err) => {
         console.error('Error loading Charlotte Fabrics catalog:', err);

@@ -47,7 +47,12 @@ export interface CharlotteFabricFilters {
 }
 
 export type CharlotteFabricsSyncRunStatus = 'running' | 'success' | 'failed';
-export type CharlotteFabricsSyncPhase = 'crawling-facets' | 'fetching-products' | 'diffing' | 'done';
+export type CharlotteFabricsSyncPhase =
+  | 'discovering-catalog'
+  | 'crawling-facets'
+  | 'fetching-products'
+  | 'diffing'
+  | 'done';
 
 export interface CharlotteFabricsSyncRunTotals {
   scanned: number;
