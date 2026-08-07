@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Run Charlotte Fabrics sync
-          env:
+        env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CF_SYNC_FACET_GROUPS: ${{ inputs.facet_groups == 'all' && 'color,pattern,material' || inputs.facet_groups }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
