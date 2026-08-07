@@ -26,6 +26,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PublishIcon from '@mui/icons-material/Publish';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { CharlotteFabric, CharlotteFabricsSyncRun } from '@/lib/types/charlotteFabric';
@@ -70,6 +71,8 @@ export default function CharlotteFabricCatalogList() {
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
   const [syncPhase, setSyncPhase] = useState<'all' | 'color' | 'pattern' | 'material'>('all');
 
   const [search, setSearch] = useState('');
@@ -285,6 +288,36 @@ export default function CharlotteFabricCatalogList() {
     }
   };
 
+  const handlePublishPricing = async () => {
+    setPublishing(true);
+    setPublishMessage(null);
+    try {
+      const idToken = await auth?.currentUser?.getIdToken();
+      if (!idToken) {
+        setPublishMessage('You must be signed in to publish pricing.');
+        return;
+      }
+      const res = await fetch('/api/admin/publish-fabric-pricing', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPublishMessage(
+          `Published ${data.published} priced item(s) to the live site` +
+            (data.unpriced > 0 ? ` (${data.unpriced} unpriced item(s) excluded).` : '.')
+        );
+      } else {
+        setPublishMessage(data.error || 'Failed to publish pricing.');
+      }
+    } catch (error) {
+      console.error('Error publishing fabric pricing:', error);
+      setPublishMessage('Failed to publish pricing.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }} flexWrap="wrap" gap={2}>
@@ -292,6 +325,14 @@ export default function CharlotteFabricCatalogList() {
           Charlotte Fabrics Catalog
         </Typography>
         <Stack direction="row" spacing={1.5} alignItems="center">
+          <Button
+            variant="outlined"
+            startIcon={publishing ? <CircularProgress size={16} /> : <PublishIcon />}
+            disabled={publishing}
+            onClick={handlePublishPricing}
+          >
+            Publish Pricing
+          </Button>
           <TextField
             select
             size="small"
@@ -317,9 +358,20 @@ export default function CharlotteFabricCatalogList() {
         </Stack>
       </Stack>
 
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+        &quot;Publish Pricing&quot; pushes your current price tag assignments live in seconds, without
+        re-crawling charlottefabrics.com — use it after tagging fabrics. &quot;Run Sync Now&quot;
+        re-crawls their site for new/changed products and takes much longer.
+      </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
         A phase (color/pattern/material) covers only that facet and takes far less time than a full sync — tags from other phases are kept, not overwritten. Only a full sync can mark products as no longer available.
       </Typography>
+
+      {publishMessage && (
+        <Alert severity="info" sx={{ mb: 3 }} onClose={() => setPublishMessage(null)}>
+          {publishMessage}
+        </Alert>
+      )}
 
       {triggerMessage && (
         <Alert severity="info" sx={{ mb: 3 }} onClose={() => setTriggerMessage(null)}>
