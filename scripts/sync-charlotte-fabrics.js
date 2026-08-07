@@ -242,9 +242,19 @@ async function publishSnapshot(db) {
   }
 
   const toIso = (ts) => (ts && typeof ts.toDate === 'function' ? ts.toDate().toISOString() : null);
+
+  // Resolve each item's price once, here, so every downstream reader (gallery, checkout,
+  // fabric-search) just reads a ready-to-use number/name. No fallback: a fabric only has a price
+  // if it's been explicitly assigned a price tag — anything else is filtered out below, since an
+  // unpriced item has nothing to charge a customer and shouldn't be shown on the storefront.
+  const priceTagsSnapshot = await db.collection('fabricPriceTags').get();
+  const priceTagsById = new Map(priceTagsSnapshot.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+  const resolvePriceTag = (priceTagId) => (priceTagId && priceTagsById.get(priceTagId)) || null;
+
   const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
-  const items = activeSnapshot.docs.map((doc) => {
+  const allItems = activeSnapshot.docs.map((doc) => {
     const data = doc.data();
+    const resolvedTag = resolvePriceTag(data.priceTagId);
     return {
       id: doc.id,
       name: data.name || '',
@@ -277,8 +287,21 @@ async function publishSnapshot(db) {
       firstSeenAt: toIso(data.firstSeenAt),
       lastSeenAt: toIso(data.lastSeenAt),
       lastCheckedAt: toIso(data.lastCheckedAt),
+      priceTagId: data.priceTagId || null,
+      groupIds: data.groupIds || [],
+      pricePerYard: resolvedTag?.pricePerYard ?? null,
+      priceTagName: resolvedTag?.name ?? null,
     };
   });
+
+  // Unpriced items (no price tag assigned) are excluded from the public snapshot entirely —
+  // customers never see a fabric with no price. They're still fully visible/editable in the
+  // admin catalog table, which reads Firestore directly rather than this snapshot.
+  const items = allItems.filter((item) => item.pricePerYard != null);
+  const unpricedCount = allItems.length - items.length;
+  if (unpricedCount > 0) {
+    console.log(`${unpricedCount} active product(s) have no price tag — excluded from the published snapshot.`);
+  }
 
   // pub-*.r2.dev doesn't apply on-the-fly compression, so a ~6-10MB raw JSON snapshot means a
   // slow fetch for every visitor. Gzip it ourselves — fetch() (browser and Node) transparently
@@ -296,7 +319,7 @@ async function publishSnapshot(db) {
     })
   );
 
-  console.log(`Published snapshot: ${items.length} active product(s) to ${SNAPSHOT_R2_KEY} (${gzipped.length} bytes gzipped)`);
+  console.log(`Published snapshot: ${items.length} priced product(s) to ${SNAPSHOT_R2_KEY} (${gzipped.length} bytes gzipped)`);
   return { published: true, count: items.length };
 }
 

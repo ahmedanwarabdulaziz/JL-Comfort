@@ -35,6 +35,20 @@ export interface CharlotteFabric {
   firstSeenAt: Date;
   lastSeenAt: Date;
   lastCheckedAt: Date;
+
+  priceTagId?: string | null; // references a FabricPriceTag; null/unset = use the default tag's rate
+  groupIds?: string[]; // FabricGroup ids this item has been curated into
+}
+
+/**
+ * The shape of an item inside the published R2 catalog snapshot (scripts/sync-charlotte-fabrics.js
+ * publishSnapshot). pricePerYard/priceTagName are resolved once at publish time (tag if assigned,
+ * else the default tag) — computed, not stored per-Firestore-doc, so they live here rather than on
+ * CharlotteFabric itself.
+ */
+export interface CharlotteFabricSnapshotItem extends CharlotteFabric {
+  pricePerYard: number | null;
+  priceTagName: string | null;
 }
 
 export interface CharlotteFabricFilters {
@@ -44,6 +58,8 @@ export interface CharlotteFabricFilters {
   application?: string;
   market?: string;
   search?: string; // matched against name/sku
+  priceTagId?: string; // "__untagged__" matches items with no priceTagId (using the default rate)
+  groupId?: string;
 }
 
 export type CharlotteFabricsSyncRunStatus = 'running' | 'success' | 'failed';

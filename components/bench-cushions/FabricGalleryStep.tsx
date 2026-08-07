@@ -16,9 +16,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { FabricItem } from '@/lib/types/fabric';
-import { CharlotteFabric } from '@/lib/types/charlotteFabric';
-import { FabricPriceTier } from '@/lib/types/fabricPriceTier';
-import { getFabricPriceTiers } from '@/lib/data/fabricPriceTiers';
+import { CharlotteFabric, CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
 import {
   CHARLOTTE_FABRIC_COLORS,
@@ -26,9 +24,14 @@ import {
   CHARLOTTE_FABRIC_MATERIALS,
 } from '@/lib/data/charlotteFabricFacets';
 
+export interface SelectedFabricPrice {
+  name: string | null;
+  pricePerYard: number | null;
+}
+
 interface FabricGalleryStepProps {
   selectedFabric: FabricItem | null;
-  onSelect: (fabric: FabricItem | null, tier: FabricPriceTier | null) => void;
+  onSelect: (fabric: FabricItem | null, price: SelectedFabricPrice | null) => void;
   estimatedYards: number;
 }
 
@@ -55,17 +58,10 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
   const [application, setApplication] = useState('');
   const [market, setMarket] = useState('');
 
-  const [allFabrics, setAllFabrics] = useState<CharlotteFabric[]>([]);
+  const [allFabrics, setAllFabrics] = useState<CharlotteFabricSnapshotItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tiers, setTiers] = useState<FabricPriceTier[]>([]);
-
-  useEffect(() => {
-    getFabricPriceTiers()
-      .then(setTiers)
-      .catch((err) => console.error('Error loading fabric price tiers:', err));
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -78,14 +74,6 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
       })
       .finally(() => setLoading(false));
   }, []);
-
-  const activeTier = useMemo<FabricPriceTier | null>(() => {
-    if (material) {
-      const matched = tiers.find((t) => t.materials.includes(material));
-      if (matched) return matched;
-    }
-    return tiers.find((t) => t.isDefault) || tiers[0] || null;
-  }, [material, tiers]);
 
   const applicationOptions = useMemo(
     () => Array.from(new Set(allFabrics.flatMap((f) => f.applications))).sort(),
@@ -196,26 +184,6 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
         </Grid>
       </Grid>
 
-      {/* Price hint for the currently active filter/tier */}
-      {tiers.length > 0 && estimatedYards > 0 && (
-        <Box sx={{ mb: 3, p: 1.5, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            {material ? (
-              <>
-                Priced as <strong>{activeTier?.name}</strong> — ${activeTier?.pricePerYard.toFixed(2)}/yd × {estimatedYards} yd ≈{' '}
-                <strong>${((activeTier?.pricePerYard || 0) * estimatedYards).toFixed(2)}</strong>
-              </>
-            ) : (
-              <>
-                No material filter selected — fabrics you pick will default to <strong>{activeTier?.name}</strong> pricing
-                (${activeTier?.pricePerYard.toFixed(2)}/yd ≈ ${((activeTier?.pricePerYard || 0) * estimatedYards).toFixed(2)}).
-                Filter by Material above for exact tier pricing.
-              </>
-            )}
-          </Typography>
-        </Box>
-      )}
-
       {/* Selected fabric summary */}
       {selectedFabric && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, p: 2, bgcolor: 'rgba(227, 194, 154, 0.15)', border: '1px solid rgba(227, 194, 154, 0.6)', borderRadius: 2 }}>
@@ -262,7 +230,9 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
                       height: '100%',
                       '&:hover': { borderColor: '#e3c29a' },
                     }}
-                    onClick={() => onSelect(fabricItem, activeTier)}
+                    onClick={() =>
+                      onSelect(fabricItem, { name: fabric.priceTagName, pricePerYard: fabric.pricePerYard })
+                    }
                   >
                     <Box sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#fff' }}>
                       {fabricItem.imageUrl ? (
@@ -279,6 +249,9 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                       <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }} noWrap>
                         {fabricItem.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', color: '#8a6d3b' }}>
+                        {fabric.pricePerYard != null ? `$${fabric.pricePerYard.toFixed(2)}/yd` : 'Price on request'}
                       </Typography>
                       {(fabric.fiberContent || fabric.durability) && (
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>

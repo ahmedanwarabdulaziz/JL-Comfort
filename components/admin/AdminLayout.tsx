@@ -29,6 +29,7 @@ import StarIcon from '@mui/icons-material/Star';
 import LayersIcon from '@mui/icons-material/Layers';
 import WeekendIcon from '@mui/icons-material/Weekend';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
@@ -49,12 +50,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-price-tiers' | 'fabric-catalog'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog'
   >(
     pathname?.includes('/foam')
       ? 'foam'
-      : pathname?.includes('/fabric-price-tiers')
-      ? 'fabric-price-tiers'
+      : pathname?.includes('/fabric-pricing')
+      ? 'fabric-pricing'
+      : pathname?.includes('/fabric-groups')
+      ? 'fabric-groups'
       : pathname?.includes('/fabric-catalog')
       ? 'fabric-catalog'
       : pathname?.includes('/bench-cushions')
@@ -202,16 +205,30 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
-            selected={pathname?.includes('/fabric-price-tiers')}
+            selected={pathname?.includes('/fabric-pricing')}
             onClick={() => {
-              router.push('/admin/fabric-price-tiers');
-              setSelectedView('fabric-price-tiers');
+              router.push('/admin/fabric-pricing');
+              setSelectedView('fabric-pricing');
             }}
           >
             <ListItemIcon>
               <AttachMoneyIcon />
             </ListItemIcon>
             <ListItemText primary="Fabric Pricing" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/fabric-groups')}
+            onClick={() => {
+              router.push('/admin/fabric-groups');
+              setSelectedView('fabric-groups');
+            }}
+          >
+            <ListItemIcon>
+              <BookmarksIcon />
+            </ListItemIcon>
+            <ListItemText primary="Fabric Groups" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

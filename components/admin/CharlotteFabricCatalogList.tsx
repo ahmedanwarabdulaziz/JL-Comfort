@@ -19,18 +19,36 @@ import {
   CircularProgress,
   LinearProgress,
   Alert,
+  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { CharlotteFabric, CharlotteFabricsSyncRun } from '@/lib/types/charlotteFabric';
-import { getCharlotteFabrics, subscribeToLatestSyncRun, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
+import {
+  getCharlotteFabrics,
+  subscribeToLatestSyncRun,
+  filterFabrics,
+  bulkAssignPriceTag,
+  bulkAddToGroup,
+  UNTAGGED_PRICE_TAG_FILTER,
+} from '@/lib/data/charlotteFabricCatalog';
 import { auth } from '@/lib/firebase/config';
 import {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
   CHARLOTTE_FABRIC_MATERIALS,
 } from '@/lib/data/charlotteFabricFacets';
+import { FabricPriceTag } from '@/lib/types/fabricPriceTag';
+import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
+import { FabricPriceRange, resolvePriceRange } from '@/lib/types/fabricPriceRange';
+import { getFabricPriceRanges } from '@/lib/data/fabricPriceRanges';
+import { FabricGroup } from '@/lib/types/fabricGroup';
+import { getFabricGroups } from '@/lib/data/fabricGroups';
 
 const formatDate = (date: Date | null) => (date ? date.toLocaleString() : '—');
 
@@ -60,6 +78,20 @@ export default function CharlotteFabricCatalogList() {
   const [material, setMaterial] = useState('');
   const [application, setApplication] = useState('');
   const [market, setMarket] = useState('');
+  const [priceTagFilter, setPriceTagFilter] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
+  const [priceRangeFilter, setPriceRangeFilter] = useState('');
+
+  const [priceTags, setPriceTags] = useState<FabricPriceTag[]>([]);
+  const [priceRanges, setPriceRanges] = useState<FabricPriceRange[]>([]);
+  const [groups, setGroups] = useState<FabricGroup[]>([]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [assignTagDialogOpen, setAssignTagDialogOpen] = useState(false);
+  const [assignTagValue, setAssignTagValue] = useState('');
+  const [addToGroupDialogOpen, setAddToGroupDialogOpen] = useState(false);
+  const [addToGroupValue, setAddToGroupValue] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const loadFabrics = async () => {
     setLoading(true);
@@ -73,8 +105,24 @@ export default function CharlotteFabricCatalogList() {
     }
   };
 
+  const loadReferenceData = async () => {
+    try {
+      const [tags, ranges, groupResults] = await Promise.all([
+        getFabricPriceTags(),
+        getFabricPriceRanges(),
+        getFabricGroups(),
+      ]);
+      setPriceTags(tags);
+      setPriceRanges(ranges);
+      setGroups(groupResults);
+    } catch (error) {
+      console.error('Error loading fabric pricing/group reference data:', error);
+    }
+  };
+
   useEffect(() => {
     loadFabrics();
+    loadReferenceData();
   }, []);
 
   // Live progress: re-renders in real time as the sync script checkpoints its progress in
@@ -116,12 +164,97 @@ export default function CharlotteFabricCatalogList() {
     [fabrics]
   );
 
-  const filtered = useMemo(
-    () => filterFabrics(fabrics, { search, color, pattern, material, application, market }),
-    [fabrics, search, color, pattern, material, application, market]
+  const priceTagById = useMemo(() => new Map(priceTags.map((t) => [t.id, t])), [priceTags]);
+  const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
+
+  // No fallback: a fabric only has a price if it's been explicitly assigned a price tag.
+  const resolveFabricPriceTag = (fabric: CharlotteFabric): FabricPriceTag | null =>
+    (fabric.priceTagId && priceTagById.get(fabric.priceTagId)) || null;
+
+  const filteredByFields = useMemo(
+    () =>
+      filterFabrics(fabrics, {
+        search,
+        color,
+        pattern,
+        material,
+        application,
+        market,
+        priceTagId: priceTagFilter,
+        groupId: groupFilter,
+      }),
+    [fabrics, search, color, pattern, material, application, market, priceTagFilter, groupFilter]
   );
 
+  // Price range is a derived value (needs the resolved tags/ranges), so it's applied as a
+  // second pass after filterFabrics() rather than folded into that shared, pure function.
+  const filtered = useMemo(() => {
+    if (!priceRangeFilter) return filteredByFields;
+    return filteredByFields.filter((fabric) => {
+      const price = resolveFabricPriceTag(fabric)?.pricePerYard ?? null;
+      return resolvePriceRange(price, priceRanges)?.id === priceRangeFilter;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredByFields, priceRangeFilter, priceRanges, priceTagById]);
+
   const brokenImageCount = useMemo(() => fabrics.filter((f) => !f.imageOk).length, [fabrics]);
+  const unpricedCount = useMemo(() => fabrics.filter((f) => !f.priceTagId).length, [fabrics]);
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((f) => selectedIds.has(f.id));
+  const someVisibleSelected = filtered.some((f) => selectedIds.has(f.id));
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        filtered.forEach((f) => next.delete(f.id));
+      } else {
+        filtered.forEach((f) => next.add(f.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleApplyPriceTag = async () => {
+    if (!assignTagValue) return;
+    setBulkSaving(true);
+    try {
+      await bulkAssignPriceTag(Array.from(selectedIds), assignTagValue);
+      await loadFabrics();
+      setSelectedIds(new Set());
+      setAssignTagDialogOpen(false);
+      setAssignTagValue('');
+    } catch (error) {
+      console.error('Error bulk-assigning price tag:', error);
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const handleApplyGroup = async () => {
+    if (!addToGroupValue) return;
+    setBulkSaving(true);
+    try {
+      await bulkAddToGroup(Array.from(selectedIds), addToGroupValue);
+      await loadFabrics();
+      setSelectedIds(new Set());
+      setAddToGroupDialogOpen(false);
+      setAddToGroupValue('');
+    } catch (error) {
+      console.error('Error bulk-adding to group:', error);
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   const handleTriggerSync = async () => {
     setTriggering(true);
@@ -281,11 +414,16 @@ export default function CharlotteFabricCatalogList() {
         ) : (
           <Typography variant="body2" color="text.secondary">
             {fabrics.length} active fabrics{brokenImageCount > 0 && `, ${brokenImageCount} with broken images`}
+            {unpricedCount > 0 && (
+              <Box component="span" sx={{ color: 'warning.dark', fontWeight: 'bold' }}>
+                {`, ${unpricedCount} unpriced (not shown to customers)`}
+              </Box>
+            )}
           </Typography>
         )}
       </Stack>
 
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
         <TextField
           size="small"
           label="Search name/SKU"
@@ -325,6 +463,68 @@ export default function CharlotteFabricCatalogList() {
         </TextField>
       </Stack>
 
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+        <TextField
+          select
+          size="small"
+          label="Price Tag"
+          value={priceTagFilter}
+          onChange={(e) => setPriceTagFilter(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Any Price Tag</MenuItem>
+          <MenuItem value={UNTAGGED_PRICE_TAG_FILTER}>Unpriced (no tag)</MenuItem>
+          {priceTags.map((t) => (
+            <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Group"
+          value={groupFilter}
+          onChange={(e) => setGroupFilter(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Any Group</MenuItem>
+          {groups.map((g) => (
+            <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Price Range"
+          value={priceRangeFilter}
+          onChange={(e) => setPriceRangeFilter(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Any Price Range</MenuItem>
+          {priceRanges.map((r) => (
+            <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      {selectedIds.size > 0 && (
+        <Paper elevation={0} sx={{ p: 1.5, mb: 2, border: '1px solid', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'primary.50' }}>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              {selectedIds.size} selected
+            </Typography>
+            <Button size="small" variant="outlined" onClick={() => setAssignTagDialogOpen(true)}>
+              Assign Price Tag
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => setAddToGroupDialogOpen(true)}>
+              Add to Group
+            </Button>
+            <Button size="small" onClick={() => setSelectedIds(new Set())}>
+              Clear selection
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
@@ -334,54 +534,88 @@ export default function CharlotteFabricCatalogList() {
         <Table size="small">
           <TableHead>
             <TableRow>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  indeterminate={someVisibleSelected && !allVisibleSelected}
+                  onChange={toggleSelectAllVisible}
+                />
+              </TableCell>
               <TableCell>Name</TableCell>
               <TableCell>SKU</TableCell>
               <TableCell>Color</TableCell>
               <TableCell>Pattern</TableCell>
               <TableCell>Material</TableCell>
-              <TableCell>Fiber Content</TableCell>
-              <TableCell>Durability</TableCell>
               <TableCell>Availability</TableCell>
+              <TableCell>Price Tag</TableCell>
+              <TableCell>Effective Price</TableCell>
+              <TableCell>Price Range</TableCell>
+              <TableCell>Groups</TableCell>
               <TableCell>Image</TableCell>
               <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
-            {filtered.map((fabric) => (
-              <TableRow key={fabric.id} hover>
-                <TableCell sx={{ fontWeight: 'bold' }}>{fabric.name}</TableCell>
-                <TableCell>{fabric.sku}</TableCell>
-                <TableCell>{fabric.color.join(', ') || '—'}</TableCell>
-                <TableCell>{fabric.pattern.join(', ') || '—'}</TableCell>
-                <TableCell>{fabric.material.join(', ') || '—'}</TableCell>
-                <TableCell>{fabric.fiberContent || '—'}</TableCell>
-                <TableCell>{fabric.durability || '—'}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={fabric.availability}
-                    color={fabric.availability === 'InStock' ? 'success' : 'default'}
-                  />
-                </TableCell>
-                <TableCell>
-                  {fabric.imageOk ? (
-                    <Chip size="small" label="OK" color="success" />
-                  ) : (
-                    <Chip size="small" icon={<ErrorOutlineIcon />} label="Broken" color="error" />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {fabric.productUrl && (
-                    <Box component="a" href={fabric.productUrl} target="_blank" rel="noopener noreferrer" sx={{ color: 'text.secondary' }}>
-                      <OpenInNewIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {filtered.map((fabric) => {
+              const resolvedTag = resolveFabricPriceTag(fabric);
+              const effectivePrice = resolvedTag?.pricePerYard ?? null;
+              const priceRange = resolvePriceRange(effectivePrice, priceRanges);
+              const fabricGroups = (fabric.groupIds || []).map((id) => groupById.get(id)).filter(Boolean) as FabricGroup[];
+              return (
+                <TableRow key={fabric.id} hover selected={selectedIds.has(fabric.id)}>
+                  <TableCell padding="checkbox">
+                    <Checkbox checked={selectedIds.has(fabric.id)} onChange={() => toggleSelectRow(fabric.id)} />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>{fabric.name}</TableCell>
+                  <TableCell>{fabric.sku}</TableCell>
+                  <TableCell>{fabric.color.join(', ') || '—'}</TableCell>
+                  <TableCell>{fabric.pattern.join(', ') || '—'}</TableCell>
+                  <TableCell>{fabric.material.join(', ') || '—'}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={fabric.availability}
+                      color={fabric.availability === 'InStock' ? 'success' : 'default'}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {fabric.priceTagId ? (
+                      <Chip size="small" label={priceTagById.get(fabric.priceTagId)?.name || 'Unknown'} />
+                    ) : (
+                      <Chip size="small" color="warning" label="Unpriced" />
+                    )}
+                  </TableCell>
+                  <TableCell>{effectivePrice != null ? `$${effectivePrice.toFixed(2)}` : '—'}</TableCell>
+                  <TableCell>
+                    {priceRange ? <Chip size="small" label={priceRange.name} /> : '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {fabricGroups.length === 0 ? '—' : fabricGroups.map((g) => (
+                        <Chip key={g.id} size="small" label={g.name} />
+                      ))}
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    {fabric.imageOk ? (
+                      <Chip size="small" label="OK" color="success" />
+                    ) : (
+                      <Chip size="small" icon={<ErrorOutlineIcon />} label="Broken" color="error" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {fabric.productUrl && (
+                      <Box component="a" href={fabric.productUrl} target="_blank" rel="noopener noreferrer" sx={{ color: 'text.secondary' }}>
+                        <OpenInNewIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={13}>
                   <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
                     No fabrics match these filters.
                   </Typography>
@@ -392,6 +626,60 @@ export default function CharlotteFabricCatalogList() {
         </Table>
       </TableContainer>
       )}
+
+      <Dialog open={assignTagDialogOpen} onClose={() => setAssignTagDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Assign Price Tag</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Apply to {selectedIds.size} selected item{selectedIds.size === 1 ? '' : 's'}.
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Price Tag"
+            value={assignTagValue}
+            onChange={(e) => setAssignTagValue(e.target.value)}
+          >
+            {priceTags.map((t) => (
+              <MenuItem key={t.id} value={t.id}>{t.name} (${t.pricePerYard.toFixed(2)}/yd)</MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignTagDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" disabled={!assignTagValue || bulkSaving} onClick={handleApplyPriceTag}>
+            {bulkSaving ? 'Applying...' : `Apply to ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={addToGroupDialogOpen} onClose={() => setAddToGroupDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Add to Group</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Apply to {selectedIds.size} selected item{selectedIds.size === 1 ? '' : 's'}.
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Group"
+            value={addToGroupValue}
+            onChange={(e) => setAddToGroupValue(e.target.value)}
+          >
+            {groups.map((g) => (
+              <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddToGroupDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" disabled={!addToGroupValue || bulkSaving} onClick={handleApplyGroup}>
+            {bulkSaving ? 'Applying...' : `Apply to ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

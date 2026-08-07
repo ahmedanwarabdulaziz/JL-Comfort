@@ -1,10 +1,35 @@
-import { collection, getDocs, query, where, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  writeBatch,
+  arrayUnion,
+  Timestamp,
+} from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase/config';
 import {
   CharlotteFabric,
   CharlotteFabricFilters,
+  CharlotteFabricSnapshotItem,
   CharlotteFabricsSyncRun,
 } from '@/lib/types/charlotteFabric';
+
+// Firestore batch writes are capped at 500 ops; chunk bulk updates at 400 to stay well under it,
+// mirroring the same chunking used in scripts/sync-charlotte-fabrics.js's deactivation step.
+const BATCH_CHUNK_SIZE = 400;
+const chunk = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+};
+
+/** Sentinel value for the "Unpriced (no tag)" price-tag filter option. */
+export const UNTAGGED_PRICE_TAG_FILTER = '__untagged__';
 
 const convertTimestamp = (timestamp: Timestamp | Date | string | null | undefined): Date => {
   if (!timestamp) return new Date();
@@ -41,6 +66,8 @@ const docToCharlotteFabric = (docId: string, data: any): CharlotteFabric => ({
   firstSeenAt: convertTimestamp(data.firstSeenAt),
   lastSeenAt: convertTimestamp(data.lastSeenAt),
   lastCheckedAt: convertTimestamp(data.lastCheckedAt),
+  priceTagId: data.priceTagId ?? null,
+  groupIds: data.groupIds || [],
 });
 
 /** Fetches every active Charlotte Fabrics catalog item. Filtering happens client-side via filterFabrics(). */
@@ -72,7 +99,7 @@ const CATALOG_SNAPSHOT_URL = `${R2_PUBLIC_URL}/catalog/charlotte-fabrics.json`;
  * directly — unlike getCharlotteFabrics() below, which the low-traffic admin table still uses
  * for the freshest data. Returns [] (rather than throwing) if no snapshot has been published yet.
  */
-export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabric[]> => {
+export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabricSnapshotItem[]> => {
   try {
     // `next.revalidate` matches the R2 object's own Cache-Control window (see
     // SNAPSHOT_CACHE_CONTROL in scripts/sync-charlotte-fabrics.js) — lets server-side callers
@@ -82,18 +109,23 @@ export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabric[]> 
     if (!res.ok) return [];
     const items = await res.json();
     if (!Array.isArray(items)) return [];
-    return items.map((item) => docToCharlotteFabric(item.id, item));
+    return items.map((item) => ({
+      ...docToCharlotteFabric(item.id, item),
+      pricePerYard: item.pricePerYard ?? null,
+      priceTagName: item.priceTagName ?? null,
+    }));
   } catch (error) {
     console.error('Error fetching Charlotte Fabrics catalog snapshot:', error);
     return [];
   }
 };
 
-/** Client-side filtering shared by the gallery and the admin catalog table. */
-export const filterFabrics = (
-  fabrics: CharlotteFabric[],
+/** Client-side filtering shared by the gallery and the admin catalog table. Generic so it preserves
+ *  extra fields on the input (e.g. CharlotteFabricSnapshotItem's pricePerYard/priceTagName). */
+export const filterFabrics = <T extends CharlotteFabric>(
+  fabrics: T[],
   filters: CharlotteFabricFilters
-): CharlotteFabric[] => {
+): T[] => {
   const search = filters.search?.trim().toLowerCase();
 
   return fabrics.filter((fabric) => {
@@ -102,12 +134,44 @@ export const filterFabrics = (
     if (filters.material && !fabric.material.includes(filters.material)) return false;
     if (filters.application && !fabric.applications.includes(filters.application)) return false;
     if (filters.market && !fabric.markets.includes(filters.market)) return false;
+    if (filters.priceTagId) {
+      if (filters.priceTagId === UNTAGGED_PRICE_TAG_FILTER) {
+        if (fabric.priceTagId) return false;
+      } else if (fabric.priceTagId !== filters.priceTagId) {
+        return false;
+      }
+    }
+    if (filters.groupId && !(fabric.groupIds || []).includes(filters.groupId)) return false;
     if (search) {
       const haystack = `${fabric.name} ${fabric.sku}`.toLowerCase();
       if (!haystack.includes(search)) return false;
     }
     return true;
   });
+};
+
+/** Bulk-assigns one price tag to every given Charlotte Fabric doc id, chunked to stay under Firestore's 500-op batch limit. */
+export const bulkAssignPriceTag = async (ids: string[], priceTagId: string): Promise<void> => {
+  if (!db || ids.length === 0) return;
+  for (const group of chunk(ids, BATCH_CHUNK_SIZE)) {
+    const batch = writeBatch(db);
+    group.forEach((id) => {
+      batch.update(doc(db!, 'charlotteFabrics', id), { priceTagId });
+    });
+    await batch.commit();
+  }
+};
+
+/** Bulk-adds every given Charlotte Fabric doc id to a group, without disturbing existing group membership. */
+export const bulkAddToGroup = async (ids: string[], groupId: string): Promise<void> => {
+  if (!db || ids.length === 0) return;
+  for (const group of chunk(ids, BATCH_CHUNK_SIZE)) {
+    const batch = writeBatch(db);
+    group.forEach((id) => {
+      batch.update(doc(db!, 'charlotteFabrics', id), { groupIds: arrayUnion(groupId) });
+    });
+    await batch.commit();
+  }
 };
 
 const docToSyncRun = (docId: string, data: any): CharlotteFabricsSyncRun => ({

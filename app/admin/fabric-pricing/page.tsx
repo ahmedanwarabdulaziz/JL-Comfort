@@ -3,10 +3,10 @@
 import { useAuth } from '@/lib/auth/utils';
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminLayout from '@/components/admin/AdminLayout';
-import FabricPriceTiersList from '@/components/admin/FabricPriceTiersList';
+import FabricPricingTabs from '@/components/admin/FabricPricingTabs';
 import { Box, CircularProgress } from '@mui/material';
 
-export default function FabricPriceTiersPage() {
+export default function FabricPricingPage() {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -30,7 +30,7 @@ export default function FabricPriceTiersPage() {
 
   return (
     <AdminLayout>
-      <FabricPriceTiersList />
+      <FabricPricingTabs />
     </AdminLayout>
   );
 }

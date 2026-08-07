@@ -54,9 +54,27 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
     }
 
-    // Fabric Price Tiers collection rules
+    // Fabric Price Tiers collection rules (superseded by fabricPriceTags — kept, unreferenced, for rollback safety)
     match /fabricPriceTiers/{tierId} {
       allow read: if true; // Anyone can read fabric price tiers
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+
+    // Fabric Price Tags collection rules (replaces fabricPriceTiers — per-item $/yard rates)
+    match /fabricPriceTags/{tagId} {
+      allow read: if true; // Anyone can read fabric price tags
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+
+    // Fabric Price Ranges collection rules — derived display labels, admin-managed
+    match /fabricPriceRanges/{rangeId} {
+      allow read: if true; // Anyone can read fabric price ranges
+      allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
+    }
+
+    // Fabric Groups collection rules — admin-curated groupings, not yet customer-facing
+    match /fabricGroups/{groupId} {
+      allow read: if true; // Anyone can read fabric groups
       allow create, update, delete: if isAuthenticated(); // Only authenticated users can modify
     }
 
