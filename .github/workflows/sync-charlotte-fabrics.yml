@@ -31,7 +31,12 @@ jobs:
         run: npm ci
 
       - name: Run Charlotte Fabrics sync
-        env:
+          env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CF_SYNC_FACET_GROUPS: ${{ inputs.facet_groups == 'all' && 'color,pattern,material' || inputs.facet_groups }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          CLOUDFLARE_R2_S3_API_URL: ${{ secrets.CLOUDFLARE_R2_S3_API_URL }}
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
         run: node scripts/sync-charlotte-fabrics.js
