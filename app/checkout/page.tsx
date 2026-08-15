@@ -107,6 +107,8 @@ export default function CheckoutPage() {
                       <Typography variant="h6" fontWeight="bold">
                         {item.productType === 'benchCushion'
                           ? item.cushionStyleName
+                          : item.productType === 'fabric'
+                          ? item.fabricName
                           : `${item.categoryName} - ${item.typeName}`}
                       </Typography>
                       <IconButton edge="end" onClick={() => removeFromCart(item.id)} sx={{ color: 'error.main' }}>
@@ -116,7 +118,18 @@ export default function CheckoutPage() {
 
                     <Grid container spacing={2}>
                       <Grid item xs={12} sm={8}>
-                        {item.productType === 'benchCushion' ? (
+                        {item.productType === 'fabric' ? (
+                          <>
+                            {item.fabricSku && (
+                              <Typography variant="body2" color="text.secondary">
+                                SKU: {item.fabricSku}
+                              </Typography>
+                            )}
+                            <Typography variant="body2" color="text.secondary">
+                              {item.quantity} yard{item.quantity === 1 ? '' : 's'} &times; ${item.unitPrice.toFixed(2)}/yd
+                            </Typography>
+                          </>
+                        ) : item.productType === 'benchCushion' ? (
                           <>
                             {item.cushionDimensions && Object.keys(item.cushionDimensions).length > 0 && (
                               <Typography variant="body1" color="text.secondary" paragraph>

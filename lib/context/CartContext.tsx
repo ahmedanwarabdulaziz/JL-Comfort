@@ -23,7 +23,7 @@ export interface CushionFabricSelection {
 
 export interface CartItem {
   id: string;
-  productType?: 'foam' | 'benchCushion'; // absent means 'foam', for backward compatibility
+  productType?: 'foam' | 'benchCushion' | 'fabric'; // absent means 'foam', for backward compatibility
 
   // Foam-specific fields
   categoryId?: string;
@@ -48,6 +48,13 @@ export interface CartItem {
   cushionDimensions?: Record<string, number>;
   cushionOptions?: CushionCartOption[];
   fabric?: CushionFabricSelection;
+
+  // Fabric-as-a-standalone-product fields. quantity is yards directly, whole-yard increments only
+  // (updateQuantity below already rejects anything below 1).
+  fabricId?: string;
+  fabricSku?: string;
+  fabricName?: string;
+  fabricImageUrl?: string;
 
   quantity: number;
   unitPrice: number;

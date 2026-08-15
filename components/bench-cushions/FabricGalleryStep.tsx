@@ -258,19 +258,17 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
                           {fabric.fiberContent || fabric.durability}
                         </Typography>
                       )}
-                      {fabricItem.productUrl && (
-                        <Box
-                          component="a"
-                          href={fabricItem.productUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3, mt: 0.5, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: '#000' } }}
-                        >
-                          <Typography variant="caption">View details</Typography>
-                          <OpenInNewIcon sx={{ fontSize: 12 }} />
-                        </Box>
-                      )}
+                      <Box
+                        component="a"
+                        href={`/fabrics/${fabricItem.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3, mt: 0.5, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: '#000' } }}
+                      >
+                        <Typography variant="caption">View details</Typography>
+                        <OpenInNewIcon sx={{ fontSize: 12 }} />
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>

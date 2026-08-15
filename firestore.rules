@@ -89,5 +89,13 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false; // Only written by the admin-SDK sync script, which bypasses rules
     }
+
+    // Free fabric sample requests. Public submission is untrusted, so creation only happens via
+    // the admin-SDK-backed /api/fabric-samples/request route (bypasses rules), never the client
+    // SDK. Authenticated admins can read the list and update status (e.g. mark shipped) directly.
+    match /sampleRequests/{requestId} {
+      allow read, update: if isAuthenticated();
+      allow create, delete: if false;
+    }
   }
 }

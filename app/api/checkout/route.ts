@@ -18,7 +18,10 @@ export async function POST(req: Request) {
       let name: string;
       let description: string;
 
-      if (item.productType === 'benchCushion') {
+      if (item.productType === 'fabric') {
+        name = item.fabricName || 'Fabric';
+        description = `${item.fabricSku ? `SKU ${item.fabricSku} — ` : ''}${item.quantity} yard${item.quantity === 1 ? '' : 's'}`;
+      } else if (item.productType === 'benchCushion') {
         name = item.cushionStyleName || 'Bench Cushion';
         const dims = item.cushionDimensions
           ? Object.entries(item.cushionDimensions)

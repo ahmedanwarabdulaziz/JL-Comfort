@@ -31,6 +31,7 @@ import WeekendIcon from '@mui/icons-material/Weekend';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { auth } from '@/lib/firebase/config';
@@ -50,7 +51,7 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests'
   >(
     pathname?.includes('/foam')
       ? 'foam'
@@ -60,6 +61,8 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
       ? 'fabric-groups'
       : pathname?.includes('/fabric-catalog')
       ? 'fabric-catalog'
+      : pathname?.includes('/sample-requests')
+      ? 'sample-requests'
       : pathname?.includes('/bench-cushions')
       ? 'bench-cushions'
       : 'products'
@@ -243,6 +246,20 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <CloudSyncIcon />
             </ListItemIcon>
             <ListItemText primary="Fabric Catalog Sync" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/sample-requests')}
+            onClick={() => {
+              router.push('/admin/sample-requests');
+              setSelectedView('sample-requests');
+            }}
+          >
+            <ListItemIcon>
+              <LocalShippingIcon />
+            </ListItemIcon>
+            <ListItemText primary="Sample Requests" />
           </ListItemButton>
         </ListItem>
       </List>

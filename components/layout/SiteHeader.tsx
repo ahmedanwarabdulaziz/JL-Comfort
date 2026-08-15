@@ -34,6 +34,7 @@ const guideLinks = [
 const primaryLinks = [
   { label: 'Order Foam', href: '/foam' },
   { label: 'Bench Cushions', href: '/bench-cushions' },
+  { label: 'Shop Fabrics', href: '/fabrics' },
   { label: 'About', href: '/about' },
   { label: 'FAQ', href: '/faq' },
 ];
@@ -46,7 +47,7 @@ export default function SiteHeader() {
   const [guidesAnchor, setGuidesAnchor] = useState<null | HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
   const isGuidesActive = guideLinks.some((g) => g.href === pathname);
 
   if (pathname?.startsWith('/admin')) {
@@ -104,6 +105,10 @@ export default function SiteHeader() {
 
             <Button component={Link} href="/bench-cushions" sx={navLinkSx(isActive('/bench-cushions'))}>
               Bench Cushions
+            </Button>
+
+            <Button component={Link} href="/fabrics" sx={navLinkSx(isActive('/fabrics'))}>
+              Shop Fabrics
             </Button>
 
             <Button
