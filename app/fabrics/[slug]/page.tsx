@@ -79,16 +79,35 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
 });
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const fabric = await loadFabricDetail(params.slug);
-  if (!fabric) return { title: 'Fabric Not Found' };
-  return {
-    title: `${fabric.name} — Fabric by the Yard`,
-    description: `${fabric.name}${fabric.brand ? ` by ${fabric.brand}` : ''}. ${fabric.fiberContent || ''} Shop fabric by the yard at JL Comfort.`.trim(),
-  };
+  try {
+    const fabric = await loadFabricDetail(params.slug);
+    if (!fabric) return { title: 'Fabric Not Found' };
+    return {
+      title: `${fabric.name} — Fabric by the Yard`,
+      description: `${fabric.name}${fabric.brand ? ` by ${fabric.brand}` : ''}. ${fabric.fiberContent || ''} Shop fabric by the yard at JL Comfort.`.trim(),
+    };
+  } catch {
+    // Don't let a data-load error break metadata generation — the page component below surfaces
+    // the real error visibly; this just needs to not crash first.
+    return { title: 'Fabric' };
+  }
 }
 
 export default async function FabricDetailPage({ params }: { params: { slug: string } }) {
-  const fabric = await loadFabricDetail(params.slug);
+  let fabric: FabricDetailData | null;
+  try {
+    fabric = await loadFabricDetail(params.slug);
+  } catch (err) {
+    // TEMPORARY: surface the real error message directly instead of Next's redacted generic
+    // error page, so this can be diagnosed via curl without needing Vercel dashboard log access.
+    // Remove once the underlying config issue is confirmed fixed.
+    return (
+      <pre style={{ padding: 24, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+        DIAGNOSTIC ERROR: {err instanceof Error ? err.message : String(err)}
+        {err instanceof Error && err.stack ? `\n\n${err.stack}` : ''}
+      </pre>
+    );
+  }
   if (!fabric) notFound();
 
   return <FabricDetailClient fabric={fabric} />;
