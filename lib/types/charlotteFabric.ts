@@ -38,6 +38,26 @@ export interface CharlotteFabric {
 
   priceTagId?: string | null; // references a FabricPriceTag; null/unset = use the default tag's rate
   groupIds?: string[]; // FabricGroup ids this item has been curated into
+
+  // From the Charlotte Fabrics master spreadsheet (data/charlotte-fabrics/master-spreadsheet.xlsx),
+  // merged in by SKU via scripts/import-charlotte-master-spreadsheet.js. Not scrapable from the
+  // product page, so these are additive-only fields layered onto the scraped data above.
+  costPrice?: number; // "Your Price (Including Tariff)" — actual dealer cost per yard
+  mapPrice?: number; // "Minimum Advertised Price"
+  retailPrice?: number; // "Retail (Including Tariff)" — MSRP
+  colorwayGroup?: string; // "Colorway Group #" — links colorways of the same pattern
+  brand?: string; // "Brand" — e.g. "Charlotte Colors", "Performance Colors"
+  sampleBooks?: string[]; // "Sample Book(s)"
+  ecoFriendly?: string[]; // "Eco Friendly" certifications
+  constructionType?: string[]; // "Type" — construction category (Velvet, Crypton, Woven Patterns, ...)
+  properties?: string[]; // "Properties" — Stain Resistant, Pet Friendly, Made In America, ...
+  isNew?: boolean; // "New" column
+  masterSpreadsheetImportedAt?: Date;
+
+  // Admin-set price override — always wins over retailPrice/priceTagId. Kept as a separate field
+  // (rather than writing straight into retailPrice) so a future spreadsheet re-import can't
+  // silently clobber a manual edit. null = explicitly cleared back to retailPrice/tag pricing.
+  manualRetailPrice?: number | null;
 }
 
 /**

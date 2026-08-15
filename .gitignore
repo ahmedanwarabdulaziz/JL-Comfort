@@ -37,3 +37,6 @@ next-env.d.ts
 
 # Firebase Admin SDK (contains sensitive keys)
 *-firebase-adminsdk-*.json
+
+# Vendor data imports (contains wholesale cost pricing)
+/data/

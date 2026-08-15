@@ -29,6 +29,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import PublishIcon from '@mui/icons-material/Publish';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import EditIcon from '@mui/icons-material/Edit';
 import { CharlotteFabric, CharlotteFabricsSyncRun } from '@/lib/types/charlotteFabric';
 import {
   getCharlotteFabrics,
@@ -36,8 +37,10 @@ import {
   filterFabrics,
   bulkAssignPriceTag,
   bulkAddToGroup,
+  setFabricManualPrice,
   UNTAGGED_PRICE_TAG_FILTER,
 } from '@/lib/data/charlotteFabricCatalog';
+import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { auth } from '@/lib/firebase/config';
 import {
   CHARLOTTE_FABRIC_COLORS,
@@ -95,6 +98,10 @@ export default function CharlotteFabricCatalogList() {
   const [addToGroupDialogOpen, setAddToGroupDialogOpen] = useState(false);
   const [addToGroupValue, setAddToGroupValue] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
+
+  const [editPriceFabric, setEditPriceFabric] = useState<CharlotteFabric | null>(null);
+  const [editPriceValue, setEditPriceValue] = useState('');
+  const [priceSaving, setPriceSaving] = useState(false);
 
   const loadFabrics = async () => {
     setLoading(true);
@@ -170,10 +177,6 @@ export default function CharlotteFabricCatalogList() {
   const priceTagById = useMemo(() => new Map(priceTags.map((t) => [t.id, t])), [priceTags]);
   const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
 
-  // No fallback: a fabric only has a price if it's been explicitly assigned a price tag.
-  const resolveFabricPriceTag = (fabric: CharlotteFabric): FabricPriceTag | null =>
-    (fabric.priceTagId && priceTagById.get(fabric.priceTagId)) || null;
-
   const filteredByFields = useMemo(
     () =>
       filterFabrics(fabrics, {
@@ -194,14 +197,17 @@ export default function CharlotteFabricCatalogList() {
   const filtered = useMemo(() => {
     if (!priceRangeFilter) return filteredByFields;
     return filteredByFields.filter((fabric) => {
-      const price = resolveFabricPriceTag(fabric)?.pricePerYard ?? null;
+      const price = resolveEffectivePrice(fabric, priceTagById).pricePerYard;
       return resolvePriceRange(price, priceRanges)?.id === priceRangeFilter;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredByFields, priceRangeFilter, priceRanges, priceTagById]);
 
   const brokenImageCount = useMemo(() => fabrics.filter((f) => !f.imageOk).length, [fabrics]);
-  const unpricedCount = useMemo(() => fabrics.filter((f) => !f.priceTagId).length, [fabrics]);
+  const unpricedCount = useMemo(
+    () => fabrics.filter((f) => resolveEffectivePrice(f, priceTagById).pricePerYard == null).length,
+    [fabrics, priceTagById]
+  );
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((f) => selectedIds.has(f.id));
   const someVisibleSelected = filtered.some((f) => selectedIds.has(f.id));
@@ -231,8 +237,12 @@ export default function CharlotteFabricCatalogList() {
     if (!assignTagValue) return;
     setBulkSaving(true);
     try {
-      await bulkAssignPriceTag(Array.from(selectedIds), assignTagValue);
-      await loadFabrics();
+      const ids = Array.from(selectedIds);
+      await bulkAssignPriceTag(ids, assignTagValue);
+      // Patch local state instead of re-fetching the whole ~6,900-doc collection just to reflect
+      // a write we already know the shape of — that reload pattern is what burns Firestore's daily
+      // read quota fastest on this table.
+      setFabrics((prev) => prev.map((f) => (selectedIds.has(f.id) ? { ...f, priceTagId: assignTagValue } : f)));
       setSelectedIds(new Set());
       setAssignTagDialogOpen(false);
       setAssignTagValue('');
@@ -248,7 +258,13 @@ export default function CharlotteFabricCatalogList() {
     setBulkSaving(true);
     try {
       await bulkAddToGroup(Array.from(selectedIds), addToGroupValue);
-      await loadFabrics();
+      setFabrics((prev) =>
+        prev.map((f) =>
+          selectedIds.has(f.id)
+            ? { ...f, groupIds: Array.from(new Set([...(f.groupIds || []), addToGroupValue])) }
+            : f
+        )
+      );
       setSelectedIds(new Set());
       setAddToGroupDialogOpen(false);
       setAddToGroupValue('');
@@ -256,6 +272,46 @@ export default function CharlotteFabricCatalogList() {
       console.error('Error bulk-adding to group:', error);
     } finally {
       setBulkSaving(false);
+    }
+  };
+
+  const openEditPriceDialog = (fabric: CharlotteFabric) => {
+    setEditPriceFabric(fabric);
+    setEditPriceValue(fabric.manualRetailPrice != null ? String(fabric.manualRetailPrice) : '');
+  };
+
+  const closeEditPriceDialog = () => {
+    setEditPriceFabric(null);
+    setEditPriceValue('');
+  };
+
+  const handleSavePriceOverride = async () => {
+    if (!editPriceFabric) return;
+    const parsed = Number(editPriceValue);
+    if (!editPriceValue || Number.isNaN(parsed)) return;
+    setPriceSaving(true);
+    try {
+      await setFabricManualPrice(editPriceFabric.id, parsed);
+      setFabrics((prev) => prev.map((f) => (f.id === editPriceFabric.id ? { ...f, manualRetailPrice: parsed } : f)));
+      closeEditPriceDialog();
+    } catch (error) {
+      console.error('Error setting fabric price override:', error);
+    } finally {
+      setPriceSaving(false);
+    }
+  };
+
+  const handleClearPriceOverride = async () => {
+    if (!editPriceFabric) return;
+    setPriceSaving(true);
+    try {
+      await setFabricManualPrice(editPriceFabric.id, null);
+      setFabrics((prev) => prev.map((f) => (f.id === editPriceFabric.id ? { ...f, manualRetailPrice: null } : f)));
+      closeEditPriceDialog();
+    } catch (error) {
+      console.error('Error clearing fabric price override:', error);
+    } finally {
+      setPriceSaving(false);
     }
   };
 
@@ -599,7 +655,7 @@ export default function CharlotteFabricCatalogList() {
               <TableCell>Pattern</TableCell>
               <TableCell>Material</TableCell>
               <TableCell>Availability</TableCell>
-              <TableCell>Price Tag</TableCell>
+              <TableCell>Price Source</TableCell>
               <TableCell>Effective Price</TableCell>
               <TableCell>Price Range</TableCell>
               <TableCell>Groups</TableCell>
@@ -609,8 +665,7 @@ export default function CharlotteFabricCatalogList() {
           </TableHead>
           <TableBody>
             {filtered.map((fabric) => {
-              const resolvedTag = resolveFabricPriceTag(fabric);
-              const effectivePrice = resolvedTag?.pricePerYard ?? null;
+              const { pricePerYard: effectivePrice, source: priceSource } = resolveEffectivePrice(fabric, priceTagById);
               const priceRange = resolvePriceRange(effectivePrice, priceRanges);
               const fabricGroups = (fabric.groupIds || []).map((id) => groupById.get(id)).filter(Boolean) as FabricGroup[];
               return (
@@ -631,11 +686,12 @@ export default function CharlotteFabricCatalogList() {
                     />
                   </TableCell>
                   <TableCell>
-                    {fabric.priceTagId ? (
-                      <Chip size="small" label={priceTagById.get(fabric.priceTagId)?.name || 'Unknown'} />
-                    ) : (
-                      <Chip size="small" color="warning" label="Unpriced" />
+                    {priceSource === 'override' && <Chip size="small" color="info" label="Manual" />}
+                    {priceSource === 'retail' && <Chip size="small" color="success" label="Master List" />}
+                    {priceSource === 'tag' && (
+                      <Chip size="small" label={fabric.priceTagId ? priceTagById.get(fabric.priceTagId)?.name || 'Unknown' : 'Unknown'} />
                     )}
+                    {priceSource === null && <Chip size="small" color="warning" label="Unpriced" />}
                   </TableCell>
                   <TableCell>{effectivePrice != null ? `$${effectivePrice.toFixed(2)}` : '—'}</TableCell>
                   <TableCell>
@@ -656,11 +712,21 @@ export default function CharlotteFabricCatalogList() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {fabric.productUrl && (
-                      <Box component="a" href={fabric.productUrl} target="_blank" rel="noopener noreferrer" sx={{ color: 'text.secondary' }}>
-                        <OpenInNewIcon sx={{ fontSize: 16 }} />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Box
+                        component="button"
+                        onClick={() => openEditPriceDialog(fabric)}
+                        sx={{ color: 'text.secondary', border: 'none', bgcolor: 'transparent', cursor: 'pointer', display: 'flex', p: 0 }}
+                        aria-label="Edit price"
+                      >
+                        <EditIcon sx={{ fontSize: 16 }} />
                       </Box>
-                    )}
+                      {fabric.productUrl && (
+                        <Box component="a" href={fabric.productUrl} target="_blank" rel="noopener noreferrer" sx={{ color: 'text.secondary', display: 'flex' }}>
+                          <OpenInNewIcon sx={{ fontSize: 16 }} />
+                        </Box>
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               );
@@ -729,6 +795,36 @@ export default function CharlotteFabricCatalogList() {
           <Button onClick={() => setAddToGroupDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" disabled={!addToGroupValue || bulkSaving} onClick={handleApplyGroup}>
             {bulkSaving ? 'Applying...' : `Apply to ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!editPriceFabric} onClose={closeEditPriceDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Edit Price — {editPriceFabric?.name}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {editPriceFabric?.retailPrice != null
+              ? `Master price list retail: $${editPriceFabric.retailPrice.toFixed(2)}/yd. Setting a price here overrides it and won't be touched by future spreadsheet imports.`
+              : "No master price list retail is on file for this item — set a price here to make it purchasable."}
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            type="number"
+            label="Manual price ($/yd)"
+            value={editPriceValue}
+            onChange={(e) => setEditPriceValue(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          {editPriceFabric?.manualRetailPrice != null && (
+            <Button color="warning" disabled={priceSaving} onClick={handleClearPriceOverride} sx={{ mr: 'auto' }}>
+              Clear override
+            </Button>
+          )}
+          <Button onClick={closeEditPriceDialog}>Cancel</Button>
+          <Button variant="contained" disabled={!editPriceValue || priceSaving} onClick={handleSavePriceOverride}>
+            {priceSaving ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

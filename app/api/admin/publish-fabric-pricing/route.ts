@@ -3,6 +3,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import zlib from 'zlib';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin';
 import { r2Client, r2Config, isR2Configured } from '@/lib/cloudflare/r2';
+import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 
 // Same key/cache window as scripts/sync-charlotte-fabrics.js's publishSnapshot — this route is a
 // fast alternative to a full sync when nothing needs re-crawling from charlottefabrics.com, only
@@ -50,7 +51,10 @@ export async function POST(request: NextRequest) {
     const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
     const allItems = activeSnapshot.docs.map((doc) => {
       const data = doc.data();
-      const resolvedTag = data.priceTagId ? priceTagsById.get(data.priceTagId) : null;
+      const effectivePrice = resolveEffectivePrice(
+        { manualRetailPrice: data.manualRetailPrice, retailPrice: data.retailPrice, priceTagId: data.priceTagId },
+        priceTagsById
+      );
       return {
         id: doc.id,
         name: data.name || '',
@@ -80,8 +84,8 @@ export async function POST(request: NextRequest) {
         lastCheckedAt: toIso(data.lastCheckedAt),
         priceTagId: data.priceTagId || null,
         groupIds: data.groupIds || [],
-        pricePerYard: resolvedTag?.pricePerYard ?? null,
-        priceTagName: resolvedTag?.name ?? null,
+        pricePerYard: effectivePrice.pricePerYard,
+        priceTagName: effectivePrice.priceTagName,
       };
     });
 

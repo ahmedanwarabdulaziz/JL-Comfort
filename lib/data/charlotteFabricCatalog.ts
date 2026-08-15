@@ -8,6 +8,7 @@ import {
   limit,
   onSnapshot,
   writeBatch,
+  updateDoc,
   arrayUnion,
   Timestamp,
 } from 'firebase/firestore';
@@ -68,6 +69,20 @@ const docToCharlotteFabric = (docId: string, data: any): CharlotteFabric => ({
   lastCheckedAt: convertTimestamp(data.lastCheckedAt),
   priceTagId: data.priceTagId ?? null,
   groupIds: data.groupIds || [],
+  costPrice: data.costPrice,
+  mapPrice: data.mapPrice,
+  retailPrice: data.retailPrice,
+  colorwayGroup: data.colorwayGroup,
+  brand: data.brand,
+  sampleBooks: data.sampleBooks,
+  ecoFriendly: data.ecoFriendly,
+  constructionType: data.constructionType,
+  properties: data.properties,
+  isNew: data.isNew,
+  masterSpreadsheetImportedAt: data.masterSpreadsheetImportedAt
+    ? convertTimestamp(data.masterSpreadsheetImportedAt)
+    : undefined,
+  manualRetailPrice: data.manualRetailPrice,
 });
 
 /** Fetches every active Charlotte Fabrics catalog item. Filtering happens client-side via filterFabrics(). */
@@ -172,6 +187,15 @@ export const bulkAddToGroup = async (ids: string[], groupId: string): Promise<vo
     });
     await batch.commit();
   }
+};
+
+/**
+ * Sets (or clears, with null) a manual price override on a single Charlotte Fabric doc. Always
+ * wins over retailPrice/priceTagId — see resolveEffectivePrice in charlotteFabricPricing.ts.
+ */
+export const setFabricManualPrice = async (id: string, manualRetailPrice: number | null): Promise<void> => {
+  if (!db) return;
+  await updateDoc(doc(db, 'charlotteFabrics', id), { manualRetailPrice });
 };
 
 const docToSyncRun = (docId: string, data: any): CharlotteFabricsSyncRun => ({

@@ -244,17 +244,25 @@ async function publishSnapshot(db) {
   const toIso = (ts) => (ts && typeof ts.toDate === 'function' ? ts.toDate().toISOString() : null);
 
   // Resolve each item's price once, here, so every downstream reader (gallery, checkout,
-  // fabric-search) just reads a ready-to-use number/name. No fallback: a fabric only has a price
-  // if it's been explicitly assigned a price tag — anything else is filtered out below, since an
-  // unpriced item has nothing to charge a customer and shouldn't be shown on the storefront.
+  // fabric-search) just reads a ready-to-use number/name. Precedence: a manual admin override
+  // always wins, then the real per-SKU retail price from the master spreadsheet import, then the
+  // flat price-tag rate as a last resort — mirrors lib/data/charlotteFabricPricing.ts's
+  // resolveEffectivePrice (this script is plain Node/CommonJS and can't require() that .ts file,
+  // so keep this in sync with it by hand). Anything still unpriced is filtered out below, since it
+  // has nothing to charge a customer and shouldn't be shown on the storefront.
   const priceTagsSnapshot = await db.collection('fabricPriceTags').get();
   const priceTagsById = new Map(priceTagsSnapshot.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
-  const resolvePriceTag = (priceTagId) => (priceTagId && priceTagsById.get(priceTagId)) || null;
+  const resolveEffectivePrice = (data) => {
+    if (data.manualRetailPrice != null) return { pricePerYard: data.manualRetailPrice, priceTagName: null };
+    if (data.retailPrice != null) return { pricePerYard: data.retailPrice, priceTagName: null };
+    const tag = data.priceTagId ? priceTagsById.get(data.priceTagId) : null;
+    return { pricePerYard: tag?.pricePerYard ?? null, priceTagName: tag?.name ?? null };
+  };
 
   const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
   const allItems = activeSnapshot.docs.map((doc) => {
     const data = doc.data();
-    const resolvedTag = resolvePriceTag(data.priceTagId);
+    const effectivePrice = resolveEffectivePrice(data);
     return {
       id: doc.id,
       name: data.name || '',
@@ -289,8 +297,8 @@ async function publishSnapshot(db) {
       lastCheckedAt: toIso(data.lastCheckedAt),
       priceTagId: data.priceTagId || null,
       groupIds: data.groupIds || [],
-      pricePerYard: resolvedTag?.pricePerYard ?? null,
-      priceTagName: resolvedTag?.name ?? null,
+      pricePerYard: effectivePrice.pricePerYard,
+      priceTagName: effectivePrice.priceTagName,
     };
   });
 
@@ -521,4 +529,11 @@ async function main() {
   }
 }
 
-main();
+// Only auto-run when executed directly (`node scripts/sync-charlotte-fabrics.js`), not when
+// required as a module (e.g. by scripts/publish-fabric-pricing.js, which just wants
+// publishSnapshot without triggering a full site crawl).
+if (require.main === module) {
+  main();
+}
+
+module.exports = { initFirebase, publishSnapshot };
