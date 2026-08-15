@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Button,
@@ -71,7 +71,12 @@ const STALL_THRESHOLD_MS = 3 * 60 * 1000;
 export default function CharlotteFabricCatalogList() {
   const [fabrics, setFabrics] = useState<CharlotteFabric[]>([]);
   const [syncRun, setSyncRun] = useState<CharlotteFabricsSyncRun | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // Whether the full ~6,900-doc catalog has been fetched at least once. Loading it costs a full
+  // Firestore collection read every time, so it's opt-in rather than automatic on page open —
+  // "Publish Pricing" and "Run Sync Now" don't need it, they hit their own server routes.
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const catalogLoadedRef = useRef(false);
   const [triggering, setTriggering] = useState(false);
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -108,6 +113,8 @@ export default function CharlotteFabricCatalogList() {
     try {
       const fabricResults = await getCharlotteFabrics();
       setFabrics(fabricResults);
+      setCatalogLoaded(true);
+      catalogLoadedRef.current = true;
     } catch (error) {
       console.error('Error loading Charlotte Fabrics catalog:', error);
     } finally {
@@ -131,7 +138,9 @@ export default function CharlotteFabricCatalogList() {
   };
 
   useEffect(() => {
-    loadFabrics();
+    // Reference data (price tags/ranges/groups) is small and needed for the dialogs and stats
+    // regardless of whether the full catalog table is loaded, so this stays automatic. The full
+    // catalog itself (loadFabrics) is opt-in — see the "Load Catalog" button below.
     loadReferenceData();
   }, []);
 
@@ -141,8 +150,9 @@ export default function CharlotteFabricCatalogList() {
     let previousStatus: CharlotteFabricsSyncRun['status'] | null = null;
     const unsubscribe = subscribeToLatestSyncRun((run) => {
       setSyncRun(run);
-      if (previousStatus === 'running' && run && run.status !== 'running') {
-        // A run just finished — refresh the catalog table so new data shows up without a manual reload.
+      if (previousStatus === 'running' && run && run.status !== 'running' && catalogLoadedRef.current) {
+        // A run just finished — refresh the catalog table so new data shows up without a manual
+        // reload, but only if the table was already loaded; don't load it just because a sync ran.
         loadFabrics();
       }
       previousStatus = run?.status ?? null;
@@ -516,6 +526,25 @@ export default function CharlotteFabricCatalogList() {
         )}
       </Paper>
 
+      {!catalogLoaded ? (
+        <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            The catalog table isn&apos;t loaded yet. Browsing and filtering the ~6,900-item catalog
+            costs a full Firestore read every time, so it&apos;s loaded on demand — &quot;Publish
+            Pricing&quot; and &quot;Run Sync Now&quot; above work without loading it.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+            disabled={loading}
+            onClick={loadFabrics}
+            sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#222' } }}
+          >
+            {loading ? 'Loading…' : 'Load Catalog'}
+          </Button>
+        </Paper>
+      ) : (
+        <>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap alignItems="center">
         {loading ? (
           <CircularProgress size={16} />
@@ -743,6 +772,8 @@ export default function CharlotteFabricCatalogList() {
           </TableBody>
         </Table>
       </TableContainer>
+      )}
+        </>
       )}
 
       <Dialog open={assignTagDialogOpen} onClose={() => setAssignTagDialogOpen(false)} maxWidth="xs" fullWidth>
