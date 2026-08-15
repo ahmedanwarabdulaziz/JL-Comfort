@@ -94,20 +94,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function FabricDetailPage({ params }: { params: { slug: string } }) {
-  let fabric: FabricDetailData | null;
-  try {
-    fabric = await loadFabricDetail(params.slug);
-  } catch (err) {
-    // TEMPORARY: surface the real error message directly instead of Next's redacted generic
-    // error page, so this can be diagnosed via curl without needing Vercel dashboard log access.
-    // Remove once the underlying config issue is confirmed fixed.
-    return (
-      <pre style={{ padding: 24, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-        DIAGNOSTIC ERROR: {err instanceof Error ? err.message : String(err)}
-        {err instanceof Error && err.stack ? `\n\n${err.stack}` : ''}
-      </pre>
-    );
-  }
+  // A thrown error here (server misconfiguration) propagates to Next's error boundary as a real
+  // 500 — intentionally not caught, so it stays visible in Vercel's function logs instead of
+  // masquerading as a 404. Only a genuinely missing/inactive fabric reaches notFound() below.
+  const fabric = await loadFabricDetail(params.slug);
   if (!fabric) notFound();
 
   return <FabricDetailClient fabric={fabric} />;
