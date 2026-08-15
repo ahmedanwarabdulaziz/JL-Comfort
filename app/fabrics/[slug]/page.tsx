@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { getAdminFirestore } from '@/lib/firebase/admin';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
@@ -8,9 +9,16 @@ import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/compone
 // so a fabric page is never wildly stale relative to the rest of the site's fabric data.
 export const revalidate = 1800;
 
-async function loadFabricDetail(slug: string): Promise<FabricDetailData | null> {
+// cache() dedupes this across generateMetadata and the page component within one request — without
+// it, each page view reads Firestore twice (once for the title/description, once for the render).
+const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | null> => {
   const db = getAdminFirestore();
-  if (!db) return null;
+  // Distinct from "fabric not found" below: this means the server itself is misconfigured
+  // (FIREBASE_SERVICE_ACCOUNT missing/invalid), which should surface as a real error rather than
+  // silently rendering the same 404 a customer would see for a genuinely unknown SKU.
+  if (!db) {
+    throw new Error('Fabric detail page: getAdminFirestore() returned null — FIREBASE_SERVICE_ACCOUNT is missing or invalid in this environment.');
+  }
 
   const doc = await db.collection('charlotteFabrics').doc(slug).get();
   if (!doc.exists) return null;
@@ -68,7 +76,7 @@ async function loadFabricDetail(slug: string): Promise<FabricDetailData | null> 
     priceTagName: price.priceTagName,
     colorwaySiblings,
   };
-}
+});
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const fabric = await loadFabricDetail(params.slug);
