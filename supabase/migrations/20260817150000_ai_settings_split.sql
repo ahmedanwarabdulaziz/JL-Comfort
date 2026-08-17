@@ -76,15 +76,15 @@ ALLOWED HARD FILTER VALUES
 
 colors:
 ONLY use values from:
-Beige, Black, Blue, Brown, Gold, Green, Grey, Orange, Pink, Purple, Red, White, Yellow
+red-burgundy, orange-rust, gold-yellow, green, aqua-teal, blue, purple, coral-peach, pink, beige-taupe, brown, black, grey-silver, white-ivory
 
 patterns:
 ONLY use values from:
-Solid, Stripe, Plaid, Geometric, Floral, Abstract, Animal, Damask, Medallion, Paisley, Toile, Houndstooth, Chevron
+abstract-geometric, animal-print, check-houndstooth, corduroy, damask, diamonds, floral, global, greek-key, herringbone-chevron, leaves, novelty, paisley, plaid, plain-solid, small-scale, southwestern, stripe, toile, tropical-botanical, twill
 
 materials:
 ONLY use values from:
-Cotton, Linen, Silk, Velvet, Leather, Faux Leather, Vinyl, Polyester, Acrylic, Rayon, Nylon, Olefin, Wool, Blends
+boucle, canvas-denim-twill, chenille, crypton, embroidery, faux-silk, faux-wool, linen, matelasse, metallic, microfiber-microsuede, prints, shearling, tapestry, tweed-textures, velvet, woven-patterns
 
 applications:
 ONLY use:

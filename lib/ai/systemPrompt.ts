@@ -80,15 +80,15 @@ ALLOWED HARD FILTER VALUES
 
 colors:
 ONLY use values from:
-\${COLOR_VALUES}
+${COLOR_VALUES}
 
 patterns:
 ONLY use values from:
-\${PATTERN_VALUES}
+${PATTERN_VALUES}
 
 materials:
 ONLY use values from:
-\${MATERIAL_VALUES}
+${MATERIAL_VALUES}
 
 applications:
 ONLY use:
