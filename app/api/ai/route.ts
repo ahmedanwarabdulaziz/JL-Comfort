@@ -177,7 +177,17 @@ async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
   if (isAlternative) {
     finalMessage = `I couldn't find an exact match for all your requirements, so I relaxed your ${droppedReason} to find these ${products.length} fantastic alternative${products.length === 1 ? '' : 's'}!`;
   } else if (products.length === 0) {
-    finalMessage = "It looks like we don't carry any fabrics in that specific color and pattern combination. Would you be open to a different color or pattern?";
+    const activeFilters = [];
+    if (filters.colors?.length) activeFilters.push('color');
+    if (filters.patterns?.length) activeFilters.push('pattern');
+    if (filters.materials?.length) activeFilters.push('material');
+    
+    if (activeFilters.length > 0) {
+      const list = activeFilters.join(' or ');
+      finalMessage = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${list}?`;
+    } else {
+      finalMessage = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+    }
   }
 
   return { message: finalMessage, action: 'show_products', filters, products };
@@ -272,7 +282,17 @@ export async function POST(request: NextRequest) {
       const count = products.length;
       let message = '';
       if (count === 0) {
-        message = "It looks like we don't carry any fabrics in that specific color and pattern combination. Would you be open to a different color or pattern?";
+        const activeFilters = [];
+        if (filters.colors?.length) activeFilters.push('color');
+        if (filters.patterns?.length) activeFilters.push('pattern');
+        if (filters.materials?.length) activeFilters.push('material');
+        
+        if (activeFilters.length > 0) {
+          const list = activeFilters.join(' or ');
+          message = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${list}?`;
+        } else {
+          message = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+        }
       } else if (isAlternative) {
         message = `I couldn't find an exact match, so I relaxed your ${droppedReason} to find these ${count} great alternative${count === 1 ? '' : 's'}! Let me know if you want to tweak anything else.`;
       } else {
