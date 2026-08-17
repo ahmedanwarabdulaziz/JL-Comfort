@@ -5,6 +5,7 @@ import ServiceWorkerCleanup from './service-worker-cleanup';
 import { Inter } from 'next/font/google';
 import Footer from '@/components/layout/Footer';
 import SiteHeader from '@/components/layout/SiteHeader';
+import AIGuide from '@/components/ai/AIGuide';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -34,6 +35,7 @@ export default function RootLayout({
           <SiteHeader />
           <div style={{ flex: 1 }}>{children}</div>
           <Footer />
+          <AIGuide />
         </Providers>
       </body>
     </html>

@@ -41,7 +41,6 @@ import {
   UNTAGGED_PRICE_TAG_FILTER,
 } from '@/lib/data/charlotteFabricCatalog';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
-import { auth } from '@/lib/firebase/config';
 import {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
@@ -329,14 +328,9 @@ export default function CharlotteFabricCatalogList() {
     setTriggering(true);
     setTriggerMessage(null);
     try {
-      const idToken = await auth?.currentUser?.getIdToken();
-      if (!idToken) {
-        setTriggerMessage('You must be signed in to trigger a sync.');
-        return;
-      }
       const res = await fetch('/api/admin/trigger-charlotte-sync', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ facetGroups: syncPhase }),
       });
       const data = await res.json();
@@ -358,14 +352,8 @@ export default function CharlotteFabricCatalogList() {
     setPublishing(true);
     setPublishMessage(null);
     try {
-      const idToken = await auth?.currentUser?.getIdToken();
-      if (!idToken) {
-        setPublishMessage('You must be signed in to publish pricing.');
-        return;
-      }
       const res = await fetch('/api/admin/publish-fabric-pricing', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
       if (res.ok) {

@@ -1,11 +1,11 @@
 /**
  * Merges the "Current Patterns" tab of the Charlotte Fabrics master spreadsheet into the
- * `charlotteFabrics` Firestore collection, matched by SKU. Adds fields the website scraper can't
+ * `charlotte_fabrics` Supabase table, matched by SKU. Adds fields the website scraper can't
  * get (real cost/MAP/retail pricing, colorway group, brand, sample book, eco certs, construction
- * type, properties, new-item flag) onto existing docs — never overwrites or blanks anything.
+ * type, properties, new-item flag) onto existing rows — never overwrites or blanks anything.
  *
- * A SKU with no matching Firestore doc (e.g. Vinyl-category rows, since Vinyl isn't crawled today)
- * is skipped entirely and reported, not written. A Firestore doc whose SKU has no row in the sheet
+ * A SKU with no matching row (e.g. Vinyl-category rows, since Vinyl isn't crawled today)
+ * is skipped entirely and reported, not written. A row whose SKU has no match in the sheet
  * is left completely untouched.
  *
  * Run (dry-run, default):  node scripts/import-charlotte-master-spreadsheet.js
@@ -13,31 +13,18 @@
  * Custom file path:        node scripts/import-charlotte-master-spreadsheet.js --file path/to.xlsx
  *
  * Env vars:
- *   FIREBASE_SERVICE_ACCOUNT - JSON string of the service account. Falls back to the local
- *                               service account file used by scripts/setup-admin-user.js when unset.
+ *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY - Supabase project + service-role key.
  */
 
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
-const admin = require('firebase-admin');
+const { getSupabaseAdmin } = require('./lib/supabaseAdmin');
 
 const SHEET_NAME = 'Current Patterns';
 const DEFAULT_FILE = path.join(__dirname, '../data/charlotte-fabrics/master-spreadsheet.xlsx');
 const REPORT_FILE = path.join(__dirname, '../data/charlotte-fabrics/unmatched-skus.json');
-const BATCH_CHUNK_SIZE = 400;
-
-function initFirebase() {
-  if (admin.apps.length) return;
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  } else {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
-    const serviceAccount = require('../jl-comfort-firebase-adminsdk-fbsvc-0010276dc8.json');
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-}
+const UPDATE_CONCURRENCY = 50; // no Firestore-style batch-op cap in Postgres; this just keeps us from hammering PostgREST with 7,000 simultaneous single-row updates
 
 function parseArgs(argv) {
   const write = argv.includes('--write');
@@ -62,8 +49,8 @@ function splitCommaList(value) {
 }
 
 /** Builds the additive update payload for one sheet row. Omits any field that's blank in the row. */
-function buildUpdatePayload(row, now) {
-  const payload = { masterSpreadsheetImportedAt: now };
+function buildUpdatePayload(row, nowIso) {
+  const payload = { master_spreadsheet_imported_at: nowIso };
 
   const costPrice = parseNumber(row['Your Price (Including Tariff)']);
   const mapPrice = parseNumber(row['Minimum Advertised Price']);
@@ -75,47 +62,49 @@ function buildUpdatePayload(row, now) {
   const constructionType = splitCommaList(row['Type']);
   const properties = splitCommaList(row['Properties']);
 
-  if (costPrice !== undefined) payload.costPrice = costPrice;
-  if (mapPrice !== undefined) payload.mapPrice = mapPrice;
-  if (retailPrice !== undefined) payload.retailPrice = retailPrice;
+  if (costPrice !== undefined) payload.cost_price = costPrice;
+  if (mapPrice !== undefined) payload.map_price = mapPrice;
+  if (retailPrice !== undefined) payload.retail_price = retailPrice;
   if (colorwayGroup !== undefined && colorwayGroup !== null && colorwayGroup !== '') {
-    payload.colorwayGroup = String(colorwayGroup);
+    payload.colorway_group = String(colorwayGroup);
   }
   if (brand) payload.brand = String(brand);
-  if (sampleBooks) payload.sampleBooks = sampleBooks;
-  if (ecoFriendly) payload.ecoFriendly = ecoFriendly;
-  if (constructionType) payload.constructionType = constructionType;
+  if (sampleBooks) payload.sample_books = sampleBooks;
+  if (ecoFriendly) payload.eco_friendly = ecoFriendly;
+  if (constructionType) payload.construction_type = constructionType;
   if (properties) payload.properties = properties;
-  payload.isNew = row['New'] === 'X';
+  payload.is_new = row['New'] === 'X';
 
   return payload;
 }
 
 /**
- * Firestore's `sku` field is scraped verbatim from the site's JSON-LD, which for most products is
+ * The `sku` column is scraped verbatim from the site's JSON-LD, which for most products is
  * "<code> <pattern name>" (e.g. "1003 Edinbourgh") rather than the bare code — only a minority of
  * newer-format products (e.g. "10000-01") have no name suffix. The spreadsheet's sku column is
- * always the bare code, so the join key is the leading whitespace-delimited token of Firestore's
- * sku, not the full string.
+ * always the bare code, so the join key is the leading whitespace-delimited token of our sku,
+ * not the full string.
  */
 function leadingSkuToken(sku) {
   return String(sku || '').trim().split(/\s+/)[0];
 }
 
-async function loadSkuMap(db) {
-  const snapshot = await db.collection('charlotteFabrics').get();
-  const skuToDocId = new Map();
+async function loadSkuMap(supabase) {
+  const { data, error } = await supabase.from('charlotte_fabrics').select('id, sku');
+  if (error) throw error;
+
+  const skuToId = new Map();
   const duplicates = [];
-  snapshot.docs.forEach((doc) => {
-    const code = leadingSkuToken(doc.data().sku);
+  (data || []).forEach((row) => {
+    const code = leadingSkuToken(row.sku);
     if (!code) return;
-    if (skuToDocId.has(code)) {
-      duplicates.push({ sku: code, docIds: [skuToDocId.get(code), doc.id] });
+    if (skuToId.has(code)) {
+      duplicates.push({ sku: code, ids: [skuToId.get(code), row.id] });
       return; // keep the first match, skip the rest
     }
-    skuToDocId.set(code, doc.id);
+    skuToId.set(code, row.id);
   });
-  return { skuToDocId, duplicates };
+  return { skuToId, duplicates };
 }
 
 async function main() {
@@ -127,7 +116,7 @@ async function main() {
     return;
   }
 
-  console.log(`Mode: ${write ? 'WRITE (committing to Firestore)' : 'DRY RUN (no writes — pass --write to commit)'}`);
+  console.log(`Mode: ${write ? 'WRITE (committing to Supabase)' : 'DRY RUN (no writes — pass --write to commit)'}`);
   console.log(`Reading "${SHEET_NAME}" from ${file}...`);
 
   const workbook = XLSX.readFile(file);
@@ -140,34 +129,38 @@ async function main() {
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
   console.log(`Parsed ${rows.length} rows.\n`);
 
-  initFirebase();
-  const db = admin.firestore();
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    console.error('Supabase is not configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing).');
+    process.exitCode = 1;
+    return;
+  }
 
   try {
-    console.log('Loading existing charlotteFabrics catalog for SKU matching...');
-    const { skuToDocId, duplicates } = await loadSkuMap(db);
-    console.log(`Loaded ${skuToDocId.size} unique SKUs from Firestore.`);
+    console.log('Loading existing charlotte_fabrics catalog for SKU matching...');
+    const { skuToId, duplicates } = await loadSkuMap(supabase);
+    console.log(`Loaded ${skuToId.size} unique SKUs from Supabase.`);
     if (duplicates.length > 0) {
-      console.warn(`Warning: ${duplicates.length} duplicate SKU(s) found in Firestore — only the first doc per SKU was matched:`);
-      duplicates.forEach((d) => console.warn(`  sku ${d.sku}: ${d.docIds.join(', ')}`));
+      console.warn(`Warning: ${duplicates.length} duplicate SKU(s) found — only the first row per SKU was matched:`);
+      duplicates.forEach((d) => console.warn(`  sku ${d.sku}: ${d.ids.join(', ')}`));
     }
 
-    const now = admin.firestore.Timestamp.fromDate(new Date());
+    const nowIso = new Date().toISOString();
     const unmatched = [];
-    const matches = []; // { sku, docId, payload }
+    const matches = []; // { sku, id, payload }
     const unmatchedByCategory = new Map();
 
     for (const row of rows) {
       const sku = String(row.sku ?? '').trim();
       if (!sku) continue;
-      const docId = skuToDocId.get(sku);
-      if (!docId) {
+      const id = skuToId.get(sku);
+      if (!id) {
         const category = row['Category'] || 'Unknown';
         unmatchedByCategory.set(category, (unmatchedByCategory.get(category) || 0) + 1);
         unmatched.push({ sku, colorName: row['Color Name'] || '', category });
         continue;
       }
-      matches.push({ sku, docId, payload: buildUpdatePayload(row, now) });
+      matches.push({ sku, id, payload: buildUpdatePayload(row, nowIso) });
     }
 
     console.log(`\nMatched: ${matches.length} / ${rows.length}`);
@@ -177,37 +170,40 @@ async function main() {
     }
 
     console.log('\nSample of planned updates:');
-    matches.slice(0, 3).forEach(({ sku, docId, payload }) => {
-      console.log(`  sku ${sku} (doc ${docId}):`, JSON.stringify({ ...payload, masterSpreadsheetImportedAt: undefined }));
+    matches.slice(0, 3).forEach(({ sku, id, payload }) => {
+      console.log(`  sku ${sku} (id ${id}):`, JSON.stringify({ ...payload, master_spreadsheet_imported_at: undefined }));
     });
 
     fs.writeFileSync(REPORT_FILE, JSON.stringify(unmatched, null, 2));
     console.log(`\nUnmatched SKU report written to ${REPORT_FILE}`);
 
     if (!write) {
-      console.log('\nDry run complete — no Firestore writes were made. Re-run with --write to commit.');
+      console.log('\nDry run complete — no writes were made. Re-run with --write to commit.');
       return;
     }
 
-    console.log(`\nCommitting ${matches.length} update(s) in batches of ${BATCH_CHUNK_SIZE}...`);
+    console.log(`\nCommitting ${matches.length} update(s) with concurrency ${UPDATE_CONCURRENCY}...`);
     let committed = 0;
-    for (let i = 0; i < matches.length; i += BATCH_CHUNK_SIZE) {
-      const chunk = matches.slice(i, i + BATCH_CHUNK_SIZE);
-      const batch = db.batch();
-      chunk.forEach(({ docId, payload }) => {
-        batch.update(db.collection('charlotteFabrics').doc(docId), payload);
-      });
-      await batch.commit();
-      committed += chunk.length;
-      console.log(`  committed ${committed} / ${matches.length}`);
-    }
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < matches.length) {
+        const myIndex = nextIndex;
+        nextIndex += 1;
+        const { id, payload } = matches[myIndex];
+        const { error } = await supabase.from('charlotte_fabrics').update(payload).eq('id', id);
+        if (error) console.error(`Failed to update id ${id}:`, error.message);
+        committed += 1;
+        if (committed % 100 === 0 || committed === matches.length) {
+          console.log(`  committed ${committed} / ${matches.length}`);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: UPDATE_CONCURRENCY }, () => worker()));
 
     console.log('\n✅ Import complete.');
   } catch (err) {
     console.error('Import failed:', err);
     process.exitCode = 1;
-  } finally {
-    await admin.app().delete();
   }
 }
 

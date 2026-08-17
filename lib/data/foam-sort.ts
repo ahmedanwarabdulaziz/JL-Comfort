@@ -1,29 +1,21 @@
-import { updateDoc, doc, writeBatch } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { FoamType } from '@/lib/types/foam';
 
 /**
  * Update the sort order of multiple foam types
  */
-export const updateFoamTypesOrder = async (
-  foamTypes: FoamType[]
-): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    // For mock data, just update the sortOrder in memory
-    return;
-  }
+export const updateFoamTypesOrder = async (foamTypes: FoamType[]): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const batch = writeBatch(db!);
-    
-    foamTypes.forEach((foamType, index) => {
-      const foamRef = doc(db!, 'foam', foamType.id);
-      batch.update(foamRef, { sortOrder: index });
-    });
+  for (let index = 0; index < foamTypes.length; index++) {
+    const { error } = await supabase
+      .from('foam')
+      .update({ sort_order: index })
+      .eq('id', foamTypes[index].id);
 
-    await batch.commit();
-  } catch (error) {
-    console.error('Error updating foam types order:', error);
-    throw error;
+    if (error) {
+      console.error('Error updating foam types order:', error);
+      throw error;
+    }
   }
 };

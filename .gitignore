@@ -40,3 +40,6 @@ next-env.d.ts
 
 # Vendor data imports (contains wholesale cost pricing)
 /data/
+
+# Generated data-migration SQL (regeneratable from Firestore, contains real catalog data)
+supabase/sql/data/*.generated.sql

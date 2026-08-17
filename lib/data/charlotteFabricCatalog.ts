@@ -1,18 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-  writeBatch,
-  updateDoc,
-  arrayUnion,
-  Timestamp,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import {
   CharlotteFabric,
   CharlotteFabricFilters,
@@ -20,9 +6,9 @@ import {
   CharlotteFabricsSyncRun,
 } from '@/lib/types/charlotteFabric';
 
-// Firestore batch writes are capped at 500 ops; chunk bulk updates at 400 to stay well under it,
-// mirroring the same chunking used in scripts/sync-charlotte-fabrics.js's deactivation step.
-const BATCH_CHUNK_SIZE = 400;
+// Postgres has no Firestore-style operation-count cap, but we still chunk bulk
+// updates to keep any single PostgREST request reasonably sized.
+const REQUEST_CHUNK_SIZE = 500;
 const chunk = <T,>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
@@ -32,74 +18,66 @@ const chunk = <T,>(items: T[], size: number): T[][] => {
 /** Sentinel value for the "Unpriced (no tag)" price-tag filter option. */
 export const UNTAGGED_PRICE_TAG_FILTER = '__untagged__';
 
-const convertTimestamp = (timestamp: Timestamp | Date | string | null | undefined): Date => {
-  if (!timestamp) return new Date();
-  if (timestamp instanceof Date) return timestamp;
-  if (typeof timestamp === 'string') return new Date(timestamp);
-  return timestamp.toDate();
-};
-
-const docToCharlotteFabric = (docId: string, data: any): CharlotteFabric => ({
-  id: docId,
-  name: data.name || '',
-  sku: data.sku || '',
-  productUrl: data.productUrl || '',
-  imageUrl: data.imageUrl || '',
-  imageOk: data.imageOk ?? true,
-  color: data.color || [],
-  pattern: data.pattern || [],
-  material: data.material || [],
-  applications: data.applications || [],
-  markets: data.markets || [],
-  fiberContent: data.fiberContent || '',
-  durability: data.durability || '',
-  width: data.width || '',
-  repeat: data.repeat || '',
-  patternDirection: data.patternDirection || '',
-  cleanability: data.cleanability || '',
-  flammability: data.flammability || '',
-  origin: data.origin || '',
-  features: data.features || '',
-  performance: data.performance || '',
-  specs: data.specs || {},
-  availability: data.availability || 'InStock',
-  status: data.status || 'active',
-  firstSeenAt: convertTimestamp(data.firstSeenAt),
-  lastSeenAt: convertTimestamp(data.lastSeenAt),
-  lastCheckedAt: convertTimestamp(data.lastCheckedAt),
-  priceTagId: data.priceTagId ?? null,
-  groupIds: data.groupIds || [],
-  costPrice: data.costPrice,
-  mapPrice: data.mapPrice,
-  retailPrice: data.retailPrice,
-  colorwayGroup: data.colorwayGroup,
-  brand: data.brand,
-  sampleBooks: data.sampleBooks,
-  ecoFriendly: data.ecoFriendly,
-  constructionType: data.constructionType,
-  properties: data.properties,
-  isNew: data.isNew,
-  masterSpreadsheetImportedAt: data.masterSpreadsheetImportedAt
-    ? convertTimestamp(data.masterSpreadsheetImportedAt)
+const rowToCharlotteFabric = (row: any): CharlotteFabric => ({
+  id: row.id,
+  name: row.name || '',
+  sku: row.sku || '',
+  productUrl: row.product_url || '',
+  imageUrl: row.image_url || '',
+  imageOk: row.image_ok ?? true,
+  color: row.color || [],
+  pattern: row.pattern || [],
+  material: row.material || [],
+  applications: row.applications || [],
+  markets: row.markets || [],
+  fiberContent: row.fiber_content || '',
+  durability: row.durability || '',
+  width: row.width || '',
+  repeat: row.repeat || '',
+  patternDirection: row.pattern_direction || '',
+  cleanability: row.cleanability || '',
+  flammability: row.flammability || '',
+  origin: row.origin || '',
+  features: row.features || '',
+  performance: row.performance || '',
+  specs: row.specs || {},
+  availability: row.availability || 'InStock',
+  status: row.status || 'active',
+  firstSeenAt: new Date(row.first_seen_at),
+  lastSeenAt: new Date(row.last_seen_at),
+  lastCheckedAt: new Date(row.last_checked_at),
+  priceTagId: row.price_tag_id ?? null,
+  groupIds: (row.fabric_group_members || []).map((m: any) => m.group_id),
+  costPrice: row.cost_price,
+  mapPrice: row.map_price,
+  retailPrice: row.retail_price,
+  colorwayGroup: row.colorway_group,
+  brand: row.brand,
+  sampleBooks: row.sample_books,
+  ecoFriendly: row.eco_friendly,
+  constructionType: row.construction_type,
+  properties: row.properties,
+  isNew: row.is_new,
+  masterSpreadsheetImportedAt: row.master_spreadsheet_imported_at
+    ? new Date(row.master_spreadsheet_imported_at)
     : undefined,
-  manualRetailPrice: data.manualRetailPrice,
+  manualRetailPrice: row.manual_retail_price,
 });
 
 /** Fetches every active Charlotte Fabrics catalog item. Filtering happens client-side via filterFabrics(). */
 export const getCharlotteFabrics = async (): Promise<CharlotteFabric[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [];
-  }
+  if (!supabase) return [];
 
-  try {
-    const ref = collection(db, 'charlotteFabrics');
-    const q = query(ref, where('status', '==', 'active'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => docToCharlotteFabric(d.id, d.data()));
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('charlotte_fabrics')
+    .select('*, fabric_group_members(group_id)')
+    .eq('status', 'active');
+
+  if (error) {
     console.error('Error fetching Charlotte Fabrics catalog:', error);
     return [];
   }
+  return (data || []).map(rowToCharlotteFabric);
 };
 
 // Same public R2 bucket URL/fallback as lib/cloudflare/r2.ts, exposed with the NEXT_PUBLIC_
@@ -110,9 +88,9 @@ const CATALOG_SNAPSHOT_URL = `${R2_PUBLIC_URL}/catalog/charlotte-fabrics.json`;
 
 /**
  * Fetches the pre-synced catalog snapshot scripts/sync-charlotte-fabrics.js publishes to R2
- * after each run. Used by the public storefront so a visitor page view never queries Firestore
- * directly — unlike getCharlotteFabrics() below, which the low-traffic admin table still uses
- * for the freshest data. Returns [] (rather than throwing) if no snapshot has been published yet.
+ * after each run. Used by the public storefront so a visitor page view never queries the
+ * database directly — unlike getCharlotteFabrics() above, which the low-traffic admin table still
+ * uses for the freshest data. Returns [] (rather than throwing) if no snapshot has been published yet.
  */
 export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabricSnapshotItem[]> => {
   try {
@@ -125,7 +103,10 @@ export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabricSnap
     const items = await res.json();
     if (!Array.isArray(items)) return [];
     return items.map((item) => ({
-      ...docToCharlotteFabric(item.id, item),
+      ...item,
+      firstSeenAt: item.firstSeenAt ? new Date(item.firstSeenAt) : new Date(),
+      lastSeenAt: item.lastSeenAt ? new Date(item.lastSeenAt) : new Date(),
+      lastCheckedAt: item.lastCheckedAt ? new Date(item.lastCheckedAt) : new Date(),
       pricePerYard: item.pricePerYard ?? null,
       priceTagName: item.priceTagName ?? null,
     }));
@@ -165,106 +146,121 @@ export const filterFabrics = <T extends CharlotteFabric>(
   });
 };
 
-/** Bulk-assigns one price tag to every given Charlotte Fabric doc id, chunked to stay under Firestore's 500-op batch limit. */
+/** Bulk-assigns one price tag to every given Charlotte Fabric row id. */
 export const bulkAssignPriceTag = async (ids: string[], priceTagId: string): Promise<void> => {
-  if (!db || ids.length === 0) return;
-  for (const group of chunk(ids, BATCH_CHUNK_SIZE)) {
-    const batch = writeBatch(db);
-    group.forEach((id) => {
-      batch.update(doc(db!, 'charlotteFabrics', id), { priceTagId });
-    });
-    await batch.commit();
+  if (!supabase || ids.length === 0) return;
+  for (const group of chunk(ids, REQUEST_CHUNK_SIZE)) {
+    const { error } = await supabase
+      .from('charlotte_fabrics')
+      .update({ price_tag_id: priceTagId })
+      .in('id', group);
+    if (error) {
+      console.error('Error bulk-assigning price tag:', error);
+      throw error;
+    }
   }
 };
 
-/** Bulk-adds every given Charlotte Fabric doc id to a group, without disturbing existing group membership. */
+/** Bulk-adds every given Charlotte Fabric row id to a group, without disturbing existing group membership. */
 export const bulkAddToGroup = async (ids: string[], groupId: string): Promise<void> => {
-  if (!db || ids.length === 0) return;
-  for (const group of chunk(ids, BATCH_CHUNK_SIZE)) {
-    const batch = writeBatch(db);
-    group.forEach((id) => {
-      batch.update(doc(db!, 'charlotteFabrics', id), { groupIds: arrayUnion(groupId) });
-    });
-    await batch.commit();
+  if (!supabase || ids.length === 0) return;
+  for (const group of chunk(ids, REQUEST_CHUNK_SIZE)) {
+    const { error } = await supabase
+      .from('fabric_group_members')
+      .upsert(
+        group.map((fabricId) => ({ fabric_id: fabricId, group_id: groupId })),
+        { onConflict: 'fabric_id,group_id', ignoreDuplicates: true }
+      );
+    if (error) {
+      console.error('Error bulk-adding to group:', error);
+      throw error;
+    }
   }
 };
 
 /**
- * Sets (or clears, with null) a manual price override on a single Charlotte Fabric doc. Always
+ * Sets (or clears, with null) a manual price override on a single Charlotte Fabric row. Always
  * wins over retailPrice/priceTagId — see resolveEffectivePrice in charlotteFabricPricing.ts.
  */
 export const setFabricManualPrice = async (id: string, manualRetailPrice: number | null): Promise<void> => {
-  if (!db) return;
-  await updateDoc(doc(db, 'charlotteFabrics', id), { manualRetailPrice });
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('charlotte_fabrics')
+    .update({ manual_retail_price: manualRetailPrice })
+    .eq('id', id);
+  if (error) {
+    console.error('Error setting manual price:', error);
+    throw error;
+  }
 };
 
-const docToSyncRun = (docId: string, data: any): CharlotteFabricsSyncRun => ({
-  id: docId,
-  startedAt: convertTimestamp(data.startedAt),
-  finishedAt: data.finishedAt ? convertTimestamp(data.finishedAt) : null,
-  lastUpdatedAt: convertTimestamp(data.lastUpdatedAt || data.startedAt),
-  status: data.status || 'running',
-  phase: data.phase || 'crawling-facets',
-  discovered: data.discovered ?? 0,
+const rowToSyncRun = (row: any): CharlotteFabricsSyncRun => ({
+  id: row.id,
+  startedAt: new Date(row.started_at),
+  finishedAt: row.finished_at ? new Date(row.finished_at) : null,
+  lastUpdatedAt: new Date(row.last_updated_at || row.started_at),
+  status: row.status || 'running',
+  phase: row.phase || 'crawling-facets',
+  discovered: row.discovered ?? 0,
   totals: {
-    scanned: data.totals?.scanned ?? 0,
-    added: data.totals?.added ?? 0,
-    updated: data.totals?.updated ?? 0,
-    deactivated: data.totals?.deactivated ?? 0,
-    brokenImages: data.totals?.brokenImages ?? 0,
-    errors: data.totals?.errors ?? 0,
-    structuralWarnings: data.totals?.structuralWarnings ?? 0,
+    scanned: row.scanned ?? 0,
+    added: row.added ?? 0,
+    updated: row.updated ?? 0,
+    deactivated: row.deactivated ?? 0,
+    brokenImages: row.broken_images ?? 0,
+    errors: row.errors ?? 0,
+    structuralWarnings: row.structural_warnings ?? 0,
   },
-  errorLog: data.errorLog || [],
+  errorLog: row.error_log || [],
 });
 
 /** Fetches the most recent sync run, for the admin status dashboard. */
 export const getLatestSyncRun = async (): Promise<CharlotteFabricsSyncRun | null> => {
-  if (!isFirebaseConfigured() || !db) {
-    return null;
-  }
+  if (!supabase) return null;
 
-  try {
-    const ref = collection(db, 'charlotteFabricsSyncRuns');
-    const q = query(ref, orderBy('startedAt', 'desc'), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    const first = snapshot.docs[0];
-    return docToSyncRun(first.id, first.data());
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('charlotte_fabric_sync_runs')
+    .select('*')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
     console.error('Error fetching latest Charlotte Fabrics sync run:', error);
     return null;
   }
+  return data ? rowToSyncRun(data) : null;
 };
 
 /**
  * Live-subscribes to the most recent sync run, for real-time progress in the admin dashboard.
- * Returns an unsubscribe function; call it on cleanup (e.g. a useEffect return).
+ * Returns an unsubscribe function; call it on cleanup (e.g. a useEffect return). RLS on
+ * charlotte_fabric_sync_runs is admin-only-read, so this naturally only delivers events to an
+ * authenticated admin session.
  */
 export const subscribeToLatestSyncRun = (
   onChange: (run: CharlotteFabricsSyncRun | null) => void
 ): (() => void) => {
-  if (!isFirebaseConfigured() || !db) {
+  const client = supabase;
+  if (!client) {
     onChange(null);
     return () => {};
   }
 
-  const ref = collection(db, 'charlotteFabricsSyncRuns');
-  const q = query(ref, orderBy('startedAt', 'desc'), limit(1));
+  getLatestSyncRun().then(onChange);
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      if (snapshot.empty) {
-        onChange(null);
-        return;
+  const channel = client
+    .channel('charlotte-fabric-sync-runs-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'charlotte_fabric_sync_runs' },
+      () => {
+        getLatestSyncRun().then(onChange);
       }
-      const first = snapshot.docs[0];
-      onChange(docToSyncRun(first.id, first.data()));
-    },
-    (error) => {
-      console.error('Error subscribing to latest Charlotte Fabrics sync run:', error);
-      onChange(null);
-    }
-  );
+    )
+    .subscribe();
+
+  return () => {
+    client.removeChannel(channel);
+  };
 };

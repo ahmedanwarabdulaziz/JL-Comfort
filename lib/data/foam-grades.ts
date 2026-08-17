@@ -1,181 +1,112 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy,
-  where,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { FoamGrade, FoamGradeInput } from '@/lib/types/foam-grade';
 
-// Helper to convert Firestore timestamp to Date
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
-};
-
-// Helper to convert Firestore doc to FoamGrade
-const docToFoamGrade = (docId: string, data: any): FoamGrade => {
-  return {
-    id: docId,
-    brand: data.brand || '',
-    gradeName: data.gradeName || '',
-    price: data.price ?? 0,
-    density: data.density || '',
-    firmness: data.firmness || '',
-    warranty: data.warranty || '',
-    createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-    updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
-  };
-};
+const rowToFoamGrade = (row: any): FoamGrade => ({
+  id: row.id,
+  brand: row.brand || '',
+  gradeName: row.grade_name || '',
+  price: row.price ?? 0,
+  density: row.density || '',
+  firmness: row.firmness || '',
+  warranty: row.warranty || '',
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+});
 
 export const getFoamGrades = async (brand?: string): Promise<FoamGrade[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [];
-  }
+  if (!supabase) return [];
 
-  try {
-    const gradesRef = collection(db, 'foamGrades');
-    let q = query(gradesRef);
-    
-    if (brand) {
-      q = query(gradesRef, where('brand', '==', brand), orderBy('gradeName', 'asc'));
-    } else {
-      q = query(gradesRef, orderBy('brand', 'asc'), orderBy('gradeName', 'asc'));
-    }
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => docToFoamGrade(doc.id, doc.data()));
-  } catch (error) {
+  let query = supabase.from('foam_grades').select('*');
+  query = brand
+    ? query.eq('brand', brand).order('grade_name', { ascending: true })
+    : query.order('brand', { ascending: true }).order('grade_name', { ascending: true });
+
+  const { data, error } = await query;
+  if (error) {
     console.error('Error fetching foam grades:', error);
-    // If orderBy fails, try without it
-    try {
-      const gradesRef = collection(db, 'foamGrades');
-      let fallbackQuery = query(gradesRef);
-      
-      if (brand) {
-        fallbackQuery = query(gradesRef, where('brand', '==', brand));
-      }
-      
-      const snapshot = await getDocs(fallbackQuery);
-      const results = snapshot.docs.map((doc) => docToFoamGrade(doc.id, doc.data()));
-      
-      // Sort in memory
-      if (brand) {
-        return results.sort((a, b) => a.gradeName.localeCompare(b.gradeName));
-      } else {
-        return results.sort((a, b) => {
-          const brandCompare = a.brand.localeCompare(b.brand);
-          return brandCompare !== 0 ? brandCompare : a.gradeName.localeCompare(b.gradeName);
-        });
-      }
-    } catch (fallbackError) {
-      console.error('Fallback query also failed:', fallbackError);
-      return [];
-    }
+    throw error;
   }
+  return (data || []).map(rowToFoamGrade);
 };
 
 export const getFoamGrade = async (id: string): Promise<FoamGrade | null> => {
-  if (!isFirebaseConfigured() || !db) {
-    return null;
-  }
+  if (!supabase) return null;
 
-  try {
-    const gradeRef = doc(db, 'foamGrades', id);
-    const gradeSnap = await getDoc(gradeRef);
-    if (gradeSnap.exists()) {
-      return docToFoamGrade(gradeSnap.id, gradeSnap.data());
-    }
-    return null;
-  } catch (error) {
+  const { data, error } = await supabase.from('foam_grades').select('*').eq('id', id).maybeSingle();
+  if (error) {
     console.error('Error fetching foam grade:', error);
-    return null;
+    throw error;
   }
+  return data ? rowToFoamGrade(data) : null;
 };
 
 export const getFoamGradeBrands = async (): Promise<string[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [];
-  }
+  if (!supabase) return [];
 
-  try {
-    const gradesRef = collection(db, 'foamGrades');
-    const snapshot = await getDocs(gradesRef);
-    const brands = new Set<string>();
-    snapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      if (data.brand) {
-        brands.add(data.brand);
-      }
-    });
-    return Array.from(brands).sort();
-  } catch (error) {
+  const { data, error } = await supabase.from('foam_grades').select('brand').order('brand', { ascending: true });
+  if (error) {
     console.error('Error fetching foam grade brands:', error);
-    return [];
+    throw error;
   }
+  return Array.from(new Set((data || []).map((row: any) => row.brand).filter(Boolean))).sort();
 };
 
 export const createFoamGrade = async (input: FoamGradeInput): Promise<FoamGrade> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const gradesRef = collection(db, 'foamGrades');
-    const docRef = await addDoc(gradesRef, {
-      ...input,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToFoamGrade(docRef.id, newDoc.data());
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('foam_grades')
+    .insert({
+      brand: input.brand,
+      grade_name: input.gradeName,
+      price: input.price,
+      density: input.density,
+      firmness: input.firmness,
+      warranty: input.warranty,
+    })
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error creating foam grade:', error);
     throw error;
   }
+  return rowToFoamGrade(data);
 };
 
 export const updateFoamGrade = async (
   id: string,
   input: Partial<FoamGradeInput>
 ): Promise<FoamGrade> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const gradeRef = doc(db, 'foamGrades', id);
-    await updateDoc(gradeRef, {
-      ...input,
-      updatedAt: serverTimestamp(),
-    });
-    const updatedDoc = await getDoc(gradeRef);
-    return docToFoamGrade(id, updatedDoc.data());
-  } catch (error) {
+  const patch: Record<string, unknown> = {};
+  if (input.brand !== undefined) patch.brand = input.brand;
+  if (input.gradeName !== undefined) patch.grade_name = input.gradeName;
+  if (input.price !== undefined) patch.price = input.price;
+  if (input.density !== undefined) patch.density = input.density;
+  if (input.firmness !== undefined) patch.firmness = input.firmness;
+  if (input.warranty !== undefined) patch.warranty = input.warranty;
+
+  const { data, error } = await supabase
+    .from('foam_grades')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating foam grade:', error);
     throw error;
   }
+  return rowToFoamGrade(data);
 };
 
 export const deleteFoamGrade = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const gradeRef = doc(db, 'foamGrades', id);
-    await deleteDoc(gradeRef);
-  } catch (error) {
+  const { error } = await supabase.from('foam_grades').delete().eq('id', id);
+  if (error) {
     console.error('Error deleting foam grade:', error);
     throw error;
   }

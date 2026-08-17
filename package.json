@@ -10,7 +10,9 @@
     "setup-admin": "node scripts/setup-admin-user.js",
     "sync-charlotte-fabrics": "node scripts/sync-charlotte-fabrics.js",
     "import-charlotte-master": "node scripts/import-charlotte-master-spreadsheet.js",
-    "publish-fabric-pricing": "node scripts/publish-fabric-pricing.js"
+    "publish-fabric-pricing": "node scripts/publish-fabric-pricing.js",
+    "export-firestore-to-supabase-sql": "node scripts/export-firestore-to-supabase-sql.js",
+    "export-firestore-phase2-to-supabase-sql": "node scripts/export-firestore-phase2-to-supabase-sql.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",
@@ -24,6 +26,8 @@
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@stripe/stripe-js": "^9.8.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
     "cheerio": "^1.2.0",
     "firebase": "^10.12.0",
     "next": "^14.2.0",

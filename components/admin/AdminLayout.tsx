@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signOut } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Box,
@@ -32,9 +31,11 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ChatIcon from '@mui/icons-material/Chat';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import { auth } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import ProductsList from './ProductsList';
 
 const DRAWER_WIDTH = 240;
@@ -51,7 +52,7 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests' | 'ai-chat-logs' | 'ai-settings'
   >(
     pathname?.includes('/foam')
       ? 'foam'
@@ -61,10 +62,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
       ? 'fabric-groups'
       : pathname?.includes('/fabric-catalog')
       ? 'fabric-catalog'
+      : pathname?.includes('/ai-chat-logs')
+      ? 'ai-chat-logs'
       : pathname?.includes('/sample-requests')
       ? 'sample-requests'
       : pathname?.includes('/bench-cushions')
       ? 'bench-cushions'
+      : pathname?.includes('/ai-settings')
+      ? 'ai-settings'
       : 'products'
   );
 
@@ -73,9 +78,10 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
   };
 
   const handleLogout = async () => {
-    if (auth) {
-      await signOut(auth);
-      router.push('/');
+    if (supabase) {
+      await supabase.auth.signOut();
+      router.push('/admin/login');
+      router.refresh();
     }
   };
 
@@ -260,6 +266,34 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <LocalShippingIcon />
             </ListItemIcon>
             <ListItemText primary="Sample Requests" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/ai-chat-logs')}
+            onClick={() => {
+              router.push('/admin/ai-chat-logs');
+              setSelectedView('ai-chat-logs');
+            }}
+          >
+            <ListItemIcon>
+              <ChatIcon />
+            </ListItemIcon>
+            <ListItemText primary="AI Chat Logs" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/ai-settings')}
+            onClick={() => {
+              router.push('/admin/ai-settings');
+              setSelectedView('ai-settings');
+            }}
+          >
+            <ListItemIcon>
+              <PsychologyIcon />
+            </ListItemIcon>
+            <ListItemText primary="Yousha Brain" />
           </ListItemButton>
         </ListItem>
       </List>

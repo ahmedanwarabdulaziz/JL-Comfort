@@ -1,138 +1,83 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { FabricPriceTag, FabricPriceTagInput } from '@/lib/types/fabricPriceTag';
 
-// Mock data fallback
-const mockFabricPriceTags: FabricPriceTag[] = [
-  { id: '1', name: 'Economy', pricePerYard: 12, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: '2', name: 'Standard', pricePerYard: 22, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
-  { id: '3', name: 'Premium', pricePerYard: 40, sortOrder: 2, createdAt: new Date(), updatedAt: new Date() },
-];
-
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
-};
-
-const docToFabricPriceTag = (docId: string, data: any): FabricPriceTag => ({
-  id: docId,
-  name: data.name || '',
-  pricePerYard: data.pricePerYard ?? 0,
-  sortOrder: data.sortOrder ?? 0,
-  createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-  updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
+const rowToFabricPriceTag = (row: any): FabricPriceTag => ({
+  id: row.id,
+  name: row.name || '',
+  pricePerYard: row.price_per_yard ?? 0,
+  sortOrder: row.sort_order ?? 0,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
 });
 
 export const getFabricPriceTags = async (): Promise<FabricPriceTag[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [...mockFabricPriceTags].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }
+  if (!supabase) return [];
 
-  try {
-    const ref = collection(db, 'fabricPriceTags');
+  const { data, error } = await supabase
+    .from('fabric_price_tags')
+    .select('*')
+    .order('sort_order', { ascending: true });
 
-    try {
-      const q = query(ref, orderBy('sortOrder', 'asc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map((d) => docToFabricPriceTag(d.id, d.data()));
-    } catch (orderByError: any) {
-      if (orderByError?.code === 'failed-precondition' || orderByError?.message?.includes('index')) {
-        const snapshot = await getDocs(ref);
-        const results = snapshot.docs.map((d) => docToFabricPriceTag(d.id, d.data()));
-        return results.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-      }
-      throw orderByError;
-    }
-  } catch (error: any) {
+  if (error) {
     console.error('Error fetching fabric price tags:', error);
-    if (error?.code !== 'permission-denied') {
-      return [...mockFabricPriceTags].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }
-    return [];
+    throw error;
   }
+  return (data || []).map(rowToFabricPriceTag);
 };
 
 export const createFabricPriceTag = async (input: FabricPriceTagInput): Promise<FabricPriceTag> => {
+  if (!supabase) throw new Error('Supabase not configured');
+
   const existing = await getFabricPriceTags();
   const maxSortOrder = existing.length > 0 ? Math.max(...existing.map((t) => t.sortOrder || 0)) : -1;
 
-  if (!isFirebaseConfigured() || !db) {
-    const newTag: FabricPriceTag = {
-      id: String(mockFabricPriceTags.length + 1),
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockFabricPriceTags.push(newTag);
-    return newTag;
-  }
+  const { data, error } = await supabase
+    .from('fabric_price_tags')
+    .insert({
+      name: input.name,
+      price_per_yard: input.pricePerYard,
+      sort_order: input.sortOrder ?? maxSortOrder + 1,
+    })
+    .select()
+    .single();
 
-  try {
-    const ref = collection(db, 'fabricPriceTags');
-    const docRef = await addDoc(ref, {
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToFabricPriceTag(docRef.id, newDoc.data());
-  } catch (error) {
+  if (error) {
     console.error('Error creating fabric price tag:', error);
     throw error;
   }
+  return rowToFabricPriceTag(data);
 };
 
 export const updateFabricPriceTag = async (
   id: string,
   input: Partial<FabricPriceTagInput>
 ): Promise<FabricPriceTag> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockFabricPriceTags.findIndex((t) => t.id === id);
-    if (index !== -1) {
-      mockFabricPriceTags[index] = { ...mockFabricPriceTags[index], ...input, updatedAt: new Date() };
-      return mockFabricPriceTags[index];
-    }
-    throw new Error('Fabric price tag not found');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ref = doc(db, 'fabricPriceTags', id);
-    await updateDoc(ref, { ...input, updatedAt: serverTimestamp() });
-    const updatedDoc = await getDoc(ref);
-    return docToFabricPriceTag(id, updatedDoc.data());
-  } catch (error) {
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.pricePerYard !== undefined) patch.price_per_yard = input.pricePerYard;
+  if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+
+  const { data, error } = await supabase
+    .from('fabric_price_tags')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating fabric price tag:', error);
     throw error;
   }
+  return rowToFabricPriceTag(data);
 };
 
 export const deleteFabricPriceTag = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockFabricPriceTags.findIndex((t) => t.id === id);
-    if (index !== -1) mockFabricPriceTags.splice(index, 1);
-    return;
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ref = doc(db, 'fabricPriceTags', id);
-    await deleteDoc(ref);
-  } catch (error) {
+  const { error } = await supabase.from('fabric_price_tags').delete().eq('id', id);
+  if (error) {
     console.error('Error deleting fabric price tag:', error);
     throw error;
   }

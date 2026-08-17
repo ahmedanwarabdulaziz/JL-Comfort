@@ -1,134 +1,105 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  where,
-  orderBy,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
-import { DimensionRule, DimensionRuleInput, RangeRule } from '@/lib/types/dimension-rules';
+import { supabase } from '@/lib/supabase/client';
+import { DimensionRule, DimensionRuleInput } from '@/lib/types/dimension-rules';
 
-// Helper to convert Firestore timestamp to Date
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
-};
-
-// Helper to convert Firestore doc to DimensionRule
-const docToDimensionRule = (docId: string, data: any): DimensionRule => {
-  return {
-    id: docId,
-    dimensionType: data.dimensionType || 'width',
-    allowFractions: data.allowFractions ?? true,
-    minValue: data.minValue ?? undefined,
-    maxValue: data.maxValue ?? undefined,
-    maxBlockLength: data.maxBlockLength ?? undefined,
-    ranges: data.ranges || [],
-    createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-    updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
-  };
-};
+const rowToDimensionRule = (row: any): DimensionRule => ({
+  id: row.id,
+  dimensionType: row.dimension_type || 'width',
+  allowFractions: row.allow_fractions ?? true,
+  minValue: row.min_value ?? undefined,
+  maxValue: row.max_value ?? undefined,
+  maxBlockLength: row.max_block_length ?? undefined,
+  ranges: row.ranges || [],
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+});
 
 export const getDimensionRules = async (): Promise<DimensionRule[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [];
-  }
+  if (!supabase) return [];
 
-  try {
-    const rulesRef = collection(db, 'dimensionRules');
-    const q = query(rulesRef, orderBy('dimensionType', 'asc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => docToDimensionRule(doc.id, doc.data()));
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('dimension_rules')
+    .select('*')
+    .order('dimension_type', { ascending: true });
+
+  if (error) {
     console.error('Error fetching dimension rules:', error);
-    return [];
+    throw error;
   }
+  return (data || []).map(rowToDimensionRule);
 };
 
-export const getDimensionRule = async (
-  dimensionType: string
-): Promise<DimensionRule | null> => {
-  if (!isFirebaseConfigured() || !db) {
-    return null;
-  }
+export const getDimensionRule = async (dimensionType: string): Promise<DimensionRule | null> => {
+  if (!supabase) return null;
 
-  try {
-    const rulesRef = collection(db, 'dimensionRules');
-    const q = query(rulesRef, where('dimensionType', '==', dimensionType));
-    const snapshot = await getDocs(q);
-    
-    if (snapshot.docs.length > 0) {
-      return docToDimensionRule(snapshot.docs[0].id, snapshot.docs[0].data());
-    }
-    return null;
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('dimension_rules')
+    .select('*')
+    .eq('dimension_type', dimensionType)
+    .maybeSingle();
+
+  if (error) {
     console.error('Error fetching dimension rule:', error);
-    return null;
+    throw error;
   }
+  return data ? rowToDimensionRule(data) : null;
 };
 
-export const createDimensionRule = async (
-  input: DimensionRuleInput
-): Promise<DimensionRule> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+export const createDimensionRule = async (input: DimensionRuleInput): Promise<DimensionRule> => {
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const rulesRef = collection(db, 'dimensionRules');
-    const docRef = await addDoc(rulesRef, {
-      ...input,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToDimensionRule(docRef.id, newDoc.data());
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('dimension_rules')
+    .insert({
+      dimension_type: input.dimensionType,
+      allow_fractions: input.allowFractions,
+      min_value: input.minValue,
+      max_value: input.maxValue,
+      max_block_length: input.maxBlockLength,
+      ranges: input.ranges,
+    })
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error creating dimension rule:', error);
     throw error;
   }
+  return rowToDimensionRule(data);
 };
 
 export const updateDimensionRule = async (
   id: string,
   input: Partial<DimensionRuleInput>
 ): Promise<DimensionRule> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ruleRef = doc(db, 'dimensionRules', id);
-    await updateDoc(ruleRef, {
-      ...input,
-      updatedAt: serverTimestamp(),
-    });
-    const updatedDoc = await getDoc(ruleRef);
-    return docToDimensionRule(id, updatedDoc.data());
-  } catch (error) {
+  const patch: Record<string, unknown> = {};
+  if (input.dimensionType !== undefined) patch.dimension_type = input.dimensionType;
+  if (input.allowFractions !== undefined) patch.allow_fractions = input.allowFractions;
+  if (input.minValue !== undefined) patch.min_value = input.minValue;
+  if (input.maxValue !== undefined) patch.max_value = input.maxValue;
+  if (input.maxBlockLength !== undefined) patch.max_block_length = input.maxBlockLength;
+  if (input.ranges !== undefined) patch.ranges = input.ranges;
+
+  const { data, error } = await supabase
+    .from('dimension_rules')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating dimension rule:', error);
     throw error;
   }
+  return rowToDimensionRule(data);
 };
 
 export const deleteDimensionRule = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    throw new Error('Firebase not configured');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ruleRef = doc(db, 'dimensionRules', id);
-    await deleteDoc(ruleRef);
-  } catch (error) {
+  const { error } = await supabase.from('dimension_rules').delete().eq('id', id);
+  if (error) {
     console.error('Error deleting dimension rule:', error);
     throw error;
   }
@@ -160,7 +131,7 @@ export const calculateRoundedValue = (
   if (rule.ranges && rule.ranges.length > 0) {
     // Sort ranges by min value
     const sortedRanges = [...rule.ranges].sort((a, b) => a.min - b.min);
-    
+
     for (const range of sortedRanges) {
       const max = range.max ?? Infinity;
       if (value >= range.min && value < max) {

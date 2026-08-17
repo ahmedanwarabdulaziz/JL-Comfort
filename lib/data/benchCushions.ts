@@ -1,209 +1,161 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { BenchCushionStyle, BenchCushionStyleInput } from '@/lib/types/benchCushion';
 
-// Mock data fallback
-const mockBenchCushionStyles: BenchCushionStyle[] = [
-  {
-    id: '1',
-    name: 'Rectangular Bench Cushion',
-    description: 'Classic rectangular bench cushion, box-edge or knife-edge.',
-    images: [],
-    dimensions: [
-      { type: 'width', name: 'width', value: 48, unit: 'inch' },
-      { type: 'depth', name: 'depth', value: 20, unit: 'inch' },
-      { type: 'thickness', name: 'thickness', value: 4, unit: 'inch' },
-    ],
-    variables: [
-      {
-        name: 'Edge Style',
-        options: [
-          { label: 'Knife Edge', priceModifier: 0 },
-          { label: 'Box Edge', priceModifier: 25 },
-        ],
-      },
-      {
-        name: 'Piping',
-        options: [
-          { label: 'No Piping', priceModifier: 0 },
-          { label: 'Matching Piping', priceModifier: 15 },
-          { label: 'Contrast Piping', priceModifier: 20 },
-        ],
-      },
-    ],
-    basePrice: 120,
-    currency: 'usd',
-    estimatedYards: 2.5,
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+const SELECT = '*, bench_cushion_variables(*, bench_cushion_variable_options(*))';
 
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
+const rowToBenchCushionStyle = (row: any): BenchCushionStyle => {
+  const variables = (row.bench_cushion_variables || [])
+    .slice()
+    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((v: any) => ({
+      name: v.name || '',
+      options: (v.bench_cushion_variable_options || [])
+        .slice()
+        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((o: any) => ({
+          label: o.label || '',
+          priceModifier: o.price_modifier ?? 0,
+          imageUrl: o.image_url ?? null,
+        })),
+    }));
+
+  return {
+    id: row.id,
+    name: row.name || '',
+    description: row.description || '',
+    images: row.images || [],
+    dimensions: row.dimensions || [],
+    variables,
+    basePrice: row.base_price ?? 0,
+    currency: row.currency || 'usd',
+    estimatedYards: row.estimated_yards ?? 0,
+    sortOrder: row.sort_order ?? 0,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
 };
 
-const docToBenchCushionStyle = (docId: string, data: any): BenchCushionStyle => ({
-  id: docId,
-  name: data.name || '',
-  description: data.description || '',
-  images: data.images || [],
-  dimensions: data.dimensions || [],
-  variables: data.variables || [],
-  basePrice: data.basePrice ?? 0,
-  currency: data.currency || 'usd',
-  estimatedYards: data.estimatedYards ?? 0,
-  sortOrder: data.sortOrder ?? 0,
-  createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-  updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
-});
+const toRpcVariables = (variables: BenchCushionStyleInput['variables']) =>
+  variables.map((v, vi) => ({
+    name: v.name,
+    sort_order: vi,
+    options: v.options.map((o, oi) => ({
+      label: o.label,
+      price_modifier: o.priceModifier,
+      image_url: o.imageUrl,
+      sort_order: oi,
+    })),
+  }));
 
 export const getBenchCushionStyles = async (): Promise<BenchCushionStyle[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [...mockBenchCushionStyles].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }
+  if (!supabase) return [];
 
-  try {
-    const ref = collection(db, 'benchCushions');
+  const { data, error } = await supabase
+    .from('bench_cushions')
+    .select(SELECT)
+    .order('sort_order', { ascending: true });
 
-    try {
-      const q = query(ref, orderBy('sortOrder', 'asc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map((d) => docToBenchCushionStyle(d.id, d.data()));
-    } catch (orderByError: any) {
-      if (
-        orderByError?.code === 'failed-precondition' ||
-        orderByError?.message?.includes('index')
-      ) {
-        const snapshot = await getDocs(ref);
-        const results = snapshot.docs.map((d) => docToBenchCushionStyle(d.id, d.data()));
-        return results.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-      }
-      throw orderByError;
-    }
-  } catch (error: any) {
+  if (error) {
     console.error('Error fetching bench cushion styles:', error);
-    if (error?.code !== 'permission-denied') {
-      return [...mockBenchCushionStyles].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }
-    return [];
+    throw error;
   }
+  return (data || []).map(rowToBenchCushionStyle);
 };
 
 export const getBenchCushionStyle = async (id: string): Promise<BenchCushionStyle | null> => {
-  if (!isFirebaseConfigured() || !db) {
-    return mockBenchCushionStyles.find((s) => s.id === id) || null;
-  }
+  if (!supabase) return null;
 
-  try {
-    const ref = doc(db, 'benchCushions', id);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      return docToBenchCushionStyle(snap.id, snap.data());
-    }
-    return null;
-  } catch (error) {
+  const { data, error } = await supabase.from('bench_cushions').select(SELECT).eq('id', id).maybeSingle();
+  if (error) {
     console.error('Error fetching bench cushion style:', error);
-    return null;
+    throw error;
   }
+  return data ? rowToBenchCushionStyle(data) : null;
 };
 
 export const createBenchCushionStyle = async (
   input: BenchCushionStyleInput
 ): Promise<BenchCushionStyle> => {
+  if (!supabase) throw new Error('Supabase not configured');
+
   const existing = await getBenchCushionStyles();
-  const maxSortOrder = existing.length > 0
-    ? Math.max(...existing.map((s) => s.sortOrder || 0))
-    : -1;
+  const maxSortOrder = existing.length > 0 ? Math.max(...existing.map((s) => s.sortOrder || 0)) : -1;
 
-  if (!isFirebaseConfigured() || !db) {
-    const newStyle: BenchCushionStyle = {
-      id: String(mockBenchCushionStyles.length + 1),
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockBenchCushionStyles.push(newStyle);
-    return newStyle;
-  }
+  const { data: newId, error } = await supabase.rpc('upsert_bench_cushion_style', {
+    style: {
+      name: input.name,
+      description: input.description,
+      images: input.images,
+      dimensions: input.dimensions,
+      base_price: input.basePrice,
+      currency: input.currency,
+      estimated_yards: input.estimatedYards,
+      sort_order: input.sortOrder ?? maxSortOrder + 1,
+      variables: toRpcVariables(input.variables),
+    },
+  });
 
-  try {
-    const ref = collection(db, 'benchCushions');
-    const docRef = await addDoc(ref, {
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToBenchCushionStyle(docRef.id, newDoc.data());
-  } catch (error) {
+  if (error) {
     console.error('Error creating bench cushion style:', error);
     throw error;
   }
+
+  const created = await getBenchCushionStyle(newId as unknown as string);
+  if (!created) throw new Error('Failed to load created bench cushion style');
+  return created;
 };
 
 export const updateBenchCushionStyle = async (
   id: string,
   input: Partial<BenchCushionStyleInput>
 ): Promise<BenchCushionStyle> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockBenchCushionStyles.findIndex((s) => s.id === id);
-    if (index !== -1) {
-      mockBenchCushionStyles[index] = {
-        ...mockBenchCushionStyles[index],
-        ...input,
-        updatedAt: new Date(),
-      };
-      return mockBenchCushionStyles[index];
-    }
-    throw new Error('Bench cushion style not found');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ref = doc(db, 'benchCushions', id);
-    await updateDoc(ref, {
-      ...input,
-      updatedAt: serverTimestamp(),
-    });
-    const updatedDoc = await getDoc(ref);
-    return docToBenchCushionStyle(id, updatedDoc.data());
-  } catch (error) {
+  const current = await getBenchCushionStyle(id);
+  if (!current) throw new Error('Bench cushion style not found');
+
+  const merged: BenchCushionStyleInput = {
+    name: input.name ?? current.name,
+    description: input.description ?? current.description,
+    images: input.images ?? current.images,
+    dimensions: input.dimensions ?? current.dimensions,
+    variables: input.variables ?? current.variables,
+    basePrice: input.basePrice ?? current.basePrice,
+    currency: input.currency ?? current.currency,
+    estimatedYards: input.estimatedYards ?? current.estimatedYards,
+    sortOrder: input.sortOrder ?? current.sortOrder,
+  };
+
+  const { error } = await supabase.rpc('upsert_bench_cushion_style', {
+    style: {
+      id,
+      name: merged.name,
+      description: merged.description,
+      images: merged.images,
+      dimensions: merged.dimensions,
+      base_price: merged.basePrice,
+      currency: merged.currency,
+      estimated_yards: merged.estimatedYards,
+      sort_order: merged.sortOrder ?? 0,
+      variables: toRpcVariables(merged.variables),
+    },
+  });
+
+  if (error) {
     console.error('Error updating bench cushion style:', error);
     throw error;
   }
+
+  const updated = await getBenchCushionStyle(id);
+  if (!updated) throw new Error('Failed to load updated bench cushion style');
+  return updated;
 };
 
 export const deleteBenchCushionStyle = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockBenchCushionStyles.findIndex((s) => s.id === id);
-    if (index !== -1) {
-      mockBenchCushionStyles.splice(index, 1);
-    }
-    return;
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ref = doc(db, 'benchCushions', id);
-    await deleteDoc(ref);
-  } catch (error) {
+  const { error } = await supabase.from('bench_cushions').delete().eq('id', id);
+  if (error) {
     console.error('Error deleting bench cushion style:', error);
     throw error;
   }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminFirestore } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { SampleRequestInput, SampleRequestItem } from '@/lib/types/sampleRequest';
 
 const MAX_ITEMS = 5;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidItem(item: any): item is SampleRequestItem {
   return (
@@ -15,9 +16,11 @@ function isValidItem(item: any): item is SampleRequestItem {
 }
 
 export async function POST(request: NextRequest) {
-  const db = getAdminFirestore();
-  if (!db) {
-    return NextResponse.json({ error: 'Server is not configured (FIREBASE_SERVICE_ACCOUNT missing).' }, { status: 500 });
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: 'Server is not configured (SUPABASE_SERVICE_ROLE_KEY missing).' },
+      { status: 500 }
+    );
   }
 
   let body: SampleRequestInput;
@@ -44,24 +47,40 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const docRef = await db.collection('sampleRequests').add({
-      items,
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone?.trim() || null,
-      address: {
-        line1: address.line1.trim(),
-        line2: address.line2?.trim() || '',
-        city: address.city.trim(),
-        state: address.state.trim(),
-        zip: address.zip.trim(),
-        country: address.country.trim(),
-      },
-      status: 'pending',
-      createdAt: new Date(),
-    });
+    const { data: requestRow, error: requestError } = await supabaseAdmin
+      .from('sample_requests')
+      .insert({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone?.trim() || null,
+        address_line1: address.line1.trim(),
+        address_line2: address.line2?.trim() || null,
+        address_city: address.city.trim(),
+        address_state: address.state.trim(),
+        address_zip: address.zip.trim(),
+        address_country: address.country.trim(),
+        status: 'pending',
+      })
+      .select('id')
+      .single();
 
-    return NextResponse.json({ id: docRef.id });
+    if (requestError) throw requestError;
+
+    const itemRows = items.map((item, index) => ({
+      sample_request_id: requestRow.id,
+      // item.fabricId is the id from getCharlotteFabricsSnapshot(), which is a Postgres uuid
+      // post-migration — guard against a stale/malformed value rather than failing the whole request.
+      fabric_id: UUID_RE.test(item.fabricId) ? item.fabricId : null,
+      name: item.name,
+      sku: item.sku,
+      image_url: item.imageUrl || '',
+      sort_order: index,
+    }));
+
+    const { error: itemsError } = await supabaseAdmin.from('sample_request_items').insert(itemRows);
+    if (itemsError) throw itemsError;
+
+    return NextResponse.json({ id: requestRow.id });
   } catch (error) {
     console.error('Error creating sample request:', error);
     return NextResponse.json({ error: 'Failed to submit sample request.' }, { status: 500 });

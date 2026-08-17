@@ -1,209 +1,110 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy,
-  writeBatch,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { Category, CategoryInput } from '@/lib/types/category';
 
-// Mock data fallback
-const mockCategories: Category[] = [
-  {
-    id: '1',
-    name: 'fibre',
-    description: 'Fibre foam category',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'foam rolls',
-    description: 'Foam rolls category',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'seats',
-    description: 'Seats category',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-// Helper to convert Firestore timestamp to Date
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
-};
-
-// Helper to convert Firestore doc to Category
-const docToCategory = (docId: string, data: any): Category => {
-  return {
-    id: docId,
-    name: data.name || '',
-    description: data.description || '',
-    sortOrder: data.sortOrder || 0,
-    createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-    updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
-  };
-};
+const rowToCategory = (row: any): Category => ({
+  id: row.id,
+  name: row.name || '',
+  description: row.description || '',
+  sortOrder: row.sort_order ?? 0,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
+});
 
 export const getCategories = async (): Promise<Category[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return mockCategories;
-  }
+  if (!supabase) return [];
 
-  try {
-    const categoriesRef = collection(db, 'categories');
-    const snapshot = await getDocs(categoriesRef);
-    const categories = snapshot.docs.map((doc) => docToCategory(doc.id, doc.data()));
-    
-    // Sort locally to avoid needing Firestore composite indexes, and handle missing sortOrder gracefully
-    return categories.sort((a, b) => {
-      const orderA = a.sortOrder ?? 999;
-      const orderB = b.sortOrder ?? 999;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.name.localeCompare(b.name);
-    });
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) {
     console.error('Error fetching categories:', error);
-    return mockCategories;
+    throw error;
   }
+  return (data || []).map(rowToCategory);
 };
 
 export const getCategory = async (id: string): Promise<Category | null> => {
-  if (!isFirebaseConfigured() || !db) {
-    return mockCategories.find((c) => c.id === id) || null;
-  }
+  if (!supabase) return null;
 
-  try {
-    const categoryRef = doc(db, 'categories', id);
-    const categorySnap = await getDoc(categoryRef);
-    if (categorySnap.exists()) {
-      return docToCategory(categorySnap.id, categorySnap.data());
-    }
-    return null;
-  } catch (error) {
+  const { data, error } = await supabase.from('categories').select('*').eq('id', id).maybeSingle();
+
+  if (error) {
     console.error('Error fetching category:', error);
-    return null;
+    throw error;
   }
+  return data ? rowToCategory(data) : null;
 };
 
-export const createCategory = async (
-  input: CategoryInput
-): Promise<Category> => {
-  if (!isFirebaseConfigured() || !db) {
-    const newCategory: Category = {
-      id: String(mockCategories.length + 1),
-      ...input,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockCategories.push(newCategory);
-    return newCategory;
-  }
+export const createCategory = async (input: CategoryInput): Promise<Category> => {
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const categoriesRef = collection(db, 'categories');
-    const docRef = await addDoc(categoriesRef, {
-      ...input,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToCategory(docRef.id, newDoc.data());
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      name: input.name,
+      description: input.description,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error creating category:', error);
     throw error;
   }
+  return rowToCategory(data);
 };
 
 export const updateCategory = async (
   id: string,
   input: Partial<CategoryInput>
 ): Promise<Category> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockCategories.findIndex((c) => c.id === id);
-    if (index !== -1) {
-      mockCategories[index] = {
-        ...mockCategories[index],
-        ...input,
-        updatedAt: new Date(),
-      };
-      return mockCategories[index];
-    }
-    throw new Error('Category not found');
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const categoryRef = doc(db, 'categories', id);
-    await updateDoc(categoryRef, {
-      ...input,
-      updatedAt: serverTimestamp(),
-    });
-    const updatedDoc = await getDoc(categoryRef);
-    return docToCategory(id, updatedDoc.data());
-  } catch (error) {
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.description !== undefined) patch.description = input.description;
+  if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+
+  const { data, error } = await supabase
+    .from('categories')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating category:', error);
     throw error;
   }
+  return rowToCategory(data);
 };
 
 export const deleteCategory = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockCategories.findIndex((c) => c.id === id);
-    if (index !== -1) {
-      mockCategories.splice(index, 1);
-    }
-    return;
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const categoryRef = doc(db, 'categories', id);
-    await deleteDoc(categoryRef);
-  } catch (error) {
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+
+  if (error) {
     console.error('Error deleting category:', error);
     throw error;
   }
 };
 
 export const updateCategoriesOrder = async (categories: Category[]): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    // For mock data, just update the in-memory array
-    categories.forEach(cat => {
-      const index = mockCategories.findIndex(m => m.id === cat.id);
-      if (index !== -1) {
-        mockCategories[index] = { ...mockCategories[index], sortOrder: cat.sortOrder };
-      }
-    });
-    mockCategories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    return;
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const batch = writeBatch(db!);
-    categories.forEach((cat) => {
-      const ref = doc(db!, 'categories', cat.id);
-      batch.update(ref, { 
-        sortOrder: cat.sortOrder,
-        updatedAt: serverTimestamp()
-      });
-    });
-    await batch.commit();
-  } catch (error) {
-    console.error('Error updating categories order:', error);
-    throw error;
+  for (const cat of categories) {
+    const { error } = await supabase
+      .from('categories')
+      .update({ sort_order: cat.sortOrder })
+      .eq('id', cat.id);
+
+    if (error) {
+      console.error('Error updating categories order:', error);
+      throw error;
+    }
   }
 };

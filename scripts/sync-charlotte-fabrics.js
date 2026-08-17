@@ -1,5 +1,5 @@
 /**
- * Crawls charlottefabrics.com and syncs the catalog into Firestore, so the
+ * Crawls charlottefabrics.com and syncs the catalog into Supabase, so the
  * bench-cushion fabric gallery can read from our own database instead of
  * live-scraping their site on every page view.
  *
@@ -8,9 +8,8 @@
  *                   "Run workflow" on GitHub, or the admin panel's "Run Sync Now" button)
  *
  * Env vars:
- *   FIREBASE_SERVICE_ACCOUNT - JSON string of the service account (used in CI).
- *                               Falls back to the local service account file used
- *                               by scripts/setup-admin-user.js when unset.
+ *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY - Supabase project + service-role key
+ *                               (used in CI via scripts/lib/supabaseAdmin.js).
  *   CF_SYNC_FACET_GROUPS     - optional comma-separated subset of "color,pattern,material"
  *                               (default: all three). Scopes which facet TAGS get crawled/
  *                               attached this run — e.g. CF_SYNC_FACET_GROUPS=material — so
@@ -33,8 +32,8 @@
  */
 
 const zlib = require('zlib');
-const admin = require('firebase-admin');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { getSupabaseAdmin } = require('./lib/supabaseAdmin');
 const {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
@@ -55,28 +54,13 @@ const REQUEST_DELAY_MS = 250;
 const MAX_PAGES_PER_FACET = 250; // safety cap against an infinite loop; catalog is ~150 pages, some facets (e.g. Abstract & Geometric) alone need ~35
 const PAGE_SIZE = 48; // Charlotte Fabrics renders 48 products/page; a short page means "last page"
 const PRODUCT_CONCURRENCY = 6; // Phase B fetches this many product pages in parallel
-const PROGRESS_CHECKPOINT_INTERVAL = 10; // write live progress to Firestore every N completed products
-const SNAPSHOT_R2_KEY = 'catalog/charlotte-fabrics.json'; // public storefront reads this instead of querying Firestore per visitor
+const PROGRESS_CHECKPOINT_INTERVAL = 10; // write live progress every N completed products
+const DEACTIVATE_CHUNK_SIZE = 500; // keep any single PostgREST request reasonably sized
+const SNAPSHOT_R2_KEY = 'catalog/charlotte-fabrics.json'; // public storefront reads this instead of querying the DB per visitor
 const SNAPSHOT_CACHE_CONTROL = 'public, max-age=1800'; // 30 min — lets R2/Cloudflare's CDN and browsers cache it between syncs
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function nowTs() {
-  return admin.firestore.Timestamp.fromDate(new Date());
-}
-
-function initFirebase() {
-  if (admin.apps.length) return;
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  } else {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
-    const serviceAccount = require('../jl-comfort-firebase-adminsdk-fbsvc-0010276dc8.json');
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
 }
 
 function slugFromProductUrl(url) {
@@ -108,6 +92,23 @@ function flattenSpecs(specs) {
     features: specs['Features'] || '',
     performance: specs['Performance'] || '',
   };
+}
+
+function totalsToColumns(totals) {
+  return {
+    scanned: totals.scanned,
+    added: totals.added,
+    updated: totals.updated,
+    deactivated: totals.deactivated,
+    broken_images: totals.brokenImages,
+    errors: totals.errors,
+    structural_warnings: totals.structuralWarnings,
+  };
+}
+
+async function updateRun(supabase, runId, patch) {
+  const { error } = await supabase.from('charlotte_fabric_sync_runs').update(patch).eq('id', runId);
+  if (error) console.error('Failed to update sync run record:', error.message);
 }
 
 /** Phase A: crawl every color/pattern/material facet value and record which products appear under each. */
@@ -230,9 +231,9 @@ function buildR2Client() {
 /**
  * Publishes a static JSON snapshot of the active catalog to R2, so the public storefront
  * (bench-cushion fabric gallery, fabric-search API) can read a CDN-cached file instead of
- * querying Firestore or scraping charlottefabrics.com live on every visitor request.
+ * querying the database or scraping charlottefabrics.com live on every visitor request.
  */
-async function publishSnapshot(db) {
+async function publishSnapshot(supabase) {
   const r2 = buildR2Client();
   if (!r2) {
     console.warn(
@@ -241,8 +242,6 @@ async function publishSnapshot(db) {
     return { published: false };
   }
 
-  const toIso = (ts) => (ts && typeof ts.toDate === 'function' ? ts.toDate().toISOString() : null);
-
   // Resolve each item's price once, here, so every downstream reader (gallery, checkout,
   // fabric-search) just reads a ready-to-use number/name. Precedence: a manual admin override
   // always wins, then the real per-SKU retail price from the master spreadsheet import, then the
@@ -250,36 +249,45 @@ async function publishSnapshot(db) {
   // resolveEffectivePrice (this script is plain Node/CommonJS and can't require() that .ts file,
   // so keep this in sync with it by hand). Anything still unpriced is filtered out below, since it
   // has nothing to charge a customer and shouldn't be shown on the storefront.
-  const priceTagsSnapshot = await db.collection('fabricPriceTags').get();
-  const priceTagsById = new Map(priceTagsSnapshot.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+  const { data: priceTagRows, error: priceTagsError } = await supabase
+    .from('fabric_price_tags')
+    .select('id, name, price_per_yard');
+  if (priceTagsError) throw priceTagsError;
+  const priceTagsById = new Map(
+    (priceTagRows || []).map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.price_per_yard }])
+  );
   const resolveEffectivePrice = (data) => {
-    if (data.manualRetailPrice != null) return { pricePerYard: data.manualRetailPrice, priceTagName: null };
-    if (data.retailPrice != null) return { pricePerYard: data.retailPrice, priceTagName: null };
-    const tag = data.priceTagId ? priceTagsById.get(data.priceTagId) : null;
+    if (data.manual_retail_price != null) return { pricePerYard: data.manual_retail_price, priceTagName: null };
+    if (data.retail_price != null) return { pricePerYard: data.retail_price, priceTagName: null };
+    const tag = data.price_tag_id ? priceTagsById.get(data.price_tag_id) : null;
     return { pricePerYard: tag?.pricePerYard ?? null, priceTagName: tag?.name ?? null };
   };
 
-  const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
-  const allItems = activeSnapshot.docs.map((doc) => {
-    const data = doc.data();
+  const { data: fabricRows, error: fabricsError } = await supabase
+    .from('charlotte_fabrics')
+    .select('*, fabric_group_members(group_id)')
+    .eq('status', 'active');
+  if (fabricsError) throw fabricsError;
+
+  const allItems = (fabricRows || []).map((data) => {
     const effectivePrice = resolveEffectivePrice(data);
     return {
-      id: doc.id,
+      id: data.id,
       name: data.name || '',
       sku: data.sku || '',
-      productUrl: data.productUrl || '',
-      imageUrl: data.imageUrl || '',
-      imageOk: data.imageOk ?? true,
+      productUrl: data.product_url || '',
+      imageUrl: data.image_url || '',
+      imageOk: data.image_ok ?? true,
       color: data.color || [],
       pattern: data.pattern || [],
       material: data.material || [],
       applications: data.applications || [],
       markets: data.markets || [],
-      fiberContent: data.fiberContent || '',
+      fiberContent: data.fiber_content || '',
       durability: data.durability || '',
       width: data.width || '',
       repeat: data.repeat || '',
-      patternDirection: data.patternDirection || '',
+      patternDirection: data.pattern_direction || '',
       cleanability: data.cleanability || '',
       flammability: data.flammability || '',
       origin: data.origin || '',
@@ -288,15 +296,15 @@ async function publishSnapshot(db) {
       // Raw specs catch-all is dropped from the public snapshot — every field the gallery UI
       // actually reads is already flattened above, and specs roughly doubles the payload size
       // (this file is ~10MB with it; every visitor's browser and every fabric-search API call
-      // pays for that). Firestore itself still keeps the raw specs — the admin table reads
+      // pays for that). The database itself still keeps the raw specs — the admin table reads
       // those directly via getCharlotteFabrics(), unaffected by this trim.
       availability: data.availability || 'InStock',
       status: data.status || 'active',
-      firstSeenAt: toIso(data.firstSeenAt),
-      lastSeenAt: toIso(data.lastSeenAt),
-      lastCheckedAt: toIso(data.lastCheckedAt),
-      priceTagId: data.priceTagId || null,
-      groupIds: data.groupIds || [],
+      firstSeenAt: data.first_seen_at || null,
+      lastSeenAt: data.last_seen_at || null,
+      lastCheckedAt: data.last_checked_at || null,
+      priceTagId: data.price_tag_id || null,
+      groupIds: (data.fabric_group_members || []).map((m) => m.group_id),
       pricePerYard: effectivePrice.pricePerYard,
       priceTagName: effectivePrice.priceTagName,
     };
@@ -304,7 +312,7 @@ async function publishSnapshot(db) {
 
   // Unpriced items (no price tag assigned) are excluded from the public snapshot entirely —
   // customers never see a fabric with no price. They're still fully visible/editable in the
-  // admin catalog table, which reads Firestore directly rather than this snapshot.
+  // admin catalog table, which reads the database directly rather than this snapshot.
   const items = allItems.filter((item) => item.pricePerYard != null);
   const unpricedCount = allItems.length - items.length;
   if (unpricedCount > 0) {
@@ -332,8 +340,13 @@ async function publishSnapshot(db) {
 }
 
 async function main() {
-  initFirebase();
-  const db = admin.firestore();
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    console.error('Supabase is not configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing).');
+    process.exitCode = 1;
+    return;
+  }
+
   const limitFacets = process.env.CF_SYNC_LIMIT_FACETS
     ? parseInt(process.env.CF_SYNC_LIMIT_FACETS, 10)
     : undefined;
@@ -342,18 +355,28 @@ async function main() {
     `Facet groups this run (tagging scope): ${selectedGroups.join(', ')}${limitFacets ? ` (limited to ${limitFacets} value(s)/group)` : ''}`
   );
 
-  const runRef = db.collection('charlotteFabricsSyncRuns').doc();
-  const startedAt = nowTs();
-  await runRef.set({
-    startedAt,
-    finishedAt: null,
-    status: 'running',
-    phase: 'discovering-catalog',
-    discovered: 0,
-    totals: { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0, structuralWarnings: 0 },
-    errorLog: [],
-    lastUpdatedAt: startedAt,
-  });
+  const startedAtIso = new Date().toISOString();
+  const { data: runRow, error: runInsertError } = await supabase
+    .from('charlotte_fabric_sync_runs')
+    .insert({
+      started_at: startedAtIso,
+      finished_at: null,
+      status: 'running',
+      phase: 'discovering-catalog',
+      discovered: 0,
+      ...totalsToColumns({ scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0, structuralWarnings: 0 }),
+      error_log: [],
+      last_updated_at: startedAtIso,
+    })
+    .select('id')
+    .single();
+
+  if (runInsertError) {
+    console.error('Failed to create sync run record:', runInsertError.message);
+    process.exitCode = 1;
+    return;
+  }
+  const runId = runRow.id;
 
   const totals = { scanned: 0, added: 0, updated: 0, deactivated: 0, brokenImages: 0, errors: 0, structuralWarnings: 0 };
   const errorLog = [];
@@ -366,10 +389,7 @@ async function main() {
     console.log(
       `Discovered ${allProductUrls.length} unique products via full catalog pagination${isFullRun ? '' : ' (INCOMPLETE — structural warning encountered, coverage not guaranteed)'}.`
     );
-    await runRef.update({
-      phase: 'crawling-facets',
-      lastUpdatedAt: nowTs(),
-    });
+    await updateRun(supabase, runId, { phase: 'crawling-facets', last_updated_at: new Date().toISOString() });
 
     console.log('Phase A: crawling selected facets for tags...');
     const tagsByProduct = await crawlAllFacets(limitFacets, selectedGroups, totals);
@@ -388,7 +408,7 @@ async function main() {
       );
     }
     console.log(`Discovered ${entries.length} unique products total.`);
-    await runRef.update({ phase: 'fetching-products', discovered: entries.length, lastUpdatedAt: nowTs() });
+    await updateRun(supabase, runId, { phase: 'fetching-products', discovered: entries.length, last_updated_at: new Date().toISOString() });
 
     console.log(`Phase B: fetching product pages for specs (${PRODUCT_CONCURRENCY} at a time)...`);
     const seenIds = new Set();
@@ -415,10 +435,14 @@ async function main() {
         const imageOk = await checkImageOk(imageUrl);
         if (!imageOk) totals.brokenImages += 1;
 
-        const docRef = db.collection('charlotteFabrics').doc(id);
-        const existing = await docRef.get();
-        const existingData = existing.exists ? existing.data() : null;
-        const now = admin.firestore.Timestamp.fromDate(new Date());
+        const { data: existing, error: fetchError } = await supabase
+          .from('charlotte_fabrics')
+          .select('color, pattern, material')
+          .eq('legacy_id', id)
+          .maybeSingle();
+        if (fetchError) throw fetchError;
+
+        const nowIso = new Date().toISOString();
 
         // Merge (never overwrite) facet tags, so a partial run — e.g. material-only — can't
         // wipe out color/pattern tags a previous phase already found for this product.
@@ -426,27 +450,43 @@ async function main() {
           Array.from(new Set([...(existingValues || []), ...newSet]));
 
         const data = {
+          legacy_id: id,
           name: jsonLd?.name || '',
           sku: jsonLd?.sku || '',
-          productUrl,
-          imageUrl,
-          imageOk,
-          color: mergeTags(existingData?.color, tags.color),
-          pattern: mergeTags(existingData?.pattern, tags.pattern),
-          material: mergeTags(existingData?.material, tags.material),
-          ...flattened,
+          product_url: productUrl,
+          image_url: imageUrl,
+          image_ok: imageOk,
+          color: mergeTags(existing?.color, tags.color),
+          pattern: mergeTags(existing?.pattern, tags.pattern),
+          material: mergeTags(existing?.material, tags.material),
+          applications: flattened.applications,
+          markets: flattened.markets,
+          fiber_content: flattened.fiberContent,
+          durability: flattened.durability,
+          width: flattened.width,
+          repeat: flattened.repeat,
+          pattern_direction: flattened.patternDirection,
+          cleanability: flattened.cleanability,
+          flammability: flattened.flammability,
+          origin: flattened.origin,
+          features: flattened.features,
+          performance: flattened.performance,
           specs,
           availability: jsonLd?.availability || 'InStock',
           status: 'active',
-          lastSeenAt: now,
-          lastCheckedAt: now,
+          last_seen_at: nowIso,
+          last_checked_at: nowIso,
         };
 
-        if (existing.exists) {
-          await docRef.update(data);
+        if (existing) {
+          const { error: updateError } = await supabase.from('charlotte_fabrics').update(data).eq('legacy_id', id);
+          if (updateError) throw updateError;
           totals.updated += 1;
         } else {
-          await docRef.set({ ...data, firstSeenAt: now });
+          const { error: insertError } = await supabase
+            .from('charlotte_fabrics')
+            .insert({ ...data, first_seen_at: nowIso });
+          if (insertError) throw insertError;
           totals.added += 1;
         }
         totals.scanned += 1;
@@ -460,7 +500,13 @@ async function main() {
       console.log(`[${completed}/${entries.length}] ${id}`);
       if (completed % PROGRESS_CHECKPOINT_INTERVAL === 0 || completed === entries.length) {
         // Best-effort progress checkpoint — a failed write here shouldn't fail the run.
-        runRef.update({ totals, lastUpdatedAt: nowTs() }).catch(() => {});
+        supabase
+          .from('charlotte_fabric_sync_runs')
+          .update({ ...totalsToColumns(totals), last_updated_at: new Date().toISOString() })
+          .eq('id', runId)
+          .then(({ error }) => {
+            if (error) console.error('Checkpoint write failed:', error.message);
+          });
       }
     };
 
@@ -477,53 +523,57 @@ async function main() {
 
     if (isFullRun) {
       console.log('Full catalog coverage confirmed — diffing against previously active products...');
-      await runRef.update({ phase: 'diffing', lastUpdatedAt: nowTs() });
-      const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
-      let batch = db.batch();
-      let batchCount = 0;
-      for (const doc of activeSnapshot.docs) {
-        if (!seenIds.has(doc.id)) {
-          batch.update(doc.ref, { status: 'inactive' });
-          totals.deactivated += 1;
-          batchCount += 1;
-          if (batchCount >= 400) {
-            await batch.commit();
-            batch = db.batch();
-            batchCount = 0;
-          }
-        }
+      await updateRun(supabase, runId, { phase: 'diffing', last_updated_at: new Date().toISOString() });
+
+      const { data: activeRows, error: activeError } = await supabase
+        .from('charlotte_fabrics')
+        .select('legacy_id')
+        .eq('status', 'active');
+      if (activeError) throw activeError;
+
+      const missingIds = (activeRows || [])
+        .map((row) => row.legacy_id)
+        .filter((legacyId) => !seenIds.has(legacyId));
+
+      for (let i = 0; i < missingIds.length; i += DEACTIVATE_CHUNK_SIZE) {
+        const idsChunk = missingIds.slice(i, i + DEACTIVATE_CHUNK_SIZE);
+        const { error: deactivateError } = await supabase
+          .from('charlotte_fabrics')
+          .update({ status: 'inactive' })
+          .in('legacy_id', idsChunk);
+        if (deactivateError) throw deactivateError;
+        totals.deactivated += idsChunk.length;
       }
-      if (batchCount > 0) await batch.commit();
     } else {
       console.log('Full-catalog discovery hit a structural warning — skipping inactive-marking step (coverage not guaranteed this run).');
     }
 
     try {
-      await publishSnapshot(db);
+      await publishSnapshot(supabase);
     } catch (err) {
       console.error('Failed to publish catalog snapshot to R2:', err.message);
       errorLog.push(`snapshot-publish: ${err.message}`);
     }
 
-    await runRef.update({
-      finishedAt: nowTs(),
+    await updateRun(supabase, runId, {
+      finished_at: new Date().toISOString(),
       status: 'success',
       phase: 'done',
-      totals,
-      errorLog,
-      lastUpdatedAt: nowTs(),
+      ...totalsToColumns(totals),
+      error_log: errorLog,
+      last_updated_at: new Date().toISOString(),
     });
 
     console.log('Sync complete:', totals);
   } catch (err) {
     console.error('Sync failed:', err);
-    await runRef.update({
-      finishedAt: nowTs(),
+    await updateRun(supabase, runId, {
+      finished_at: new Date().toISOString(),
       status: 'failed',
       phase: 'done',
-      totals,
-      errorLog: [...errorLog, err.message],
-      lastUpdatedAt: nowTs(),
+      ...totalsToColumns(totals),
+      error_log: [...errorLog, err.message],
+      last_updated_at: new Date().toISOString(),
     });
     process.exitCode = 1;
   }
@@ -536,4 +586,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { initFirebase, publishSnapshot };
+module.exports = { publishSnapshot };

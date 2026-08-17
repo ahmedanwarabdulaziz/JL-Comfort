@@ -1,181 +1,126 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/client';
 import { FabricPriceTier, FabricPriceTierInput } from '@/lib/types/fabricPriceTier';
 
-// Mock data fallback
-const mockFabricPriceTiers: FabricPriceTier[] = [
-  {
-    id: '1',
-    name: 'Standard',
-    pricePerYard: 18,
-    materials: ['canvas-denim-twill', 'linen', 'prints', 'woven-patterns', 'boucle', 'embroidery'],
-    isDefault: true,
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Performance',
-    pricePerYard: 28,
-    materials: ['crypton', 'microfiber-microsuede'],
-    sortOrder: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Premium',
-    pricePerYard: 45,
-    materials: ['velvet', 'faux-silk', 'shearling', 'metallic', 'chenille', 'matelasse', 'tapestry', 'faux-wool'],
-    sortOrder: 2,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+const SELECT = '*, fabric_price_tier_materials(material_slug)';
 
-const convertTimestamp = (timestamp: Timestamp | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  return timestamp.toDate();
-};
-
-const docToFabricPriceTier = (docId: string, data: any): FabricPriceTier => ({
-  id: docId,
-  name: data.name || '',
-  pricePerYard: data.pricePerYard ?? 0,
-  materials: data.materials || [],
-  isDefault: data.isDefault ?? false,
-  sortOrder: data.sortOrder ?? 0,
-  createdAt: data.createdAt ? convertTimestamp(data.createdAt) : new Date(),
-  updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : new Date(),
+const rowToFabricPriceTier = (row: any): FabricPriceTier => ({
+  id: row.id,
+  name: row.name || '',
+  pricePerYard: row.price_per_yard ?? 0,
+  materials: (row.fabric_price_tier_materials || []).map((m: any) => m.material_slug),
+  isDefault: row.is_default ?? false,
+  sortOrder: row.sort_order ?? 0,
+  createdAt: new Date(row.created_at),
+  updatedAt: new Date(row.updated_at),
 });
 
 export const getFabricPriceTiers = async (): Promise<FabricPriceTier[]> => {
-  if (!isFirebaseConfigured() || !db) {
-    return [...mockFabricPriceTiers].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }
+  if (!supabase) return [];
 
-  try {
-    const ref = collection(db, 'fabricPriceTiers');
+  const { data, error } = await supabase
+    .from('fabric_price_tiers')
+    .select(SELECT)
+    .order('sort_order', { ascending: true });
 
-    try {
-      const q = query(ref, orderBy('sortOrder', 'asc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map((d) => docToFabricPriceTier(d.id, d.data()));
-    } catch (orderByError: any) {
-      if (
-        orderByError?.code === 'failed-precondition' ||
-        orderByError?.message?.includes('index')
-      ) {
-        const snapshot = await getDocs(ref);
-        const results = snapshot.docs.map((d) => docToFabricPriceTier(d.id, d.data()));
-        return results.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-      }
-      throw orderByError;
-    }
-  } catch (error: any) {
+  if (error) {
     console.error('Error fetching fabric price tiers:', error);
-    if (error?.code !== 'permission-denied') {
-      return [...mockFabricPriceTiers].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }
-    return [];
+    throw error;
   }
+  return (data || []).map(rowToFabricPriceTier);
 };
 
 export const createFabricPriceTier = async (
   input: FabricPriceTierInput
 ): Promise<FabricPriceTier> => {
+  if (!supabase) throw new Error('Supabase not configured');
+
   const existing = await getFabricPriceTiers();
-  const maxSortOrder = existing.length > 0
-    ? Math.max(...existing.map((t) => t.sortOrder || 0))
-    : -1;
+  const maxSortOrder = existing.length > 0 ? Math.max(...existing.map((t) => t.sortOrder || 0)) : -1;
 
-  if (!isFirebaseConfigured() || !db) {
-    const newTier: FabricPriceTier = {
-      id: String(mockFabricPriceTiers.length + 1),
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockFabricPriceTiers.push(newTier);
-    return newTier;
-  }
+  const { data: tierRow, error } = await supabase
+    .from('fabric_price_tiers')
+    .insert({
+      name: input.name,
+      price_per_yard: input.pricePerYard,
+      is_default: input.isDefault ?? false,
+      sort_order: input.sortOrder ?? maxSortOrder + 1,
+    })
+    .select()
+    .single();
 
-  try {
-    const ref = collection(db, 'fabricPriceTiers');
-    const docRef = await addDoc(ref, {
-      ...input,
-      sortOrder: input.sortOrder ?? maxSortOrder + 1,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    const newDoc = await getDoc(docRef);
-    return docToFabricPriceTier(docRef.id, newDoc.data());
-  } catch (error) {
+  if (error) {
     console.error('Error creating fabric price tier:', error);
     throw error;
   }
+
+  if (input.materials.length > 0) {
+    const { error: materialsError } = await supabase
+      .from('fabric_price_tier_materials')
+      .insert(input.materials.map((slug) => ({ tier_id: tierRow.id, material_slug: slug })));
+
+    if (materialsError) {
+      console.error('Error creating fabric price tier materials:', materialsError);
+      throw materialsError;
+    }
+  }
+
+  return rowToFabricPriceTier({ ...tierRow, fabric_price_tier_materials: input.materials.map((slug) => ({ material_slug: slug })) });
 };
 
 export const updateFabricPriceTier = async (
   id: string,
   input: Partial<FabricPriceTierInput>
 ): Promise<FabricPriceTier> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockFabricPriceTiers.findIndex((t) => t.id === id);
-    if (index !== -1) {
-      mockFabricPriceTiers[index] = {
-        ...mockFabricPriceTiers[index],
-        ...input,
-        updatedAt: new Date(),
-      };
-      return mockFabricPriceTiers[index];
+  if (!supabase) throw new Error('Supabase not configured');
+
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.pricePerYard !== undefined) patch.price_per_yard = input.pricePerYard;
+  if (input.isDefault !== undefined) patch.is_default = input.isDefault;
+  if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
+
+  if (Object.keys(patch).length > 0) {
+    const { error } = await supabase.from('fabric_price_tiers').update(patch).eq('id', id);
+    if (error) {
+      console.error('Error updating fabric price tier:', error);
+      throw error;
     }
-    throw new Error('Fabric price tier not found');
   }
 
-  try {
-    const ref = doc(db, 'fabricPriceTiers', id);
-    await updateDoc(ref, {
-      ...input,
-      updatedAt: serverTimestamp(),
-    });
-    const updatedDoc = await getDoc(ref);
-    return docToFabricPriceTier(id, updatedDoc.data());
-  } catch (error) {
-    console.error('Error updating fabric price tier:', error);
+  if (input.materials !== undefined) {
+    const { error: deleteError } = await supabase
+      .from('fabric_price_tier_materials')
+      .delete()
+      .eq('tier_id', id);
+    if (deleteError) {
+      console.error('Error clearing fabric price tier materials:', deleteError);
+      throw deleteError;
+    }
+
+    if (input.materials.length > 0) {
+      const { error: insertError } = await supabase
+        .from('fabric_price_tier_materials')
+        .insert(input.materials.map((slug) => ({ tier_id: id, material_slug: slug })));
+      if (insertError) {
+        console.error('Error inserting fabric price tier materials:', insertError);
+        throw insertError;
+      }
+    }
+  }
+
+  const { data, error } = await supabase.from('fabric_price_tiers').select(SELECT).eq('id', id).single();
+  if (error) {
+    console.error('Error fetching updated fabric price tier:', error);
     throw error;
   }
+  return rowToFabricPriceTier(data);
 };
 
 export const deleteFabricPriceTier = async (id: string): Promise<void> => {
-  if (!isFirebaseConfigured() || !db) {
-    const index = mockFabricPriceTiers.findIndex((t) => t.id === id);
-    if (index !== -1) {
-      mockFabricPriceTiers.splice(index, 1);
-    }
-    return;
-  }
+  if (!supabase) throw new Error('Supabase not configured');
 
-  try {
-    const ref = doc(db, 'fabricPriceTiers', id);
-    await deleteDoc(ref);
-  } catch (error) {
+  const { error } = await supabase.from('fabric_price_tiers').delete().eq('id', id);
+  if (error) {
     console.error('Error deleting fabric price tier:', error);
     throw error;
   }

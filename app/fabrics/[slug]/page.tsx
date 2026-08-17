@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
-import { getAdminFirestore } from '@/lib/firebase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
+import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/components/fabrics/FabricDetailClient';
 
 // ISR — matches the R2 catalog snapshot's own cache window (lib/data/charlotteFabricCatalog.ts),
@@ -10,66 +11,74 @@ import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/compone
 export const revalidate = 1800;
 
 // cache() dedupes this across generateMetadata and the page component within one request — without
-// it, each page view reads Firestore twice (once for the title/description, once for the render).
+// it, each page view reads the database twice (once for the title/description, once for the render).
 const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | null> => {
-  const db = getAdminFirestore();
+  const supabase = await createSupabaseServerClient();
   // Distinct from "fabric not found" below: this means the server itself is misconfigured
-  // (FIREBASE_SERVICE_ACCOUNT missing/invalid), which should surface as a real error rather than
-  // silently rendering the same 404 a customer would see for a genuinely unknown SKU.
-  if (!db) {
-    throw new Error('Fabric detail page: getAdminFirestore() returned null — FIREBASE_SERVICE_ACCOUNT is missing or invalid in this environment.');
+  // (NEXT_PUBLIC_SUPABASE_URL/ANON_KEY missing/invalid), which should surface as a real error
+  // rather than silently rendering the same 404 a customer would see for a genuinely unknown SKU.
+  if (!supabase) {
+    throw new Error('Fabric detail page: Supabase is not configured — NEXT_PUBLIC_SUPABASE_URL/ANON_KEY missing or invalid in this environment.');
   }
 
-  const doc = await db.collection('charlotteFabrics').doc(slug).get();
-  if (!doc.exists) return null;
-  const data = doc.data()!;
-  if (data.status !== 'active') return null;
+  // Fabric lookup and price tags don't depend on each other -- fetch them in parallel rather
+  // than sequentially, since each is a separate network round-trip to Supabase.
+  const [{ data, error }, priceTags] = await Promise.all([
+    supabase.from('charlotte_fabrics').select('*').eq('legacy_id', slug).maybeSingle(),
+    getFabricPriceTags(),
+  ]);
+  if (error) throw error;
+  if (!data || data.status !== 'active') return null;
 
-  const priceTagsSnap = await db.collection('fabricPriceTags').get();
-  const priceTagsById = new Map(priceTagsSnap.docs.map((d) => [d.id, d.data() as { name?: string; pricePerYard?: number }]));
+  const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
   const price = resolveEffectivePrice(
-    { manualRetailPrice: data.manualRetailPrice, retailPrice: data.retailPrice, priceTagId: data.priceTagId },
+    { manualRetailPrice: data.manual_retail_price, retailPrice: data.retail_price, priceTagId: data.price_tag_id },
     priceTagsById
   );
 
   let colorwaySiblings: ColorwaySibling[] = [];
-  if (data.colorwayGroup) {
-    const siblingsSnap = await db
-      .collection('charlotteFabrics')
-      .where('colorwayGroup', '==', data.colorwayGroup)
-      .where('status', '==', 'active')
-      .get();
-    colorwaySiblings = siblingsSnap.docs
-      .filter((d) => d.id !== doc.id)
-      .map((d) => {
-        const s = d.data();
-        return { id: d.id, name: s.name || '', imageUrl: s.imageUrl || '', color: s.color || [] };
-      });
+  if (data.colorway_group) {
+    const { data: siblingRows, error: siblingsError } = await supabase
+      .from('charlotte_fabrics')
+      .select('legacy_id, name, image_url, color')
+      .eq('colorway_group', data.colorway_group)
+      .eq('status', 'active')
+      .neq('id', data.id);
+    if (siblingsError) throw siblingsError;
+    colorwaySiblings = (siblingRows || []).map((s) => ({
+      // ColorwaySibling.id is used to build the /fabrics/[slug] link, so this must be the
+      // legacy_id slug, not the row's uuid primary key (they diverged in the Supabase migration --
+      // under Firestore the doc id and the slug were the same value).
+      id: s.legacy_id,
+      name: s.name || '',
+      imageUrl: s.image_url || '',
+      color: s.color || [],
+    }));
   }
 
   return {
-    id: doc.id,
+    id: data.id,
     name: data.name || '',
     sku: data.sku || '',
-    imageUrl: data.imageUrl || '',
-    productUrl: data.productUrl || '',
+    imageUrl: data.image_url || '',
+    productUrl: data.product_url || '',
     color: data.color || [],
     pattern: data.pattern || [],
     material: data.material || [],
     applications: data.applications || [],
     markets: data.markets || [],
-    fiberContent: data.fiberContent || undefined,
+    fiberContent: data.fiber_content || undefined,
     durability: data.durability || undefined,
     width: data.width || undefined,
     repeat: data.repeat || undefined,
-    patternDirection: data.patternDirection || undefined,
+    patternDirection: data.pattern_direction || undefined,
     cleanability: data.cleanability || undefined,
     flammability: data.flammability || undefined,
     origin: data.origin || undefined,
     brand: data.brand || undefined,
-    sampleBooks: data.sampleBooks || undefined,
-    ecoFriendly: data.ecoFriendly || undefined,
-    constructionType: data.constructionType || undefined,
+    sampleBooks: data.sample_books || undefined,
+    ecoFriendly: data.eco_friendly || undefined,
+    constructionType: data.construction_type || undefined,
     properties: data.properties || undefined,
     availability: data.availability || 'InStock',
     pricePerYard: price.pricePerYard,
@@ -95,8 +104,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function FabricDetailPage({ params }: { params: { slug: string } }) {
   // A thrown error here (server misconfiguration) propagates to Next's error boundary as a real
-  // 500 — intentionally not caught, so it stays visible in Vercel's function logs instead of
-  // masquerading as a 404. Only a genuinely missing/inactive fabric reaches notFound() below.
+  // 500 — intentionally not caught, so it stays visible in the logs instead of masquerading as a
+  // 404. Only a genuinely missing/inactive fabric reaches notFound() below.
   const fabric = await loadFabricDetail(params.slug);
   if (!fabric) notFound();
 

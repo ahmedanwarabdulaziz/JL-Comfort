@@ -1,77 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import zlib from 'zlib';
-import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { r2Client, r2Config, isR2Configured } from '@/lib/cloudflare/r2';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 
 // Same key/cache window as scripts/sync-charlotte-fabrics.js's publishSnapshot — this route is a
 // fast alternative to a full sync when nothing needs re-crawling from charlottefabrics.com, only
-// this app's own price tag/group assignments have changed. Firestore reads here use the admin SDK
-// (bypasses security rules) since this route already verifies the caller is an authenticated admin.
+// this app's own price tag/group assignments have changed. Auth is enforced entirely by
+// middleware.ts (matcher covers /api/admin/:path*) before this handler ever runs.
 const SNAPSHOT_R2_KEY = 'catalog/charlotte-fabrics.json';
 const SNAPSHOT_CACHE_CONTROL = 'public, max-age=1800';
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const idToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!idToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const adminAuth = getAdminAuth();
-  if (!adminAuth) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
     return NextResponse.json(
-      { error: 'Server is not configured to verify admin requests (FIREBASE_SERVICE_ACCOUNT missing).' },
+      { error: 'Server is not configured (NEXT_PUBLIC_SUPABASE_URL/ANON_KEY missing).' },
       { status: 500 }
     );
-  }
-
-  try {
-    await adminAuth.verifyIdToken(idToken);
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const db = getAdminFirestore();
-  if (!db) {
-    return NextResponse.json({ error: 'Server is not configured (FIREBASE_SERVICE_ACCOUNT missing).' }, { status: 500 });
   }
   if (!isR2Configured()) {
     return NextResponse.json({ error: 'Server is not configured (Cloudflare R2 env vars missing).' }, { status: 500 });
   }
 
   try {
-    const toIso = (ts: FirebaseFirestore.Timestamp | undefined) => (ts ? ts.toDate().toISOString() : null);
+    const { data: priceTagRows, error: priceTagsError } = await supabase
+      .from('fabric_price_tags')
+      .select('id, name, price_per_yard');
+    if (priceTagsError) throw priceTagsError;
 
-    const priceTagsSnapshot = await db.collection('fabricPriceTags').get();
-    const priceTagsById = new Map(priceTagsSnapshot.docs.map((d) => [d.id, d.data() as { name?: string; pricePerYard?: number }]));
+    const priceTagsById = new Map(
+      (priceTagRows || []).map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.price_per_yard }])
+    );
 
-    const activeSnapshot = await db.collection('charlotteFabrics').where('status', '==', 'active').get();
-    const allItems = activeSnapshot.docs.map((doc) => {
-      const data = doc.data();
+    const { data: fabricRows, error: fabricsError } = await supabase
+      .from('charlotte_fabrics')
+      .select('*')
+      .eq('status', 'active');
+    if (fabricsError) throw fabricsError;
+
+    const { data: groupMemberRows, error: groupMembersError } = await supabase
+      .from('fabric_group_members')
+      .select('fabric_id, group_id');
+    if (groupMembersError) throw groupMembersError;
+
+    const groupIdsByFabricId = new Map<string, string[]>();
+    (groupMemberRows || []).forEach((row) => {
+      const list = groupIdsByFabricId.get(row.fabric_id) || [];
+      list.push(row.group_id);
+      groupIdsByFabricId.set(row.fabric_id, list);
+    });
+
+    const allItems = (fabricRows || []).map((data) => {
       const effectivePrice = resolveEffectivePrice(
-        { manualRetailPrice: data.manualRetailPrice, retailPrice: data.retailPrice, priceTagId: data.priceTagId },
+        {
+          manualRetailPrice: data.manual_retail_price,
+          retailPrice: data.retail_price,
+          priceTagId: data.price_tag_id,
+        },
         priceTagsById
       );
       return {
-        id: doc.id,
+        id: data.id,
         name: data.name || '',
         sku: data.sku || '',
-        productUrl: data.productUrl || '',
-        imageUrl: data.imageUrl || '',
-        imageOk: data.imageOk ?? true,
+        productUrl: data.product_url || '',
+        imageUrl: data.image_url || '',
+        imageOk: data.image_ok ?? true,
         color: data.color || [],
         pattern: data.pattern || [],
         material: data.material || [],
         applications: data.applications || [],
         markets: data.markets || [],
-        fiberContent: data.fiberContent || '',
+        fiberContent: data.fiber_content || '',
         durability: data.durability || '',
         width: data.width || '',
         repeat: data.repeat || '',
-        patternDirection: data.patternDirection || '',
+        patternDirection: data.pattern_direction || '',
         cleanability: data.cleanability || '',
         flammability: data.flammability || '',
         origin: data.origin || '',
@@ -79,11 +85,11 @@ export async function POST(request: NextRequest) {
         performance: data.performance || '',
         availability: data.availability || 'InStock',
         status: data.status || 'active',
-        firstSeenAt: toIso(data.firstSeenAt),
-        lastSeenAt: toIso(data.lastSeenAt),
-        lastCheckedAt: toIso(data.lastCheckedAt),
-        priceTagId: data.priceTagId || null,
-        groupIds: data.groupIds || [],
+        firstSeenAt: data.first_seen_at,
+        lastSeenAt: data.last_seen_at,
+        lastCheckedAt: data.last_checked_at,
+        priceTagId: data.price_tag_id || null,
+        groupIds: groupIdsByFabricId.get(data.id) || [],
         pricePerYard: effectivePrice.pricePerYard,
         priceTagName: effectivePrice.priceTagName,
       };

@@ -1,33 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebase/admin';
 
 const GITHUB_OWNER = 'ahmedanwarabdulaziz';
 const GITHUB_REPO = 'JL-Comfort';
 const WORKFLOW_FILE = 'sync-charlotte-fabrics.yml';
 const VALID_FACET_GROUPS = ['all', 'color', 'pattern', 'material'];
 
+// Auth is enforced entirely by middleware.ts (matcher covers /api/admin/:path*)
+// before this handler ever runs.
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const idToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!idToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const adminAuth = getAdminAuth();
-  if (!adminAuth) {
-    return NextResponse.json(
-      { error: 'Server is not configured to verify admin requests (FIREBASE_SERVICE_ACCOUNT missing).' },
-      { status: 500 }
-    );
-  }
-
-  try {
-    await adminAuth.verifyIdToken(idToken);
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     return NextResponse.json(
