@@ -17,7 +17,8 @@ import {
   buildQuestionnaireFilters,
   QuestionnaireAnswers,
 } from '@/lib/ai/businessRules';
-import { AIChatMessage, AIGuideResponse, FabricAIFilters } from '@/lib/types/ai';
+import { AIChatMessage, AIGuideResponse, FabricAIFilters, AIFabricResult } from '@/lib/types/ai';
+import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 const VALID_COLORS = new Set(CHARLOTTE_FABRIC_COLORS.map((c) => c.value));
@@ -93,6 +94,55 @@ async function logInteraction(
   }
 }
 
+interface FallbackOption {
+  relaxed: string[];
+  resultCount: number;
+  products: AIFabricResult[];
+}
+
+function getFallbacks(filters: FabricAIFilters, snapshot: CharlotteFabricSnapshotItem[]): FallbackOption[] {
+  const fallbacks: FallbackOption[] = [];
+  
+  if (filters.keywords?.length) {
+    const f1 = { ...filters };
+    delete f1.keywords;
+    const res1 = filterCatalogSnapshot(snapshot, f1);
+    if (res1.length > 0) fallbacks.push({ relaxed: ['specific name/keyword'], resultCount: res1.length, products: res1 });
+  }
+
+  const f2 = { ...filters };
+  delete f2.keywords;
+  delete f2.maxPricePerYard;
+  delete f2.minPricePerYard;
+  delete f2.minDurabilityRubs;
+  delete f2.easyClean;
+  const res2 = filterCatalogSnapshot(snapshot, f2);
+  if (res2.length > 0) fallbacks.push({ relaxed: ['budget and performance limits'], resultCount: res2.length, products: res2 });
+
+  if (filters.patterns?.length) {
+    const f3 = { ...f2 };
+    delete f3.patterns;
+    const res3 = filterCatalogSnapshot(snapshot, f3);
+    if (res3.length > 0) fallbacks.push({ relaxed: ['pattern'], resultCount: res3.length, products: res3 });
+  }
+
+  if (filters.materials?.length) {
+    const f4 = { ...f2 };
+    delete f4.materials;
+    const res4 = filterCatalogSnapshot(snapshot, f4);
+    if (res4.length > 0) fallbacks.push({ relaxed: ['material'], resultCount: res4.length, products: res4 });
+  }
+
+  if (filters.colors?.length) {
+    const f5 = { ...f2 };
+    delete f5.colors;
+    const res5 = filterCatalogSnapshot(snapshot, f5);
+    if (res5.length > 0) fallbacks.push({ relaxed: ['color'], resultCount: res5.length, products: res5 });
+  }
+
+  return fallbacks;
+}
+
 async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
   const trimmed = history.slice(-MAX_HISTORY_MESSAGES);
 
@@ -142,51 +192,44 @@ async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
   let products = filterCatalogSnapshot(snapshot, filters);
 
   // Smart Relaxed Search: If strict filters yield 0 results, progressively relax them
-  let isAlternative = false;
-  let droppedReason = '';
-  if (products.length === 0 && hasFilters) {
-    // Attempt 2: Drop keywords (often too restrictive due to exact match)
-    if (filters.keywords && filters.keywords.length > 0) {
-      const relaxed = { ...filters };
-      delete relaxed.keywords;
-      products = filterCatalogSnapshot(snapshot, relaxed);
-      if (products.length > 0) {
-        droppedReason = 'specific name';
-      }
-    }
-
-    // Attempt 3: Drop special needs (durability, easy clean, budget) to just match color/pattern
-    if (products.length === 0) {
-      const relaxedMore = { ...filters };
-      delete relaxedMore.keywords;
-      delete relaxedMore.easyClean;
-      delete relaxedMore.minDurabilityRubs;
-      delete relaxedMore.maxPricePerYard;
-      products = filterCatalogSnapshot(snapshot, relaxedMore);
-      if (products.length > 0) {
-        droppedReason = 'budget and durability requirements';
-      }
-    }
-    
-    if (products.length > 0) {
-      isAlternative = true;
-    }
-  }
-
   let finalMessage = aiMessage;
-  if (isAlternative) {
-    finalMessage = `I couldn't find an exact match for all your requirements, so I relaxed your ${droppedReason} to find these ${products.length} fantastic alternative${products.length === 1 ? '' : 's'}!`;
-  } else if (products.length === 0) {
-    const activeFilters = [];
-    if (filters.colors?.length) activeFilters.push('color');
-    if (filters.patterns?.length) activeFilters.push('pattern');
-    if (filters.materials?.length) activeFilters.push('material');
+
+  if (products.length === 0 && hasFilters) {
+    const fallbacks = getFallbacks(filters, snapshot);
     
-    if (activeFilters.length > 0) {
-      const list = activeFilters.join(' or ');
-      finalMessage = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${list}?`;
+    if (fallbacks.length > 0) {
+      // Pick the best fallback (highest priority relaxation that yields results)
+      const best = fallbacks[0];
+      products = best.products;
+      
+      const fallbackPrompt = `
+      The exact match yielded 0 results. 
+      However, if we relax the following constraints: ${best.relaxed.join(', ')}, we found ${best.resultCount} great alternatives.
+      
+      Write a warm, sales-focused response explaining that we are very close, and that loosening those specific constraints gives us ${best.resultCount} beautiful options (which you are showing them).
+      Do NOT apologize or say "we don't carry that." Use phrases like "We're one step away..." or "Your combination works well, but...".
+      Keep it under 40 words. Return ONLY JSON in the following format:
+      { "message": "your text here" }
+      `;
+      
+      try {
+        const fbRaw = await askAI(fallbackPrompt, []);
+        const fbJson = JSON.parse(fbRaw);
+        if (fbJson.message) finalMessage = fbJson.message;
+      } catch (err) {
+        finalMessage = `I couldn't find an exact match, but I relaxed your ${best.relaxed.join(' and ')} to find these ${best.resultCount} fantastic alternatives!`;
+      }
     } else {
-      finalMessage = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+      const activeFilters = [];
+      if (filters.colors?.length) activeFilters.push('color');
+      if (filters.patterns?.length) activeFilters.push('pattern');
+      if (filters.materials?.length) activeFilters.push('material');
+      
+      if (activeFilters.length > 0) {
+        finalMessage = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${activeFilters.join(' or ')}?`;
+      } else {
+        finalMessage = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+      }
     }
   }
 
@@ -245,57 +288,48 @@ export async function POST(request: NextRequest) {
       const snapshot = await getCharlotteFabricsSnapshot();
       let products = filterCatalogSnapshot(snapshot, filters);
       
-      let isAlternative = false;
-      let droppedReason = '';
       const hasFilters = Object.keys(filters).length > 0;
-      
-      // Smart Relaxed Search: If strict filters yield 0 results, progressively relax them
-      if (products.length === 0 && hasFilters) {
-        // Attempt 2: Drop keywords
-        if (filters.keywords && filters.keywords.length > 0) {
-          const relaxed = { ...filters };
-          delete relaxed.keywords;
-          products = filterCatalogSnapshot(snapshot, relaxed);
-          if (products.length > 0) {
-            droppedReason = 'specific name';
-          }
-        }
 
-        // Attempt 3: Drop special needs
-        if (products.length === 0) {
-          const relaxedMore = { ...filters };
-          delete relaxedMore.keywords;
-          delete relaxedMore.easyClean;
-          delete relaxedMore.minDurabilityRubs;
-          delete relaxedMore.maxPricePerYard;
-          products = filterCatalogSnapshot(snapshot, relaxedMore);
-          if (products.length > 0) {
-            droppedReason = 'budget and durability requirements';
-          }
-        }
-
-        if (products.length > 0) {
-          isAlternative = true;
-        }
-      }
-
-      const count = products.length;
+      // Smart Relaxed Search
       let message = '';
-      if (count === 0) {
-        const activeFilters = [];
-        if (filters.colors?.length) activeFilters.push('color');
-        if (filters.patterns?.length) activeFilters.push('pattern');
-        if (filters.materials?.length) activeFilters.push('material');
+      if (products.length === 0 && hasFilters) {
+        const fallbacks = getFallbacks(filters, snapshot);
         
-        if (activeFilters.length > 0) {
-          const list = activeFilters.join(' or ');
-          message = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${list}?`;
+        if (fallbacks.length > 0) {
+          const best = fallbacks[0];
+          products = best.products;
+          
+          const fallbackPrompt = `
+          The exact match yielded 0 results. 
+          However, if we relax the following constraints: ${best.relaxed.join(', ')}, we found ${best.resultCount} great alternatives.
+          
+          Write a warm, sales-focused response explaining that we are very close, and that loosening those specific constraints gives us ${best.resultCount} beautiful options (which you are showing them).
+          Do NOT apologize or say "we don't carry that." Use phrases like "We're one step away..." or "Your combination works well, but...".
+          Keep it under 40 words. Return ONLY JSON in the following format:
+          { "message": "your text here" }
+          `;
+          
+          try {
+            const fbRaw = await askAI(fallbackPrompt, []);
+            const fbJson = JSON.parse(fbRaw);
+            if (fbJson.message) message = fbJson.message;
+          } catch (err) {
+            message = `I couldn't find an exact match, but I relaxed your ${best.relaxed.join(' and ')} to find these ${best.resultCount} great alternatives!`;
+          }
         } else {
-          message = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+          const activeFilters = [];
+          if (filters.colors?.length) activeFilters.push('color');
+          if (filters.patterns?.length) activeFilters.push('pattern');
+          if (filters.materials?.length) activeFilters.push('material');
+          
+          if (activeFilters.length > 0) {
+            message = `I'm having trouble finding a fabric that matches all of those exact requirements. Which detail are you most willing to compromise on so I can find you some great options—the ${activeFilters.join(' or ')}?`;
+          } else {
+            message = "I couldn't find any fabrics matching those exact requirements right now. Want to try a slightly broader search?";
+          }
         }
-      } else if (isAlternative) {
-        message = `I couldn't find an exact match, so I relaxed your ${droppedReason} to find these ${count} great alternative${count === 1 ? '' : 's'}! Let me know if you want to tweak anything else.`;
       } else {
+        const count = products.length;
         message = `I found ${count} fabric${count === 1 ? '' : 's'} that match your needs! Click any to see details 🎉`;
       }
       const response: AIGuideResponse = { message, action: 'show_products', filters, products };
