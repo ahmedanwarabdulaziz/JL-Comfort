@@ -538,21 +538,21 @@ export default function AIGuide() {
         ...(data.products && data.products.length > 0 ? [{ type: 'results' as const }] : []),
       ]);
 
-      if (data.products && data.products.length > 0) {
-        // Initialize chat history so the user can continue talking to Yousha
-        const summaryObj = { ...finalAnswers };
-        const keywords = summaryObj._keywords || '';
-        delete summaryObj._keywords;
-        const summary = Object.entries(summaryObj)
-          .filter(([_, v]) => !!v)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join(', ');
-        const textContext = `I am looking for fabrics. My preferences: ${summary}. ${keywords ? `Keywords: ${keywords}` : ''}`;
-        setChatMessages([
-          { role: 'user', content: textContext },
-          { role: 'assistant', content: data.message }
-        ]);
+      // Initialize chat history so the user can continue talking to Yousha
+      const summaryObj = { ...finalAnswers };
+      const keywords = summaryObj._keywords || '';
+      delete summaryObj._keywords;
+      const summary = Object.entries(summaryObj)
+        .filter(([_, v]) => !!v)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      const textContext = `I am looking for fabrics. My preferences: ${summary}. ${keywords ? `Keywords: ${keywords}` : ''}`;
+      setChatMessages([
+        { role: 'user', content: textContext },
+        { role: 'assistant', content: data.message }
+      ]);
 
+      if (data.products && data.products.length > 0) {
         setTimeout(() => setShowSidePanel(true), 300);
       }
     } catch {
