@@ -38,28 +38,32 @@ const FALLBACK_MESSAGE =
 function sanitizeFilters(raw: any): FabricAIFilters {
   const filters: FabricAIFilters = {};
 
-  if (Array.isArray(raw.colors)) {
-    const v = raw.colors.filter((c: unknown) => typeof c === 'string' && VALID_COLORS.has(c));
+  // Support both the old flat schema and the new nested 'filters' schema
+  const source = raw.filters ? raw.filters : raw;
+
+  if (Array.isArray(source.colors)) {
+    const v = source.colors.filter((c: unknown) => typeof c === 'string' && VALID_COLORS.has(c));
     if (v.length) filters.colors = v;
   }
-  if (Array.isArray(raw.patterns)) {
-    const v = raw.patterns.filter((p: unknown) => typeof p === 'string' && VALID_PATTERNS.has(p));
+  if (Array.isArray(source.patterns)) {
+    const v = source.patterns.filter((p: unknown) => typeof p === 'string' && VALID_PATTERNS.has(p));
     if (v.length) filters.patterns = v;
   }
-  if (Array.isArray(raw.materials)) {
-    const v = raw.materials.filter((m: unknown) => typeof m === 'string' && VALID_MATERIALS.has(m));
+  if (Array.isArray(source.materials)) {
+    const v = source.materials.filter((m: unknown) => typeof m === 'string' && VALID_MATERIALS.has(m));
     if (v.length) filters.materials = v;
   }
-  if (Array.isArray(raw.applications)) {
-    const v = raw.applications.filter((a: unknown) => typeof a === 'string' && VALID_APPLICATIONS.has(a));
+  if (Array.isArray(source.applications)) {
+    const v = source.applications.filter((a: unknown) => typeof a === 'string' && VALID_APPLICATIONS.has(a));
     if (v.length) filters.applications = v;
   }
-  if (typeof raw.outdoor === 'boolean') filters.outdoor = raw.outdoor;
-  if (typeof raw.easyClean === 'boolean') filters.easyClean = raw.easyClean;
-  if (typeof raw.minDurabilityRubs === 'number') filters.minDurabilityRubs = raw.minDurabilityRubs;
-  if (typeof raw.maxPricePerYard === 'number') filters.maxPricePerYard = raw.maxPricePerYard;
-  if (Array.isArray(raw.keywords)) {
-    const v = raw.keywords.filter((k: unknown) => typeof k === 'string').slice(0, 3);
+  if (typeof source.outdoor === 'boolean') filters.outdoor = source.outdoor;
+  if (typeof source.easyClean === 'boolean') filters.easyClean = source.easyClean;
+  if (typeof source.minDurabilityRubs === 'number') filters.minDurabilityRubs = source.minDurabilityRubs;
+  if (typeof source.maxPricePerYard === 'number') filters.maxPricePerYard = source.maxPricePerYard;
+  if (typeof source.minPricePerYard === 'number') filters.minPricePerYard = source.minPricePerYard;
+  if (Array.isArray(source.keywords)) {
+    const v = source.keywords.filter((k: unknown) => typeof k === 'string').slice(0, 3);
     if (v.length) filters.keywords = v;
   }
 
