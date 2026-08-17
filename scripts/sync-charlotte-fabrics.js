@@ -272,7 +272,7 @@ async function publishSnapshot(supabase) {
   const allItems = (fabricRows || []).map((data) => {
     const effectivePrice = resolveEffectivePrice(data);
     return {
-      id: data.id,
+      id: data.legacy_id,
       name: data.name || '',
       sku: data.sku || '',
       productUrl: data.product_url || '',

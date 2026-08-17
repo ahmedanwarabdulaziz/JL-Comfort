@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         priceTagsById
       );
       return {
-        id: data.id,
+        id: data.legacy_id,
         name: data.name || '',
         sku: data.sku || '',
         productUrl: data.product_url || '',
