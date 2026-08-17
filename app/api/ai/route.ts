@@ -138,12 +138,17 @@ async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
   let products = filterCatalogSnapshot(snapshot, filters);
 
   // Smart Relaxed Search: If strict filters yield 0 results, progressively relax them
+  let isAlternative = false;
+  let droppedReason = '';
   if (products.length === 0 && hasFilters) {
     // Attempt 2: Drop keywords (often too restrictive due to exact match)
     if (filters.keywords && filters.keywords.length > 0) {
       const relaxed = { ...filters };
       delete relaxed.keywords;
       products = filterCatalogSnapshot(snapshot, relaxed);
+      if (products.length > 0) {
+        droppedReason = 'specific name';
+      }
     }
 
     // Attempt 3: Drop special needs (durability, easy clean, budget) to just match color/pattern
@@ -154,10 +159,24 @@ async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
       delete relaxedMore.minDurabilityRubs;
       delete relaxedMore.maxPricePerYard;
       products = filterCatalogSnapshot(snapshot, relaxedMore);
+      if (products.length > 0) {
+        droppedReason = 'budget and durability requirements';
+      }
+    }
+    
+    if (products.length > 0) {
+      isAlternative = true;
     }
   }
 
-  return { message: aiMessage, action: 'show_products', filters, products };
+  let finalMessage = aiMessage;
+  if (isAlternative) {
+    finalMessage = `I couldn't find an exact match for all your requirements, so I relaxed your ${droppedReason} to find these ${products.length} fantastic alternative${products.length === 1 ? '' : 's'}!`;
+  } else if (products.length === 0) {
+    finalMessage = "It looks like we don't carry any fabrics in that specific color and pattern combination. Would you be open to a different color or pattern?";
+  }
+
+  return { message: finalMessage, action: 'show_products', filters, products };
 }
 
 async function handleGuided(
@@ -210,11 +229,51 @@ export async function POST(request: NextRequest) {
       }
       const filters = buildQuestionnaireFilters(answers);
       const snapshot = await getCharlotteFabricsSnapshot();
-      const products = filterCatalogSnapshot(snapshot, filters);
+      let products = filterCatalogSnapshot(snapshot, filters);
+      
+      let isAlternative = false;
+      let droppedReason = '';
+      const hasFilters = Object.keys(filters).length > 0;
+      
+      // Smart Relaxed Search: If strict filters yield 0 results, progressively relax them
+      if (products.length === 0 && hasFilters) {
+        // Attempt 2: Drop keywords
+        if (filters.keywords && filters.keywords.length > 0) {
+          const relaxed = { ...filters };
+          delete relaxed.keywords;
+          products = filterCatalogSnapshot(snapshot, relaxed);
+          if (products.length > 0) {
+            droppedReason = 'specific name';
+          }
+        }
+
+        // Attempt 3: Drop special needs
+        if (products.length === 0) {
+          const relaxedMore = { ...filters };
+          delete relaxedMore.keywords;
+          delete relaxedMore.easyClean;
+          delete relaxedMore.minDurabilityRubs;
+          delete relaxedMore.maxPricePerYard;
+          products = filterCatalogSnapshot(snapshot, relaxedMore);
+          if (products.length > 0) {
+            droppedReason = 'budget and durability requirements';
+          }
+        }
+
+        if (products.length > 0) {
+          isAlternative = true;
+        }
+      }
+
       const count = products.length;
-      const message = count === 0
-        ? "I couldn't find an exact match with those filters — want me to try with fewer requirements?"
-        : `I found ${count} fabric${count === 1 ? '' : 's'} that match your needs! Click any to see details 🎉`;
+      let message = '';
+      if (count === 0) {
+        message = "It looks like we don't carry any fabrics in that specific color and pattern combination. Would you be open to a different color or pattern?";
+      } else if (isAlternative) {
+        message = `I couldn't find an exact match, so I relaxed your ${droppedReason} to find these ${count} great alternative${count === 1 ? '' : 's'}! Let me know if you want to tweak anything else.`;
+      } else {
+        message = `I found ${count} fabric${count === 1 ? '' : 's'} that match your needs! Click any to see details 🎉`;
+      }
       const response: AIGuideResponse = { message, action: 'show_products', filters, products };
       await logInteraction(sessionId, 'guided', JSON.stringify(answers), response);
       return NextResponse.json(response);
