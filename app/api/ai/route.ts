@@ -208,6 +208,7 @@ async function handleChat(history: AIChatMessage[]): Promise<AIGuideResponse> {
       
       Write a warm, sales-focused response explaining that we are very close, and that loosening those specific constraints gives us ${best.resultCount} beautiful options (which you are showing them).
       Do NOT apologize or say "we don't carry that." Use phrases like "We're one step away..." or "Your combination works well, but...".
+      End the message with a short, easy call to action (e.g. "Want to see those options?").
       Keep it under 40 words. Return ONLY JSON in the following format:
       { "message": "your text here" }
       `;
@@ -305,6 +306,7 @@ export async function POST(request: NextRequest) {
           
           Write a warm, sales-focused response explaining that we are very close, and that loosening those specific constraints gives us ${best.resultCount} beautiful options (which you are showing them).
           Do NOT apologize or say "we don't carry that." Use phrases like "We're one step away..." or "Your combination works well, but...".
+          End the message with a short, easy call to action (e.g. "Want to see those options?").
           Keep it under 40 words. Return ONLY JSON in the following format:
           { "message": "your text here" }
           `;
