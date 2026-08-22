@@ -8,15 +8,13 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
+// Phase 1: Fabric-only launch.
 const shopLinks = [
-  { label: 'Custom Foam Order', href: '/foam' },
+  { label: 'Shop Fabrics', href: '/fabrics' },
   { label: 'AI Fabric Visualizer', href: '/visualizer' },
 ];
 
 const resourceLinks = [
-  { label: 'How to Measure', href: '/how-to-measure' },
-  { label: 'Choosing Your Firmness', href: '/firmness-guide' },
-  { label: 'Fibre Wrap Guide', href: '/fibre-wrap' },
   { label: 'FAQ', href: '/faq' },
 ];
 
@@ -49,15 +47,15 @@ export default function Footer() {
           >
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                Ready to start your custom foam order?
+                Ready to find your perfect fabric?
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Measure, pick your grade, and check out in minutes.
+                Browse our collection and visualize it on your furniture in seconds.
               </Typography>
             </Box>
             <Button
               component={Link}
-              href="/foam"
+              href="/fabrics"
               variant="contained"
               endIcon={<ArrowForwardIcon />}
               sx={{
@@ -70,7 +68,7 @@ export default function Footer() {
                 '&:hover': { bgcolor: '#1a1a1a' },
               }}
             >
-              Start Your Order
+              Shop Fabrics
             </Button>
           </Box>
         </Container>
@@ -98,7 +96,7 @@ export default function Footer() {
                 <span style={{ color: '#e3c29a' }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                Custom foam, cut to your exact measurements. Premium NeoGel High-Density foam for cushions that hold their shape.
+                Premium upholstery fabrics, visualized with AI. Your furniture, your style.
               </Typography>
             </Grid>
 

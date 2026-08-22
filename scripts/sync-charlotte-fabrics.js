@@ -305,6 +305,7 @@ async function publishSnapshot(supabase) {
       lastCheckedAt: data.last_checked_at || null,
       priceTagId: data.price_tag_id || null,
       groupIds: (data.fabric_group_members || []).map((m) => m.group_id),
+      sampleBooks: data.sample_books || [],
       pricePerYard: effectivePrice.pricePerYard,
       priceTagName: effectivePrice.priceTagName,
     };

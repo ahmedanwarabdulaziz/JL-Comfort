@@ -80,6 +80,7 @@ export interface CharlotteFabricFilters {
   search?: string; // matched against name/sku
   priceTagId?: string; // "__untagged__" matches items with no priceTagId (using the default rate)
   groupId?: string;
+  sampleBook?: string; // matched against fabric.sampleBooks[]
 }
 
 export type CharlotteFabricsSyncRunStatus = 'running' | 'success' | 'failed';

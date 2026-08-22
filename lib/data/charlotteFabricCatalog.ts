@@ -98,7 +98,8 @@ export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabricSnap
     // SNAPSHOT_CACHE_CONTROL in scripts/sync-charlotte-fabrics.js) — lets server-side callers
     // (fabric-search API route) reuse the response instead of re-fetching this ~10MB file on
     // every request. Ignored harmlessly by the browser's native fetch on the client.
-    const res = await fetch(CATALOG_SNAPSHOT_URL, { next: { revalidate: 1800 } });
+    // Added ?v=1 to bust the 30-minute Cloudflare cache and force browsers to pull the latest schema
+    const res = await fetch(`${CATALOG_SNAPSHOT_URL}?v=1`, { next: { revalidate: 1800 } });
     if (!res.ok) return [];
     const items = await res.json();
     if (!Array.isArray(items)) return [];
@@ -138,6 +139,7 @@ export const filterFabrics = <T extends CharlotteFabric>(
       }
     }
     if (filters.groupId && !(fabric.groupIds || []).includes(filters.groupId)) return false;
+    if (filters.sampleBook && !(fabric.sampleBooks || []).some((b) => b.trim() === filters.sampleBook)) return false;
     if (search) {
       const haystack = `${fabric.name} ${fabric.sku}`.toLowerCase();
       if (!haystack.includes(search)) return false;
