@@ -10,16 +10,43 @@ import CornerTag from '@/components/ui/CornerTag';
 
 interface HomePageClientProps {
   products: Product[];
-  materialImages: Record<string, { imageUrl: string; name: string } | null>;
 }
 
 const MARQUEE_MATERIALS = ['Velvet', 'Linen', 'Bouclé', 'Chenille', 'Crypton Performance', 'Tweed & Textures', 'Shearling'];
 
+// Hand-drawn texture treatments instead of live catalog photos — a database
+// pick can land on a flat, textureless macro crop that reads as "no image."
+// A deliberate illustrated weave is bolder and never breaks.
 const COLORWAY_TILES = [
-  { value: 'velvet', label: 'Velvet', meta: 'Plush · Railroaded', tint: `linear-gradient(150deg, #7A5548, #4a3327)`, dark: true },
-  { value: 'linen', label: 'Linen', meta: 'Breathable · Natural', tint: `${brand.butter}`, dark: false },
-  { value: 'boucle', label: 'Bouclé', meta: 'Looped · Textured', tint: `${brand.lime}`, dark: false },
-  { value: 'chenille', label: 'Chenille', meta: 'Deep Pile · Soft Hand', tint: `linear-gradient(150deg, #3a2e26, ${brand.ink})`, dark: true },
+  {
+    value: 'velvet',
+    label: 'Velvet',
+    meta: 'Plush · Railroaded',
+    dark: true,
+    bg: `repeating-linear-gradient(115deg, rgba(246,242,235,0.1) 0 3px, transparent 3px 9px), linear-gradient(150deg, #8a5f4c, #4a3327)`,
+  },
+  {
+    value: 'linen',
+    label: 'Linen',
+    meta: 'Breathable · Natural',
+    dark: false,
+    bg: `repeating-linear-gradient(0deg, rgba(33,23,18,0.06) 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, rgba(33,23,18,0.05) 0 1px, transparent 1px 6px), ${brand.butter}`,
+  },
+  {
+    value: 'boucle',
+    label: 'Bouclé',
+    meta: 'Looped · Textured',
+    dark: false,
+    bg: `radial-gradient(circle at 22% 28%, rgba(255,255,255,0.55) 0 3px, transparent 4px), radial-gradient(circle at 62% 58%, rgba(255,255,255,0.45) 0 3px, transparent 4px), radial-gradient(circle at 40% 82%, rgba(255,255,255,0.5) 0 3px, transparent 4px), ${brand.lime}`,
+    bgSize: '34px 34px, 34px 34px, 34px 34px, auto',
+  },
+  {
+    value: 'chenille',
+    label: 'Chenille',
+    meta: 'Deep Pile · Soft Hand',
+    dark: true,
+    bg: `repeating-linear-gradient(65deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 7px), linear-gradient(150deg, #3a2e26, ${brand.ink})`,
+  },
 ];
 
 const SAMPLE_STEPS = [
@@ -40,9 +67,7 @@ const scroll = keyframes`
   to { transform: translateX(-50%); }
 `;
 
-export default function HomePageClient({ products, materialImages }: HomePageClientProps) {
-  const heroFabric = materialImages['velvet'] || materialImages['chenille'] || materialImages['linen'];
-
+export default function HomePageClient({ products }: HomePageClientProps) {
   return (
     <>
       {/* ── HERO ── */}
@@ -83,9 +108,7 @@ export default function HomePageClient({ products, materialImages }: HomePageCli
                   position: 'relative',
                   aspectRatio: '4/5',
                   clipPath: 'polygon(0 0, 100% 0, 100% 86%, 84% 100%, 0 100%)',
-                  background: heroFabric
-                    ? `linear-gradient(180deg, rgba(33,23,18,0) 45%, rgba(33,23,18,0.85) 100%), url(${heroFabric.imageUrl}) center/cover`
-                    : `repeating-linear-gradient(115deg, rgba(246,242,235,0.09) 0 3px, transparent 3px 9px), linear-gradient(160deg, ${brand.mocha} 0%, ${brand.mochaDeep} 55%, #4a3327 100%)`,
+                  background: `repeating-linear-gradient(115deg, rgba(246,242,235,0.09) 0 3px, transparent 3px 9px), linear-gradient(160deg, ${brand.mocha} 0%, ${brand.mochaDeep} 55%, #4a3327 100%)`,
                 }}
               >
                 <Typography
@@ -101,7 +124,7 @@ export default function HomePageClient({ products, materialImages }: HomePageCli
                     textTransform: 'uppercase',
                   }}
                 >
-                  {heroFabric?.name ? heroFabric.name : 'Hand-feel: Plush'} · From the current drop
+                  Hand-feel: Plush · 100K+ Double Rubs
                 </Typography>
               </Box>
             </Grid>
@@ -169,79 +192,68 @@ export default function HomePageClient({ products, materialImages }: HomePageCli
           </Box>
 
           <Grid container spacing={2.25}>
-            {COLORWAY_TILES.map((tile, i) => {
-              const fabric = materialImages[tile.value];
-              return (
-                <Grid item xs={12} sm={6} md={3} key={tile.value}>
-                  <Box
-                    component={Link}
-                    href={`/fabrics?material=${tile.value}`}
+            {COLORWAY_TILES.map((tile, i) => (
+              <Grid item xs={12} sm={6} md={3} key={tile.value}>
+                <Box
+                  component={Link}
+                  href={`/fabrics?material=${tile.value}`}
+                  sx={{
+                    position: 'relative',
+                    display: 'block',
+                    textDecoration: 'none',
+                    aspectRatio: '3/4',
+                    p: 2,
+                    clipPath: swatchClip(20),
+                    background: tile.bg,
+                    backgroundSize: tile.bgSize,
+                    transition: 'transform 0.3s ease',
+                    '&:hover': { transform: 'rotate(-2deg) translateY(-4px)' },
+                  }}
+                >
+                  <Typography
                     sx={{
-                      position: 'relative',
-                      display: 'block',
-                      textDecoration: 'none',
-                      aspectRatio: '3/4',
-                      p: 2,
-                      clipPath: swatchClip(20),
-                      background: fabric ? `url(${fabric.imageUrl}) center/cover` : tile.tint,
-                      transition: 'transform 0.3s ease',
-                      '&:hover': { transform: 'rotate(-2deg) translateY(-4px)' },
+                      position: 'absolute',
+                      top: 14,
+                      left: 14,
+                      fontFamily: 'var(--font-label), sans-serif',
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      letterSpacing: '0.08em',
+                      opacity: 0.6,
+                      color: tile.dark ? brand.chalk : brand.ink,
                     }}
                   >
-                    {fabric && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'linear-gradient(180deg, rgba(33,23,18,0) 55%, rgba(33,23,18,0.75) 100%)',
-                        }}
-                      />
-                    )}
+                    0{i + 1}
+                  </Typography>
+                  <Box sx={{ position: 'relative' }}>
                     <Typography
                       sx={{
-                        position: 'absolute',
-                        top: 14,
-                        left: 14,
-                        fontFamily: 'var(--font-label), sans-serif',
-                        fontWeight: 700,
-                        fontSize: '0.72rem',
-                        letterSpacing: '0.08em',
-                        opacity: 0.6,
-                        color: fabric || tile.dark ? brand.chalk : brand.ink,
+                        fontFamily: 'var(--font-display), serif',
+                        fontStyle: 'italic',
+                        fontWeight: 600,
+                        fontSize: '1.3rem',
+                        color: tile.dark ? brand.chalk : brand.ink,
                       }}
                     >
-                      0{i + 1}
+                      {tile.label}
                     </Typography>
-                    <Box sx={{ position: 'relative' }}>
-                      <Typography
-                        sx={{
-                          fontFamily: 'var(--font-display), serif',
-                          fontStyle: 'italic',
-                          fontWeight: 600,
-                          fontSize: '1.3rem',
-                          color: fabric || tile.dark ? brand.chalk : brand.ink,
-                        }}
-                      >
-                        {tile.label}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontFamily: 'var(--font-label), sans-serif',
-                          fontSize: '0.7rem',
-                          letterSpacing: '0.06em',
-                          textTransform: 'uppercase',
-                          opacity: 0.75,
-                          mt: 0.5,
-                          color: fabric || tile.dark ? brand.chalk : brand.ink,
-                        }}
-                      >
-                        {tile.meta}
-                      </Typography>
-                    </Box>
+                    <Typography
+                      sx={{
+                        fontFamily: 'var(--font-label), sans-serif',
+                        fontSize: '0.7rem',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        opacity: 0.75,
+                        mt: 0.5,
+                        color: tile.dark ? brand.chalk : brand.ink,
+                      }}
+                    >
+                      {tile.meta}
+                    </Typography>
                   </Box>
-                </Grid>
-              );
-            })}
+                </Box>
+              </Grid>
+            ))}
           </Grid>
         </Container>
       </Box>
