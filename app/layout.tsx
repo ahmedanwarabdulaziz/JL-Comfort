@@ -6,6 +6,7 @@ import { Work_Sans, Fraunces, Big_Shoulders_Display } from 'next/font/google';
 import Footer from '@/components/layout/Footer';
 import SiteHeader from '@/components/layout/SiteHeader';
 import AIGuide from '@/components/ai/AIGuide';
+import ClarityInit from '@/components/analytics/ClarityInit';
 
 // Body copy.
 const workSans = Work_Sans({
@@ -54,6 +55,7 @@ export default function RootLayout({
     >
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <ServiceWorkerCleanup />
+        <ClarityInit />
         <Providers>
           <SiteHeader />
           <div style={{ flex: 1 }}>{children}</div>
