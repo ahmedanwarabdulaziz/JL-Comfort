@@ -14,40 +14,39 @@ interface HomePageClientProps {
 
 const MARQUEE_MATERIALS = ['Velvet', 'Linen', 'Bouclé', 'Chenille', 'Crypton Performance', 'Tweed & Textures', 'Shearling'];
 
-// Hand-drawn texture treatments instead of live catalog photos — a database
-// pick can land on a flat, textureless macro crop that reads as "no image."
-// A deliberate illustrated weave is bolder and never breaks.
+// Hand-picked (not "first match") catalog photos — the naive query used
+// before this landed on flat, textureless macro crops that read as broken
+// images. These were checked by eye for real visible texture/color.
 const COLORWAY_TILES = [
   {
     value: 'velvet',
     label: 'Velvet',
     meta: 'Plush · Railroaded',
-    dark: true,
-    bg: `repeating-linear-gradient(115deg, rgba(246,242,235,0.1) 0 3px, transparent 3px 9px), linear-gradient(150deg, #8a5f4c, #4a3327)`,
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-05_Large-v1.jpg',
   },
   {
     value: 'linen',
     label: 'Linen',
     meta: 'Breathable · Natural',
-    dark: false,
-    bg: `repeating-linear-gradient(0deg, rgba(33,23,18,0.06) 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, rgba(33,23,18,0.05) 0 1px, transparent 1px 6px), ${brand.butter}`,
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20420-01_Large-v1.jpg',
   },
   {
     value: 'boucle',
     label: 'Bouclé',
     meta: 'Looped · Textured',
-    dark: false,
-    bg: `radial-gradient(circle at 22% 28%, rgba(255,255,255,0.55) 0 3px, transparent 4px), radial-gradient(circle at 62% 58%, rgba(255,255,255,0.45) 0 3px, transparent 4px), radial-gradient(circle at 40% 82%, rgba(255,255,255,0.5) 0 3px, transparent 4px), ${brand.lime}`,
-    bgSize: '34px 34px, 34px 34px, 34px 34px, auto',
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB800-450_Large-v1.jpg',
   },
   {
     value: 'chenille',
     label: 'Chenille',
     meta: 'Deep Pile · Soft Hand',
-    dark: true,
-    bg: `repeating-linear-gradient(65deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 7px), linear-gradient(150deg, #3a2e26, ${brand.ink})`,
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB700-421_Large-v3.jpg',
   },
 ];
+
+// The hero panel uses the colorful linen print — more visual energy than
+// the velvet swatch for the page's single largest image.
+const HERO_FABRIC = COLORWAY_TILES.find((t) => t.value === 'linen')!;
 
 const SAMPLE_STEPS = [
   { n: '01', title: 'Browse Collections', desc: 'Find a sample book that matches your project style or colour palette.' },
@@ -108,7 +107,9 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                   position: 'relative',
                   aspectRatio: '4/5',
                   clipPath: 'polygon(0 0, 100% 0, 100% 86%, 84% 100%, 0 100%)',
-                  background: `repeating-linear-gradient(115deg, rgba(246,242,235,0.09) 0 3px, transparent 3px 9px), linear-gradient(160deg, ${brand.mocha} 0%, ${brand.mochaDeep} 55%, #4a3327 100%)`,
+                  backgroundImage: `linear-gradient(180deg, rgba(33,23,18,0) 40%, rgba(33,23,18,0.92) 100%), url(${HERO_FABRIC.photo})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
                 }}
               >
                 <Typography
@@ -120,11 +121,11 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                     fontFamily: 'var(--font-label), sans-serif',
                     fontSize: '0.7rem',
                     letterSpacing: '0.08em',
-                    color: 'rgba(246,242,235,0.85)',
+                    color: 'rgba(246,242,235,0.9)',
                     textTransform: 'uppercase',
                   }}
                 >
-                  Hand-feel: Plush · 100K+ Double Rubs
+                  {HERO_FABRIC.label} · {HERO_FABRIC.meta}
                 </Typography>
               </Box>
             </Grid>
@@ -199,13 +200,16 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                   href={`/fabrics?material=${tile.value}`}
                   sx={{
                     position: 'relative',
-                    display: 'block',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
                     textDecoration: 'none',
                     aspectRatio: '3/4',
                     p: 2,
                     clipPath: swatchClip(20),
-                    background: tile.bg,
-                    backgroundSize: tile.bgSize,
+                    backgroundImage: `linear-gradient(180deg, rgba(20,14,10,0.15) 0%, rgba(20,14,10,0.15) 30%, rgba(20,14,10,0.95) 100%), url(${tile.photo})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
                     transition: 'transform 0.3s ease',
                     '&:hover': { transform: 'rotate(-2deg) translateY(-4px)' },
                   }}
@@ -219,8 +223,8 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                       fontWeight: 700,
                       fontSize: '0.72rem',
                       letterSpacing: '0.08em',
-                      opacity: 0.6,
-                      color: tile.dark ? brand.chalk : brand.ink,
+                      color: brand.chalk,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.6)',
                     }}
                   >
                     0{i + 1}
@@ -232,7 +236,8 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                         fontStyle: 'italic',
                         fontWeight: 600,
                         fontSize: '1.3rem',
-                        color: tile.dark ? brand.chalk : brand.ink,
+                        color: brand.chalk,
+                        textShadow: '0 1px 6px rgba(0,0,0,0.7)',
                       }}
                     >
                       {tile.label}
@@ -243,9 +248,10 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                         fontSize: '0.7rem',
                         letterSpacing: '0.06em',
                         textTransform: 'uppercase',
-                        opacity: 0.75,
+                        opacity: 0.9,
                         mt: 0.5,
-                        color: tile.dark ? brand.chalk : brand.ink,
+                        color: brand.chalk,
+                        textShadow: '0 1px 4px rgba(0,0,0,0.6)',
                       }}
                     >
                       {tile.meta}
@@ -438,18 +444,33 @@ export default function HomePageClient({ products }: HomePageClientProps) {
             <Grid item xs={12} md={6}>
               <Grid container spacing={2}>
                 {[
-                  { bg: brand.chalk, label: 'The Linen Edit', sub: 'Breathable, natural textures' },
-                  { bg: '#EADFCB', label: 'Performance', sub: 'Beautiful yet indestructible' },
-                  { bg: brand.butter, label: 'Woven Geometry', sub: 'Striking patterns & motifs' },
-                  { bg: brand.mocha, label: 'Velvet Reserve', sub: 'The pinnacle of plush', dark: true },
+                  {
+                    label: 'The Linen Edit',
+                    sub: 'Breathable, natural textures',
+                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20440-01_Large-v1.jpg',
+                  },
+                  {
+                    label: 'Performance',
+                    sub: 'Beautiful yet indestructible',
+                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20940-10_Large-v1.jpg',
+                  },
+                  {
+                    label: 'Woven Geometry',
+                    sub: 'Striking patterns & motifs',
+                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10002-01_Large-v1.jpg',
+                  },
+                  {
+                    label: 'Velvet Reserve',
+                    sub: 'The pinnacle of plush',
+                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-08_Large-v1.jpg',
+                  },
                 ].map((book) => (
                   <Grid item xs={6} key={book.label}>
                     <Box
                       component={Link}
                       href="/sample-books"
                       sx={{
-                        bgcolor: book.bg,
-                        color: book.dark ? brand.chalk : brand.ink,
+                        color: brand.chalk,
                         textDecoration: 'none',
                         p: 3.5,
                         aspectRatio: '4/5',
@@ -457,18 +478,21 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         clipPath: swatchClip(18),
+                        backgroundImage: `linear-gradient(180deg, rgba(20,14,10,0.2) 0%, rgba(20,14,10,0.2) 40%, rgba(20,14,10,0.95) 100%), url(${book.photo})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
                         transition: 'transform 0.35s ease',
                         '&:hover': { transform: 'translateY(-5px)' },
                       }}
                     >
-                      <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, fontSize: '0.7rem', opacity: 0.5 }}>
+                      <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, fontSize: '0.7rem', opacity: 0.75, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
                         BOOK
                       </Typography>
                       <Box>
-                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', fontWeight: 600, fontSize: '1.1rem', mb: 0.5 }}>
+                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', fontWeight: 600, fontSize: '1.1rem', mb: 0.5, textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
                           {book.label}
                         </Typography>
-                        <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>
+                        <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.85, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
                           {book.sub}
                         </Typography>
                       </Box>
