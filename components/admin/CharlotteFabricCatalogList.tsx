@@ -190,11 +190,11 @@ export default function CharlotteFabricCatalogList() {
     () =>
       filterFabrics(fabrics, {
         search,
-        color,
-        pattern,
-        material,
-        application,
-        market,
+        color: color ? [color] : undefined,
+        pattern: pattern ? [pattern] : undefined,
+        material: material ? [material] : undefined,
+        application: application ? [application] : undefined,
+        market: market ? [market] : undefined,
         priceTagId: priceTagFilter,
         groupId: groupFilter,
       }),

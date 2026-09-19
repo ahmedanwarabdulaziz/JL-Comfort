@@ -24,6 +24,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useCart } from '@/lib/context/CartContext';
+import { brand } from '@/lib/theme';
+import CornerTag from '@/components/ui/CornerTag';
 
 // Color dot map for the mega-menu
 const MEGA_COLORS: { label: string; value: string; dot: string }[] = [
@@ -77,7 +79,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
     textDecoration: 'none',
     py: 0.45,
     transition: 'color 0.15s',
-    '&:hover': { color: '#b8935f' },
+    '&:hover': { color: brand.mocha },
   };
 
   return (
@@ -90,7 +92,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
         right: 0,
         zIndex: 1300,
         bgcolor: '#fff',
-        borderTop: '2px solid #e3c29a',
+        borderTop: `2px solid ${brand.butter}`,
         boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
         py: 3,
       }}
@@ -100,7 +102,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 
           {/* TRENDING */}
           <Box>
-            <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
+            <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: brand.ink, fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
               Trending
             </Typography>
             {MEGA_TRENDING.map((item) => (
@@ -118,14 +120,13 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
                   mt: 1,
                   px: 2,
                   py: 0.7,
-                  border: '1px solid #1a1a1a',
-                  borderRadius: '6px',
-                  color: '#1a1a1a',
+                  border: `1px solid ${brand.ink}`,
+                  color: brand.ink,
                   fontSize: '0.78rem',
                   fontWeight: 700,
                   textDecoration: 'none',
                   transition: 'all 0.15s',
-                  '&:hover': { bgcolor: '#1a1a1a', color: '#e3c29a' },
+                  '&:hover': { bgcolor: brand.ink, color: brand.butter },
                 }}
               >
                 View All Fabrics →
@@ -135,7 +136,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 
           {/* PATTERN */}
           <Box>
-            <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
+            <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: brand.ink, fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
               Pattern
             </Typography>
             {MEGA_PATTERNS.map((item) => (
@@ -153,7 +154,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 
           {/* COLOR */}
           <Box>
-            <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
+            <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: brand.ink, fontSize: '0.68rem', display: 'block', mb: 1.5 }}>
               Color
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 32px' }}>
@@ -172,7 +173,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
                     color: '#333',
                     fontSize: '0.82rem',
                     transition: 'color 0.15s',
-                    '&:hover': { color: '#b8935f' },
+                    '&:hover': { color: brand.mocha },
                     '&:hover .color-dot': { transform: 'scale(1.25)' },
                   }}
                 >
@@ -228,13 +229,14 @@ export default function SiteHeader() {
   };
 
   const navLinkSx = (active: boolean) => ({
-    color: active ? '#b8935f' : '#555',
+    fontFamily: 'var(--font-label), sans-serif',
+    color: active ? brand.mocha : brand.ink,
     fontWeight: 700,
     position: 'relative' as const,
     fontSize: '0.8rem',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    '&:hover': { color: '#b8935f', bgcolor: 'transparent' },
+    '&:hover': { color: brand.mocha, bgcolor: 'transparent' },
     '&::after': {
       content: '""',
       position: 'absolute',
@@ -242,7 +244,7 @@ export default function SiteHeader() {
       right: 14,
       bottom: 4,
       height: 2,
-      bgcolor: '#b8935f',
+      bgcolor: brand.mocha,
       transform: active ? 'scaleX(1)' : 'scaleX(0)',
       transition: 'transform 0.2s ease',
     },
@@ -253,26 +255,30 @@ export default function SiteHeader() {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: '#fff',
-        color: '#1a1a1a',
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        bgcolor: brand.chalk,
+        color: brand.ink,
+        borderBottom: `1px solid ${brand.chalkLine}`,
         boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
         // Allow the mega-menu to overflow outside the AppBar
         overflow: 'visible',
       }}
     >
       <Container maxWidth="xl" disableGutters>
-        <Toolbar sx={{ px: { xs: 2, md: 3 }, position: 'relative' }}>
+        <Toolbar sx={{ px: { xs: 2, md: 3 }, position: 'relative', gap: 2 }}>
 
           {/* Logo */}
           <Typography
             variant="h6"
             component={Link}
             href="/"
-            sx={{ flexGrow: 1, fontWeight: 900, letterSpacing: 2, textDecoration: 'none', color: '#1a1a1a', fontSize: '1.4rem' }}
+            sx={{ flexGrow: 1, fontFamily: 'var(--font-label), sans-serif', fontWeight: 900, letterSpacing: 1, textDecoration: 'none', color: brand.ink, fontSize: '1.4rem' }}
           >
-            <span style={{ color: '#8B1A2B' }}>JL</span> COMFORT
+            <Box component="span" sx={{ color: brand.mocha }}>JL</Box> COMFORT
           </Typography>
+
+          <CornerTag tone="dark" sx={{ display: { xs: 'none', md: 'inline-block' } }}>
+            SS26 Drop
+          </CornerTag>
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
@@ -321,9 +327,9 @@ export default function SiteHeader() {
                 >
                   <Container maxWidth="xl" disableGutters sx={{ display: 'flex' }}>
                     
-                    {/* TRENDING - Grey Column */}
-                    <Box sx={{ width: 240, bgcolor: '#f0f0f0', p: { xs: 3, md: 4 }, display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, letterSpacing: 1, color: '#666', fontSize: '0.75rem', display: 'block', mb: 2 }}>
+                    {/* TRENDING - tinted column */}
+                    <Box sx={{ width: 240, bgcolor: brand.chalk, p: { xs: 3, md: 4 }, display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, letterSpacing: 1, color: brand.mochaDeep, fontSize: '0.75rem', display: 'block', mb: 2 }}>
                         TRENDING
                       </Typography>
                       {MEGA_TRENDING.map((item) => (
@@ -332,7 +338,7 @@ export default function SiteHeader() {
                           component={Link}
                           href={item.href}
                           onClick={() => setMegaOpen(false)}
-                          sx={{ display: 'block', color: '#555', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: '#b8935f' } }}
+                          sx={{ display: 'block', color: '#555', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.mocha } }}
                         >
                           {item.label}
                         </Box>
@@ -349,11 +355,11 @@ export default function SiteHeader() {
                             py: 1,
                             bgcolor: '#fff',
                             border: '1px solid #ccc',
-                            color: '#555',
+                            color: brand.ink,
                             fontSize: '0.85rem',
                             textDecoration: 'none',
                             transition: 'all 0.15s',
-                            '&:hover': { borderColor: '#1a1a1a', color: '#1a1a1a' },
+                            '&:hover': { borderColor: brand.ink, bgcolor: brand.ink, color: brand.butter },
                           }}
                         >
                           View All Fabric
@@ -363,7 +369,7 @@ export default function SiteHeader() {
 
                     {/* PATTERN / APPLICATION */}
                     <Box sx={{ width: 240, p: { xs: 3, md: 4 } }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, letterSpacing: 1, color: '#666', fontSize: '0.75rem', display: 'block', mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, letterSpacing: 1, color: '#666', fontSize: '0.75rem', display: 'block', mb: 2 }}>
                         PATTERN
                       </Typography>
                       {MEGA_PATTERNS.map((item) => (
@@ -372,7 +378,7 @@ export default function SiteHeader() {
                           component={Link}
                           href={item.href ?? `/fabrics?pattern=${item.value}`}
                           onClick={() => setMegaOpen(false)}
-                          sx={{ display: 'block', color: '#666', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: '#b8935f' } }}
+                          sx={{ display: 'block', color: '#666', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.mocha } }}
                         >
                           {item.label}
                         </Box>
@@ -381,7 +387,7 @@ export default function SiteHeader() {
 
                     {/* COLOR */}
                     <Box sx={{ flex: 1, p: { xs: 3, md: 4 } }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, letterSpacing: 1, color: '#666', fontSize: '0.75rem', display: 'block', mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, letterSpacing: 1, color: '#666', fontSize: '0.75rem', display: 'block', mb: 2 }}>
                         COLOR
                       </Typography>
                       <Box sx={{ display: 'grid', gridTemplateColumns: 'max-content max-content', gap: '8px 48px' }}>
@@ -400,7 +406,7 @@ export default function SiteHeader() {
                               color: '#666',
                               fontSize: '0.9rem',
                               transition: 'color 0.15s',
-                              '&:hover': { color: '#b8935f' },
+                              '&:hover': { color: brand.mocha },
                               '&:hover .cdot': { transform: 'scale(1.2)' },
                             }}
                           >
@@ -431,7 +437,7 @@ export default function SiteHeader() {
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
             <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
 
-            <IconButton component={Link} href="/checkout" sx={{ ml: 2, color: '#555', '&:hover': { color: '#b8935f' } }}>
+            <IconButton component={Link} href="/checkout" sx={{ ml: 2, color: brand.ink, '&:hover': { color: brand.mocha } }}>
               <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
                 <ShoppingCartOutlinedIcon />
               </Badge>
@@ -454,9 +460,9 @@ export default function SiteHeader() {
 
       {/* Mobile drawer */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
-        <Box sx={{ width: 280, bgcolor: '#0a0908', color: '#fff', height: '100%', pt: 2 }} role="presentation">
+        <Box sx={{ width: 280, bgcolor: '#211712', color: '#fff', height: '100%', pt: 2 }} role="presentation">
           <Typography sx={{ px: 2.5, pb: 2, fontWeight: 'bold', letterSpacing: 2, fontSize: '1rem' }}>
-            <span style={{ color: '#e3c29a' }}>JL</span> COMFORT
+            <span style={{ color: '#F3D17E' }}>JL</span> COMFORT
           </Typography>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
           <List sx={{ pt: 0 }}>
@@ -464,38 +470,38 @@ export default function SiteHeader() {
             {/* Shop Fabrics — expandable in mobile */}
             <ListItemButton onClick={() => setMobileFabricsOpen((o) => !o)} sx={{ color: '#fff', py: 1.5 }}>
               <ListItemText primary="Shop Fabrics" primaryTypographyProps={{ fontWeight: 600 }} />
-              {mobileFabricsOpen ? <ExpandLessIcon sx={{ color: '#e3c29a' }} /> : <ExpandMoreIcon sx={{ color: '#888' }} />}
+              {mobileFabricsOpen ? <ExpandLessIcon sx={{ color: '#F3D17E' }} /> : <ExpandMoreIcon sx={{ color: '#888' }} />}
             </ListItemButton>
             <Collapse in={mobileFabricsOpen}>
               <Box sx={{ bgcolor: 'rgba(255,255,255,0.04)', pb: 1 }}>
-                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#e3c29a', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#F3D17E', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
                   Trending
                 </Typography>
                 {MEGA_TRENDING.map((item) => (
-                  <ListItemButton key={item.label} component={Link} href={item.href} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#e3c29a' } }}>
+                  <ListItemButton key={item.label} component={Link} href={item.href} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
                     <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.83rem' }} />
                   </ListItemButton>
                 ))}
-                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#e3c29a', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#F3D17E', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
                   By Color
                 </Typography>
                 {MEGA_COLORS.slice(0, 8).map((c) => (
-                  <ListItemButton key={c.value} component={Link} href={`/fabrics?color=${c.value}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#e3c29a' } }}>
+                  <ListItemButton key={c.value} component={Link} href={`/fabrics?color=${c.value}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot, mr: 1.5, border: '1px solid rgba(255,255,255,0.15)', flexShrink: 0 }} />
                     <ListItemText primary={c.label} primaryTypographyProps={{ fontSize: '0.83rem' }} />
                   </ListItemButton>
                 ))}
-                <ListItemButton component={Link} href="/fabrics" onClick={() => setMobileOpen(false)} sx={{ py: 0.8, pl: 4, color: '#e3c29a', fontWeight: 700 }}>
+                <ListItemButton component={Link} href="/fabrics" onClick={() => setMobileOpen(false)} sx={{ py: 0.8, pl: 4, color: '#F3D17E', fontWeight: 700 }}>
                   <ListItemText primary="View All Fabrics →" primaryTypographyProps={{ fontSize: '0.83rem', fontWeight: 700 }} />
                 </ListItemButton>
               </Box>
             </Collapse>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
-            <ListItemButton component={Link} href="/about" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/about') ? '#e3c29a' : '#fff', py: 1.5 }}>
+            <ListItemButton component={Link} href="/about" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/about') ? '#F3D17E' : '#fff', py: 1.5 }}>
               <ListItemText primary="About" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
-            <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? '#e3c29a' : '#fff', py: 1.5 }}>
+            <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? '#F3D17E' : '#fff', py: 1.5 }}>
               <ListItemText primary="FAQ" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
           </List>

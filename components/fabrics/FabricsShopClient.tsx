@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Box,
@@ -18,23 +18,25 @@ import {
   Collapse,
   useMediaQuery,
   useTheme,
+  Checkbox,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
+import { CharlotteFabricSnapshotItem, CharlotteFabricFilters } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
 import {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
   CHARLOTTE_FABRIC_MATERIALS,
+  FabricFacetOption,
 } from '@/lib/data/charlotteFabricFacets';
 import FabricCard from './FabricCard';
 
 const PAGE_SIZE = 32;
-const SIDEBAR_WIDTH = 252;
+const SIDEBAR_WIDTH = 280;
 
 // Dot color map
 const COLOR_DOT: Record<string, string> = {
@@ -76,20 +78,20 @@ function SidebarSection({
           cursor: 'pointer',
           py: 1.5,
           px: 2,
-          '&:hover': { bgcolor: 'rgba(0,0,0,0.03)' },
+          '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
           userSelect: 'none',
         }}
       >
         <Typography
           variant="caption"
-          sx={{ fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.7rem' }}
+          sx={{ fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.75rem' }}
         >
           {title}
         </Typography>
         {open ? (
-          <ExpandLessIcon sx={{ fontSize: 16, color: '#888' }} />
+          <ExpandLessIcon sx={{ fontSize: 18, color: '#888' }} />
         ) : (
-          <ExpandMoreIcon sx={{ fontSize: 16, color: '#888' }} />
+          <ExpandMoreIcon sx={{ fontSize: 18, color: '#888' }} />
         )}
       </Box>
       <Collapse in={open}>
@@ -102,33 +104,94 @@ function SidebarSection({
 
 // ─── The sidebar content (reused in both desktop + mobile drawer) ────────────
 function SidebarContent({
-  color, setColor,
-  pattern, setPattern,
-  material, setMaterial,
-  search, setSearch,
+  filters,
+  toggleFilter,
+  search,
+  setSearch,
   activeCount,
   onClearAll,
+  dynamicOptions,
 }: {
-  color: string; setColor: (v: string) => void;
-  pattern: string; setPattern: (v: string) => void;
-  material: string; setMaterial: (v: string) => void;
-  search: string; setSearch: (v: string) => void;
+  filters: Record<string, string[]>;
+  toggleFilter: (category: string, value: string) => void;
+  search: string;
+  setSearch: (v: string) => void;
   activeCount: number;
   onClearAll: () => void;
+  dynamicOptions: Record<string, FabricFacetOption[]>;
 }) {
+
+  const renderFilterList = (categoryKey: string, options: FabricFacetOption[], isColor = false) => {
+    if (!options || options.length === 0) return null;
+    
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {options.map((opt) => {
+          const active = filters[categoryKey]?.includes(opt.value);
+          return (
+            <Box
+              key={opt.value}
+              onClick={() => toggleFilter(categoryKey, opt.value)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 0.5,
+                py: 0.2,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)' },
+                transition: 'background 0.15s',
+              }}
+            >
+              <Checkbox
+                checked={active}
+                size="small"
+                disableRipple
+                sx={{
+                  color: 'rgba(0,0,0,0.2)',
+                  p: 0.5,
+                  '&.Mui-checked': { color: '#1a1a1a' },
+                }}
+              />
+              {isColor && (
+                <Box
+                  sx={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    bgcolor: COLOR_DOT[opt.value] ?? '#ccc',
+                    border: opt.value === 'white-ivory' ? '1px solid #ccc' : '1px solid rgba(0,0,0,0.1)',
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <Typography
+                variant="body2"
+                sx={{ fontSize: '0.85rem', color: active ? '#1a1a1a' : '#444', fontWeight: active ? 500 : 400 }}
+              >
+                {opt.label}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ px: 2, pt: 2.5, pb: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1a1a1a', letterSpacing: 0.5 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1a1a1a', letterSpacing: 0.5 }}>
             FILTER FABRICS
           </Typography>
           {activeCount > 0 && (
             <Button
               size="small"
               onClick={onClearAll}
-              sx={{ color: '#b8935f', fontWeight: 700, textTransform: 'none', fontSize: '0.75rem', minWidth: 'auto', p: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+              sx={{ color: '#1a1a1a', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.7rem', minWidth: 'auto', p: 0, '&:hover': { bgcolor: 'transparent', color: '#8A7350' } }}
             >
               Clear all
             </Button>
@@ -158,10 +221,10 @@ function SidebarContent({
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
-              borderRadius: '8px',
-              fontSize: '0.82rem',
-              '&:hover fieldset': { borderColor: '#b8935f' },
-              '&.Mui-focused fieldset': { borderColor: '#b8935f' },
+              borderRadius: 0,
+              fontSize: '0.85rem',
+              '&:hover fieldset': { borderColor: '#1a1a1a' },
+              '&.Mui-focused fieldset': { borderColor: '#1a1a1a' },
             },
           }}
         />
@@ -171,141 +234,57 @@ function SidebarContent({
 
       {/* Scrollable filter sections */}
       <Box sx={{ overflowY: 'auto', flex: 1 }}>
-
-        {/* COLOR */}
         <SidebarSection title="Color" defaultOpen>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-            {CHARLOTTE_FABRIC_COLORS.map((c) => {
-              const active = color === c.value;
-              return (
-                <Box
-                  key={c.value}
-                  onClick={() => setColor(active ? '' : c.value)}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.25,
-                    px: 1,
-                    py: 0.6,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    bgcolor: active ? 'rgba(184,147,95,0.1)' : 'transparent',
-                    '&:hover': { bgcolor: active ? 'rgba(184,147,95,0.15)' : 'rgba(0,0,0,0.04)' },
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: '50%',
-                      bgcolor: COLOR_DOT[c.value] ?? '#ccc',
-                      border: c.value === 'white-ivory' ? '1.5px solid #ccc' : '1.5px solid rgba(0,0,0,0.1)',
-                      flexShrink: 0,
-                      boxShadow: active ? '0 0 0 2px #b8935f' : 'none',
-                      transition: 'box-shadow 0.15s',
-                    }}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ fontSize: '0.82rem', color: active ? '#b8935f' : '#444', fontWeight: active ? 700 : 400, lineHeight: 1.3 }}
-                  >
-                    {c.label}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Box>
+          {renderFilterList('color', CHARLOTTE_FABRIC_COLORS, true)}
         </SidebarSection>
-
-        {/* PATTERN */}
-        <SidebarSection title="Pattern" defaultOpen={false}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-            {CHARLOTTE_FABRIC_PATTERNS.map((p) => {
-              const active = pattern === p.value;
-              return (
-                <Box
-                  key={p.value}
-                  onClick={() => setPattern(active ? '' : p.value)}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1,
-                    py: 0.6,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    bgcolor: active ? 'rgba(184,147,95,0.1)' : 'transparent',
-                    '&:hover': { bgcolor: active ? 'rgba(184,147,95,0.15)' : 'rgba(0,0,0,0.04)' },
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: active ? '#b8935f' : '#ccc',
-                      flexShrink: 0,
-                      transition: 'background 0.15s',
-                    }}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ fontSize: '0.82rem', color: active ? '#b8935f' : '#444', fontWeight: active ? 700 : 400, lineHeight: 1.3 }}
-                  >
-                    {p.label}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Box>
+        <SidebarSection title="Pattern" defaultOpen>
+          {renderFilterList('pattern', CHARLOTTE_FABRIC_PATTERNS)}
         </SidebarSection>
-
-        {/* MATERIAL */}
-        <SidebarSection title="Material" defaultOpen={false}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-            {CHARLOTTE_FABRIC_MATERIALS.map((m) => {
-              const active = material === m.value;
-              return (
-                <Box
-                  key={m.value}
-                  onClick={() => setMaterial(active ? '' : m.value)}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1,
-                    py: 0.6,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    bgcolor: active ? 'rgba(184,147,95,0.1)' : 'transparent',
-                    '&:hover': { bgcolor: active ? 'rgba(184,147,95,0.15)' : 'rgba(0,0,0,0.04)' },
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: active ? '#b8935f' : '#ccc',
-                      flexShrink: 0,
-                      transition: 'background 0.15s',
-                    }}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ fontSize: '0.82rem', color: active ? '#b8935f' : '#444', fontWeight: active ? 700 : 400, lineHeight: 1.3 }}
-                  >
-                    {m.label}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Box>
+        <SidebarSection title="Material" defaultOpen>
+          {renderFilterList('material', CHARLOTTE_FABRIC_MATERIALS)}
         </SidebarSection>
+        
+        {dynamicOptions.application?.length > 0 && (
+          <SidebarSection title="Application" defaultOpen={false}>
+            {renderFilterList('application', dynamicOptions.application)}
+          </SidebarSection>
+        )}
+        
+        {dynamicOptions.market?.length > 0 && (
+          <SidebarSection title="Market" defaultOpen={false}>
+            {renderFilterList('market', dynamicOptions.market)}
+          </SidebarSection>
+        )}
 
+        {dynamicOptions.features?.length > 0 && (
+          <SidebarSection title="Features" defaultOpen={false}>
+            {renderFilterList('features', dynamicOptions.features)}
+          </SidebarSection>
+        )}
+
+        {dynamicOptions.performance?.length > 0 && (
+          <SidebarSection title="Performance" defaultOpen={false}>
+            {renderFilterList('performance', dynamicOptions.performance)}
+          </SidebarSection>
+        )}
+
+        {dynamicOptions.fiberContent?.length > 0 && (
+          <SidebarSection title="Fiber Content" defaultOpen={false}>
+            {renderFilterList('fiberContent', dynamicOptions.fiberContent)}
+          </SidebarSection>
+        )}
+
+        {dynamicOptions.durability?.length > 0 && (
+          <SidebarSection title="Rub Count" defaultOpen={false}>
+            {renderFilterList('durability', dynamicOptions.durability)}
+          </SidebarSection>
+        )}
+
+        {dynamicOptions.patternDirection?.length > 0 && (
+          <SidebarSection title="Pattern Direction" defaultOpen={false}>
+            {renderFilterList('patternDirection', dynamicOptions.patternDirection)}
+          </SidebarSection>
+        )}
       </Box>
     </Box>
   );
@@ -317,9 +296,34 @@ export default function FabricsShopClient() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const searchParams = useSearchParams();
 
-  const [color, setColor] = useState(searchParams?.get('color') ?? '');
-  const [pattern, setPattern] = useState(searchParams?.get('pattern') ?? '');
-  const [material, setMaterial] = useState(searchParams?.get('material') ?? '');
+  const getArrayParam = (key: string) => {
+    const val = searchParams?.get(key);
+    return val ? val.split(',') : [];
+  };
+
+  const [filters, setFilters] = useState<Record<string, string[]>>({
+    color: getArrayParam('color'),
+    pattern: getArrayParam('pattern'),
+    material: getArrayParam('material'),
+    application: getArrayParam('application'),
+    market: getArrayParam('market'),
+    features: getArrayParam('features'),
+    performance: getArrayParam('performance'),
+    fiberContent: getArrayParam('fiberContent'),
+    durability: getArrayParam('durability'),
+    patternDirection: getArrayParam('patternDirection'),
+  });
+
+  const toggleFilter = useCallback((category: string, value: string) => {
+    setFilters(prev => {
+      const current = prev[category] || [];
+      return {
+        ...prev,
+        [category]: current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+      };
+    });
+  }, []);
+
   const [sampleBook] = useState(searchParams?.get('sampleBook') ?? '');
   const [search, setSearch] = useState('');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -341,53 +345,97 @@ export default function FabricsShopClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = useMemo(
-    () => filterFabrics(allFabrics, { color, pattern, material, search, sampleBook: sampleBook || undefined }),
-    [allFabrics, color, pattern, material, search, sampleBook]
-  );
+  // Dynamically extract options from allFabrics for the non-hardcoded categories
+  const dynamicOptions = useMemo(() => {
+    const extract = (key: keyof CharlotteFabricSnapshotItem, isArray = false) => {
+      const set = new Set<string>();
+      allFabrics.forEach(f => {
+        const val = f[key];
+        if (!val) return;
+        if (isArray) {
+          (val as string[]).forEach(v => set.add(v));
+        } else {
+          set.add(val as string);
+        }
+      });
+      return Array.from(set).sort().map(v => ({ value: v, label: v }));
+    };
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [color, pattern, material, search]);
+    return {
+      application: extract('applications', true),
+      market: extract('markets', true),
+      features: extract('features'),
+      performance: extract('performance'),
+      fiberContent: extract('fiberContent'),
+      durability: extract('durability'),
+      patternDirection: extract('patternDirection'),
+    };
+  }, [allFabrics]);
+
+  const filtered = useMemo(() => {
+    const filtersObj: CharlotteFabricFilters = {
+      color: filters.color,
+      pattern: filters.pattern,
+      material: filters.material,
+      application: filters.application,
+      market: filters.market,
+      features: filters.features,
+      performance: filters.performance,
+      fiberContent: filters.fiberContent,
+      durability: filters.durability,
+      patternDirection: filters.patternDirection,
+      search,
+      sampleBook: sampleBook || undefined,
+    };
+    return filterFabrics(allFabrics, filtersObj);
+  }, [allFabrics, filters, search, sampleBook]);
+
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filters, search]);
 
   const visibleFabrics = filtered.slice(0, visibleCount);
   const hasMore = filtered.length > visibleCount;
-  const activeCount = [color, pattern, material, search].filter(Boolean).length;
+  
+  // Calculate total active filter chips
+  const activeCount = Object.values(filters).reduce((acc, arr) => acc + arr.length, 0) + (search ? 1 : 0);
 
-  const clearAll = () => { setColor(''); setPattern(''); setMaterial(''); setSearch(''); };
+  const clearAll = () => { 
+    setFilters({
+      color: [], pattern: [], material: [], application: [], market: [], features: [], performance: [], fiberContent: [], durability: [], patternDirection: []
+    }); 
+    setSearch(''); 
+  };
 
-  const sidebarProps = { color, setColor, pattern, setPattern, material, setMaterial, search, setSearch, activeCount, onClearAll: clearAll };
+  const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, dynamicOptions };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9f7f4' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff' }}>
 
       {/* ── PAGE HEADER ─────────────────────────────────────────────── */}
       <Box
         sx={{
-          background: 'linear-gradient(160deg, #171310 0%, #0a0908 60%, #000 100%)',
-          pt: { xs: 6, md: 7 },
-          pb: { xs: 5, md: 6 },
+          bgcolor: '#FAFAFA',
+          pt: { xs: 8, md: 10 },
+          pb: { xs: 6, md: 8 },
           textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
+          borderBottom: '1px solid #eaeaea',
         }}
       >
-        <Box sx={{ position: 'absolute', top: -60, left: '20%', width: 280, height: 280, borderRadius: '50%', bgcolor: 'rgba(227,194,154,0.08)', filter: 'blur(70px)', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -40, right: '15%', width: 220, height: 220, borderRadius: '50%', bgcolor: 'rgba(227,194,154,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <Container maxWidth="lg" sx={{ position: 'relative' }}>
-          <Typography variant="overline" sx={{ color: '#e3c29a', letterSpacing: 2.5, fontWeight: 700, fontSize: '0.68rem', display: 'block', mb: 1 }}>
+        <Container maxWidth="lg">
+          <Typography variant="overline" sx={{ color: '#8A7350', letterSpacing: 2.5, fontWeight: 600, fontSize: '0.75rem', display: 'block', mb: 1 }}>
             Premium Collection
           </Typography>
-          <Typography variant="h3" component="h1" sx={{ color: '#fff', fontWeight: 800, fontSize: { xs: '2rem', md: '2.8rem' }, mb: 1.5 }}>
-            Shop{' '}<Box component="span" sx={{ color: '#e3c29a' }}>Fabrics</Box>
+          <Typography variant="h3" component="h1" sx={{ color: '#1a1a1a', fontWeight: 300, fontSize: { xs: '2.5rem', md: '3.5rem' }, mb: 2 }}>
+            Shop{' '}<Box component="span" sx={{ fontWeight: 600 }}>Fabrics</Box>
           </Typography>
-          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.6)', maxWidth: 500, mx: 'auto', fontSize: '0.95rem' }}>
-            Thousands of upholstery fabrics — per-yard pricing, free samples available.
+          <Typography variant="body1" sx={{ color: '#666', maxWidth: 500, mx: 'auto', fontSize: '1.05rem', lineHeight: 1.6 }}>
+            Explore thousands of exquisite upholstery fabrics. Exceptional quality, per-yard pricing, and free samples available.
           </Typography>
         </Container>
       </Box>
 
       {/* ── BODY: SIDEBAR + GRID ─────────────────────────────────────── */}
-      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
-        <Box sx={{ display: 'flex', gap: { md: 4 }, alignItems: 'flex-start' }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 8 } }}>
+        <Box sx={{ display: 'flex', gap: { md: 6 }, alignItems: 'flex-start' }}>
 
           {/* ── DESKTOP SIDEBAR ─────────────────────────────────────── */}
           {!isMobile && (
@@ -397,15 +445,12 @@ export default function FabricsShopClient() {
                 width: SIDEBAR_WIDTH,
                 flexShrink: 0,
                 position: 'sticky',
-                top: 16,
-                maxHeight: 'calc(100vh - 32px)',
+                top: 24,
+                maxHeight: 'calc(100vh - 48px)',
                 overflowY: 'auto',
                 bgcolor: '#fff',
-                borderRadius: '14px',
-                border: '1px solid rgba(0,0,0,0.07)',
-                boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
                 '&::-webkit-scrollbar': { width: 4 },
-                '&::-webkit-scrollbar-thumb': { bgcolor: '#e0d9d0', borderRadius: 4 },
+                '&::-webkit-scrollbar-thumb': { bgcolor: '#eaeaea', borderRadius: 4 },
               }}
             >
               <SidebarContent {...sidebarProps} />
@@ -421,9 +466,9 @@ export default function FabricsShopClient() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                mb: 2.5,
+                mb: 4,
                 flexWrap: 'wrap',
-                gap: 1.5,
+                gap: 2,
               }}
             >
               {/* Mobile: filter button */}
@@ -434,12 +479,13 @@ export default function FabricsShopClient() {
                   variant="outlined"
                   size="small"
                   sx={{
-                    borderRadius: '8px',
-                    borderColor: activeCount > 0 ? '#b8935f' : 'rgba(0,0,0,0.2)',
-                    color: activeCount > 0 ? '#b8935f' : '#555',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    fontSize: '0.82rem',
+                    borderRadius: 0,
+                    borderColor: '#1a1a1a',
+                    color: '#1a1a1a',
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    fontSize: '0.8rem',
+                    letterSpacing: 1,
                   }}
                 >
                   Filters{activeCount > 0 ? ` (${activeCount})` : ''}
@@ -448,54 +494,47 @@ export default function FabricsShopClient() {
 
               {/* Count */}
               {!loading && !error && (
-                <Typography variant="body2" sx={{ color: '#777', fontWeight: 600, fontSize: '0.82rem' }}>
+                <Typography variant="body2" sx={{ color: '#666', fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: 1 }}>
                   {filtered.length.toLocaleString()} fabric{filtered.length !== 1 ? 's' : ''}
-                  {activeCount > 0 && <Box component="span" sx={{ color: '#b8935f' }}> — filtered</Box>}
                 </Typography>
               )}
 
               {/* Active filter chips */}
-              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', ml: 'auto' }}>
-                {color && (
-                  <Chip
-                    label={CHARLOTTE_FABRIC_COLORS.find((c) => c.value === color)?.label ?? color}
-                    size="small"
-                    onDelete={() => setColor('')}
-                    sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontSize: '0.72rem', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'rgba(227,194,154,0.6)', '&:hover': { color: '#e3c29a' } } }}
-                  />
-                )}
-                {pattern && (
-                  <Chip
-                    label={CHARLOTTE_FABRIC_PATTERNS.find((p) => p.value === pattern)?.label ?? pattern}
-                    size="small"
-                    onDelete={() => setPattern('')}
-                    sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontSize: '0.72rem', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'rgba(227,194,154,0.6)', '&:hover': { color: '#e3c29a' } } }}
-                  />
-                )}
-                {material && (
-                  <Chip
-                    label={CHARLOTTE_FABRIC_MATERIALS.find((m) => m.value === material)?.label ?? material}
-                    size="small"
-                    onDelete={() => setMaterial('')}
-                    sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontSize: '0.72rem', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'rgba(227,194,154,0.6)', '&:hover': { color: '#e3c29a' } } }}
-                  />
-                )}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: 'auto' }}>
                 {search && (
                   <Chip
                     label={`"${search}"`}
                     size="small"
                     onDelete={() => setSearch('')}
-                    sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontSize: '0.72rem', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'rgba(227,194,154,0.6)', '&:hover': { color: '#e3c29a' } } }}
+                    sx={{ bgcolor: '#f4f4f4', color: '#1a1a1a', fontSize: '0.75rem', fontWeight: 500, borderRadius: 1 }}
                   />
                 )}
+                {Object.entries(filters).map(([key, values]) => (
+                  values.map(val => {
+                    // Try to find a human readable label if it's one of the hardcoded facets
+                    let label = val;
+                    if (key === 'color') label = CHARLOTTE_FABRIC_COLORS.find(c => c.value === val)?.label || val;
+                    if (key === 'pattern') label = CHARLOTTE_FABRIC_PATTERNS.find(c => c.value === val)?.label || val;
+                    if (key === 'material') label = CHARLOTTE_FABRIC_MATERIALS.find(c => c.value === val)?.label || val;
+                    
+                    return (
+                      <Chip
+                        key={`${key}-${val}`}
+                        label={label}
+                        size="small"
+                        onDelete={() => toggleFilter(key, val)}
+                        sx={{ bgcolor: '#f4f4f4', color: '#1a1a1a', fontSize: '0.75rem', fontWeight: 500, borderRadius: 1 }}
+                      />
+                    );
+                  })
+                ))}
               </Box>
             </Box>
 
             {/* Loading */}
             {loading && (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 16, gap: 2 }}>
-                <CircularProgress sx={{ color: '#e3c29a' }} size={38} thickness={3} />
-                <Typography variant="body2" sx={{ color: '#999' }}>Loading fabric catalog…</Typography>
+                <CircularProgress sx={{ color: '#1a1a1a' }} size={38} thickness={2} />
               </Box>
             )}
 
@@ -503,7 +542,7 @@ export default function FabricsShopClient() {
             {error && !loading && (
               <Box sx={{ textAlign: 'center', py: 12 }}>
                 <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
-                <Button variant="outlined" onClick={() => window.location.reload()} sx={{ borderColor: '#b8935f', color: '#b8935f', borderRadius: '8px', textTransform: 'none' }}>
+                <Button variant="outlined" onClick={() => window.location.reload()} sx={{ borderColor: '#1a1a1a', color: '#1a1a1a', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
                   Retry
                 </Button>
               </Box>
@@ -512,9 +551,9 @@ export default function FabricsShopClient() {
             {/* Empty */}
             {!loading && !error && visibleFabrics.length === 0 && (
               <Box sx={{ textAlign: 'center', py: 14 }}>
-                <Typography variant="h6" sx={{ color: '#555', mb: 1, fontWeight: 700 }}>No fabrics found</Typography>
-                <Typography variant="body2" sx={{ color: '#888', mb: 3 }}>Try adjusting your filters.</Typography>
-                <Button onClick={clearAll} variant="outlined" sx={{ borderColor: '#b8935f', color: '#b8935f', borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}>
+                <Typography variant="h5" sx={{ color: '#1a1a1a', mb: 1, fontWeight: 300 }}>No fabrics found</Typography>
+                <Typography variant="body1" sx={{ color: '#666', mb: 4 }}>Try removing some filters to see more results.</Typography>
+                <Button onClick={clearAll} variant="outlined" sx={{ borderColor: '#1a1a1a', color: '#1a1a1a', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
                   Clear all filters
                 </Button>
               </Box>
@@ -523,7 +562,7 @@ export default function FabricsShopClient() {
             {/* Grid */}
             {!loading && !error && visibleFabrics.length > 0 && (
               <>
-                <Grid container spacing={{ xs: 1.5, sm: 2, md: 2 }}>
+                <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
                   {visibleFabrics.map((fabric) => (
                     <Grid item xs={6} sm={4} md={4} lg={3} key={fabric.id}>
                       <FabricCard fabric={fabric} />
@@ -532,24 +571,25 @@ export default function FabricsShopClient() {
                 </Grid>
 
                 {hasMore && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
                     <Button
-                      variant="contained"
+                      variant="outlined"
                       size="large"
                       onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
                       sx={{
-                        bgcolor: '#1a1a1a',
-                        color: '#e3c29a',
-                        borderRadius: '10px',
-                        px: 5,
+                        borderColor: '#1a1a1a',
+                        color: '#1a1a1a',
+                        borderRadius: 0,
+                        px: 6,
                         py: 1.5,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        fontSize: '0.9rem',
-                        '&:hover': { bgcolor: '#333' },
+                        fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        fontSize: '0.85rem',
+                        '&:hover': { bgcolor: '#1a1a1a', color: '#fff' },
                       }}
                     >
-                      Load More — {(filtered.length - visibleCount).toLocaleString()} remaining
+                      Load More ({filtered.length - visibleCount} remaining)
                     </Button>
                   </Box>
                 )}
@@ -566,13 +606,13 @@ export default function FabricsShopClient() {
         onClose={() => setMobileDrawerOpen(false)}
         PaperProps={{
           sx: {
-            width: 300,
+            width: 320,
             bgcolor: '#fff',
           },
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2, pb: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: 0.5 }}>FILTER FABRICS</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, letterSpacing: 0.5 }}>FILTER FABRICS</Typography>
           <IconButton onClick={() => setMobileDrawerOpen(false)} size="small">
             <CloseIcon />
           </IconButton>
@@ -586,7 +626,8 @@ export default function FabricsShopClient() {
             fullWidth
             variant="contained"
             onClick={() => setMobileDrawerOpen(false)}
-            sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontWeight: 700, borderRadius: '10px', py: 1.4, textTransform: 'none', fontSize: '0.9rem', '&:hover': { bgcolor: '#333' } }}
+            disableElevation
+            sx={{ bgcolor: '#1a1a1a', color: '#fff', fontWeight: 500, borderRadius: 0, py: 1.5, textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.85rem', '&:hover': { bgcolor: '#333' } }}
           >
             View {filtered.length.toLocaleString()} Fabrics
           </Button>

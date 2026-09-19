@@ -72,11 +72,16 @@ export interface CharlotteFabricSnapshotItem extends CharlotteFabric {
 }
 
 export interface CharlotteFabricFilters {
-  color?: string;
-  pattern?: string;
-  material?: string;
-  application?: string;
-  market?: string;
+  color?: string[];
+  pattern?: string[];
+  material?: string[];
+  application?: string[];
+  market?: string[];
+  features?: string[];
+  performance?: string[];
+  fiberContent?: string[];
+  durability?: string[];
+  patternDirection?: string[];
   search?: string; // matched against name/sku
   priceTagId?: string; // "__untagged__" matches items with no priceTagId (using the default rate)
   groupId?: string;

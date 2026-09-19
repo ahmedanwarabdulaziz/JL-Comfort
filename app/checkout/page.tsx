@@ -228,11 +228,11 @@ export default function CheckoutPage() {
               variant="contained"
               fullWidth
               size="large"
-              onClick={handleStripeCheckout}
+              onClick={() => { window.location.href = '/checkout/shipping'; }}
               disabled={isCheckingOut}
               sx={{ py: 1.5, fontSize: '1.1rem' }}
             >
-              {isCheckingOut ? 'Processing...' : 'Pay with Stripe'}
+              Continue to Shipping
             </Button>
             
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>

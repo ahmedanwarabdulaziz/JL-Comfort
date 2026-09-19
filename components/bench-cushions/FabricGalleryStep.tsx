@@ -52,11 +52,11 @@ const toFabricItem = (fabric: CharlotteFabric): FabricItem => ({
 });
 
 export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedYards }: FabricGalleryStepProps) {
-  const [color, setColor] = useState('');
-  const [pattern, setPattern] = useState('');
-  const [material, setMaterial] = useState('');
-  const [application, setApplication] = useState('');
-  const [market, setMarket] = useState('');
+  const [color, setColor] = useState<string[]>([]);
+  const [pattern, setPattern] = useState<string[]>([]);
+  const [material, setMaterial] = useState<string[]>([]);
+  const [application, setApplication] = useState<string[]>([]);
+  const [market, setMarket] = useState<string[]>([]);
 
   const [allFabrics, setAllFabrics] = useState<CharlotteFabricSnapshotItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -111,12 +111,12 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
           <TextField
             fullWidth
             select
+            SelectProps={{ multiple: true }}
             size="small"
             label="Color"
             value={color}
-            onChange={(e) => setColor(e.target.value)}
+            onChange={(e) => setColor(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
           >
-            <MenuItem value="">Any Color</MenuItem>
             {CHARLOTTE_FABRIC_COLORS.map((c) => (
               <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
             ))}
@@ -126,12 +126,12 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
           <TextField
             fullWidth
             select
+            SelectProps={{ multiple: true }}
             size="small"
             label="Pattern"
             value={pattern}
-            onChange={(e) => setPattern(e.target.value)}
+            onChange={(e) => setPattern(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
           >
-            <MenuItem value="">Any Pattern</MenuItem>
             {CHARLOTTE_FABRIC_PATTERNS.map((p) => (
               <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
             ))}
@@ -141,12 +141,12 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
           <TextField
             fullWidth
             select
+            SelectProps={{ multiple: true }}
             size="small"
             label="Material"
             value={material}
-            onChange={(e) => setMaterial(e.target.value)}
+            onChange={(e) => setMaterial(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
           >
-            <MenuItem value="">Any Material</MenuItem>
             {CHARLOTTE_FABRIC_MATERIALS.map((m) => (
               <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
             ))}
@@ -156,12 +156,12 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
           <TextField
             fullWidth
             select
+            SelectProps={{ multiple: true }}
             size="small"
             label="Application"
             value={application}
-            onChange={(e) => setApplication(e.target.value)}
+            onChange={(e) => setApplication(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
           >
-            <MenuItem value="">Any Application</MenuItem>
             {applicationOptions.map((a) => (
               <MenuItem key={a} value={a}>{a}</MenuItem>
             ))}
@@ -171,12 +171,12 @@ export default function FabricGalleryStep({ selectedFabric, onSelect, estimatedY
           <TextField
             fullWidth
             select
+            SelectProps={{ multiple: true }}
             size="small"
             label="Market"
             value={market}
-            onChange={(e) => setMarket(e.target.value)}
+            onChange={(e) => setMarket(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
           >
-            <MenuItem value="">Any Market</MenuItem>
             {marketOptions.map((m) => (
               <MenuItem key={m} value={m}>{m}</MenuItem>
             ))}

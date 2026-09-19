@@ -80,6 +80,46 @@ export const getCharlotteFabrics = async (): Promise<CharlotteFabric[]> => {
   return (data || []).map(rowToCharlotteFabric);
 };
 
+/**
+ * Fetches one real, verified-good product photo per requested material tag
+ * (e.g. 'velvet', 'linen') in a single query. Used for homepage/marketing
+ * tiles that want to show an actual in-stock fabric rather than a hardcoded
+ * external URL that can silently go stale (404).
+ */
+export const getFeaturedFabricsByMaterial = async (
+  materials: string[]
+): Promise<Record<string, { imageUrl: string; name: string } | null>> => {
+  const result: Record<string, { imageUrl: string; name: string } | null> = {};
+  materials.forEach((m) => {
+    result[m] = null;
+  });
+  if (!supabase) return result;
+
+  const { data, error } = await supabase
+    .from('charlotte_fabrics')
+    .select('name, image_url, material')
+    .eq('status', 'active')
+    .eq('image_ok', true)
+    .overlaps('material', materials)
+    .limit(200);
+
+  if (error) {
+    console.error('Error fetching featured fabrics by material:', error);
+    return result;
+  }
+
+  for (const row of data || []) {
+    const rowMaterials: string[] = row.material || [];
+    if (!row.image_url) continue;
+    for (const m of materials) {
+      if (!result[m] && rowMaterials.includes(m)) {
+        result[m] = { imageUrl: row.image_url, name: row.name || '' };
+      }
+    }
+  }
+  return result;
+};
+
 // Same public R2 bucket URL/fallback as lib/cloudflare/r2.ts, exposed with the NEXT_PUBLIC_
 // prefix since this fetch runs in the browser (the gallery is a client component).
 const R2_PUBLIC_URL =
@@ -126,11 +166,18 @@ export const filterFabrics = <T extends CharlotteFabric>(
   const search = filters.search?.trim().toLowerCase();
 
   return fabrics.filter((fabric) => {
-    if (filters.color && !fabric.color.includes(filters.color)) return false;
-    if (filters.pattern && !fabric.pattern.includes(filters.pattern)) return false;
-    if (filters.material && !fabric.material.includes(filters.material)) return false;
-    if (filters.application && !fabric.applications.includes(filters.application)) return false;
-    if (filters.market && !fabric.markets.includes(filters.market)) return false;
+    if (filters.color?.length && !filters.color.some(c => fabric.color.includes(c))) return false;
+    if (filters.pattern?.length && !filters.pattern.some(p => fabric.pattern.includes(p))) return false;
+    if (filters.material?.length && !filters.material.some(m => fabric.material.includes(m))) return false;
+    if (filters.application?.length && !filters.application.some(a => fabric.applications.includes(a))) return false;
+    if (filters.market?.length && !filters.market.some(m => fabric.markets.includes(m))) return false;
+    
+    if (filters.features?.length && !filters.features.includes(fabric.features || '')) return false;
+    if (filters.performance?.length && !filters.performance.includes(fabric.performance || '')) return false;
+    if (filters.fiberContent?.length && !filters.fiberContent.includes(fabric.fiberContent || '')) return false;
+    if (filters.durability?.length && !filters.durability.includes(fabric.durability || '')) return false;
+    if (filters.patternDirection?.length && !filters.patternDirection.includes(fabric.patternDirection || '')) return false;
+
     if (filters.priceTagId) {
       if (filters.priceTagId === UNTAGGED_PRICE_TAG_FILTER) {
         if (fabric.priceTagId) return false;

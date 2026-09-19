@@ -75,6 +75,8 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
     cleanability: data.cleanability || undefined,
     flammability: data.flammability || undefined,
     origin: data.origin || undefined,
+    features: data.features || undefined,
+    performance: data.performance || undefined,
     brand: data.brand || undefined,
     sampleBooks: data.sample_books || undefined,
     ecoFriendly: data.eco_friendly || undefined,

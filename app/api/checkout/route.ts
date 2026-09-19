@@ -7,10 +7,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to
 
 export async function POST(req: Request) {
   try {
-    const { items, origin: clientOrigin } = await req.json();
+    const { items, origin: clientOrigin, shippingAddress } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
+    }
+
+    if (!shippingAddress || shippingAddress.country !== 'CA') {
+      return NextResponse.json({ error: 'At this time, JL Comfort ships to Canada only.' }, { status: 400 });
     }
 
     // Prepare line items for Stripe
@@ -62,11 +66,40 @@ export async function POST(req: Request) {
     const serverOrigin = host ? `${protocol}://${host}` : 'http://localhost:3000';
     const finalOrigin = clientOrigin || req.headers.get('origin') || serverOrigin;
 
-    // Create Checkout Session
+    const shippingAmountCents = process.env.CANADA_STANDARD_SHIPPING_CENTS;
+    if (shippingAmountCents === undefined) {
+      return NextResponse.json(
+        { error: 'Canada shipping is not configured yet. Please contact JL Comfort.' },
+        { status: 503 }
+      );
+    }
+
+    const shippingCents = Number(shippingAmountCents);
+    if (!Number.isInteger(shippingCents) || shippingCents < 0) {
+      return NextResponse.json({ error: 'Invalid Canada shipping configuration.' }, { status: 500 });
+    }
+
+    // Stripe uses the collected Canadian shipping address to calculate
+    // registered GST/HST and provincial taxes.
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
+      automatic_tax: { enabled: true },
+      billing_address_collection: 'required',
+      shipping_address_collection: { allowed_countries: ['CA'] },
+      shipping_options: [{
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: { amount: shippingCents, currency: 'usd' },
+          display_name: 'Standard delivery',
+          delivery_estimate: {
+            minimum: { unit: 'business_day', value: 3 },
+            maximum: { unit: 'business_day', value: 7 },
+          },
+        },
+      }],
+      customer_email: shippingAddress?.email,
       success_url: `${finalOrigin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${finalOrigin}/foam`,
       metadata: {
