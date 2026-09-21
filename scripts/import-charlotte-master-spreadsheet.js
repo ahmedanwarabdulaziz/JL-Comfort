@@ -87,7 +87,8 @@ function buildUpdatePayload(row, nowIso) {
  * not the full string.
  */
 function leadingSkuToken(sku) {
-  return String(sku || '').trim().split(/\s+/)[0];
+  // Lowercased: the site scrapes some SKUs in lowercase ("i9600-05") that the sheet writes in caps.
+  return String(sku || '').trim().split(/\s+/)[0].toLowerCase();
 }
 
 async function loadSkuMap(supabase) {
@@ -154,7 +155,7 @@ async function main() {
     for (const row of rows) {
       const sku = String(row.sku ?? '').trim();
       if (!sku) continue;
-      const id = skuToId.get(sku);
+      const id = skuToId.get(sku.toLowerCase());
       if (!id) {
         const category = row['Category'] || 'Unknown';
         unmatchedByCategory.set(category, (unmatchedByCategory.get(category) || 0) + 1);
