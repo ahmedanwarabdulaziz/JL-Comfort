@@ -28,6 +28,7 @@ import StarIcon from '@mui/icons-material/Star';
 import LayersIcon from '@mui/icons-material/Layers';
 import WeekendIcon from '@mui/icons-material/Weekend';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -52,12 +53,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests' | 'ai-chat-logs' | 'ai-settings'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'unpriced-fabrics' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests' | 'ai-chat-logs' | 'ai-settings'
   >(
     pathname?.includes('/foam')
       ? 'foam'
       : pathname?.includes('/fabric-pricing')
       ? 'fabric-pricing'
+      : pathname?.includes('/unpriced-fabrics')
+      ? 'unpriced-fabrics'
       : pathname?.includes('/fabric-groups')
       ? 'fabric-groups'
       : pathname?.includes('/fabric-catalog')
@@ -224,6 +227,20 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <AttachMoneyIcon />
             </ListItemIcon>
             <ListItemText primary="Fabric Pricing" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/unpriced-fabrics')}
+            onClick={() => {
+              router.push('/admin/unpriced-fabrics');
+              setSelectedView('unpriced-fabrics');
+            }}
+          >
+            <ListItemIcon>
+              <MoneyOffIcon />
+            </ListItemIcon>
+            <ListItemText primary="Unpriced Fabrics" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

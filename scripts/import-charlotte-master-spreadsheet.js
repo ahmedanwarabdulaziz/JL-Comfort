@@ -20,6 +20,7 @@ const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
 const { getSupabaseAdmin } = require('./lib/supabaseAdmin');
+const { fetchAllRows } = require('./lib/fetchAllRows');
 
 const SHEET_NAME = 'Current Patterns';
 const DEFAULT_FILE = path.join(__dirname, '../data/charlotte-fabrics/master-spreadsheet.xlsx');
@@ -90,12 +91,12 @@ function leadingSkuToken(sku) {
 }
 
 async function loadSkuMap(supabase) {
-  const { data, error } = await supabase.from('charlotte_fabrics').select('id, sku');
-  if (error) throw error;
+  // Paged: a plain select is silently capped at 1000 rows, which would leave most SKUs unmatched.
+  const data = await fetchAllRows(() => supabase.from('charlotte_fabrics').select('id, sku'));
 
   const skuToId = new Map();
   const duplicates = [];
-  (data || []).forEach((row) => {
+  data.forEach((row) => {
     const code = leadingSkuToken(row.sku);
     if (!code) return;
     if (skuToId.has(code)) {

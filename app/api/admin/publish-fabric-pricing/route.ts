@@ -4,6 +4,7 @@ import zlib from 'zlib';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { r2Client, r2Config, isR2Configured } from '@/lib/cloudflare/r2';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
+import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 
 // Same key/cache window as scripts/sync-charlotte-fabrics.js's publishSnapshot — this route is a
 // fast alternative to a full sync when nothing needs re-crawling from charlottefabrics.com, only
@@ -34,25 +35,13 @@ export async function POST(request: NextRequest) {
       (priceTagRows || []).map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.price_per_yard }])
     );
 
-    const { data: fabricRows, error: fabricsError } = await supabase
-      .from('charlotte_fabrics')
-      .select('*')
-      .eq('status', 'active');
-    if (fabricsError) throw fabricsError;
+    // Must page through — a plain select is silently capped at 1000 rows by PostgREST, which used to
+    // truncate this snapshot to the first 1000 of ~7000 fabrics (see fetchAllRows).
+    const fabricRows = await fetchAllRows<any>(() =>
+      supabase.from('charlotte_fabrics').select('*, fabric_group_members(group_id)').eq('status', 'active')
+    );
 
-    const { data: groupMemberRows, error: groupMembersError } = await supabase
-      .from('fabric_group_members')
-      .select('fabric_id, group_id');
-    if (groupMembersError) throw groupMembersError;
-
-    const groupIdsByFabricId = new Map<string, string[]>();
-    (groupMemberRows || []).forEach((row) => {
-      const list = groupIdsByFabricId.get(row.fabric_id) || [];
-      list.push(row.group_id);
-      groupIdsByFabricId.set(row.fabric_id, list);
-    });
-
-    const allItems = (fabricRows || []).map((data) => {
+    const allItems = fabricRows.map((data) => {
       const effectivePrice = resolveEffectivePrice(
         {
           manualRetailPrice: data.manual_retail_price,
@@ -89,7 +78,8 @@ export async function POST(request: NextRequest) {
         lastSeenAt: data.last_seen_at,
         lastCheckedAt: data.last_checked_at,
         priceTagId: data.price_tag_id || null,
-        groupIds: groupIdsByFabricId.get(data.id) || [],
+        groupIds: (data.fabric_group_members || []).map((m: { group_id: string }) => m.group_id),
+        sampleBooks: data.sample_books || [],
         pricePerYard: effectivePrice.pricePerYard,
         priceTagName: effectivePrice.priceTagName,
       };

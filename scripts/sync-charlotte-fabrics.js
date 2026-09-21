@@ -34,6 +34,7 @@
 const zlib = require('zlib');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSupabaseAdmin } = require('./lib/supabaseAdmin');
+const { fetchAllRows } = require('./lib/fetchAllRows');
 const {
   CHARLOTTE_FABRIC_COLORS,
   CHARLOTTE_FABRIC_PATTERNS,
@@ -263,13 +264,13 @@ async function publishSnapshot(supabase) {
     return { pricePerYard: tag?.pricePerYard ?? null, priceTagName: tag?.name ?? null };
   };
 
-  const { data: fabricRows, error: fabricsError } = await supabase
-    .from('charlotte_fabrics')
-    .select('*, fabric_group_members(group_id)')
-    .eq('status', 'active');
-  if (fabricsError) throw fabricsError;
+  // Must page through — a plain select is silently capped at 1000 rows by PostgREST, which used to
+  // truncate this snapshot to the first 1000 of ~7000 fabrics (see fetchAllRows).
+  const fabricRows = await fetchAllRows(() =>
+    supabase.from('charlotte_fabrics').select('*, fabric_group_members(group_id)').eq('status', 'active')
+  );
 
-  const allItems = (fabricRows || []).map((data) => {
+  const allItems = fabricRows.map((data) => {
     const effectivePrice = resolveEffectivePrice(data);
     return {
       id: data.legacy_id,
@@ -526,13 +527,11 @@ async function main() {
       console.log('Full catalog coverage confirmed — diffing against previously active products...');
       await updateRun(supabase, runId, { phase: 'diffing', last_updated_at: new Date().toISOString() });
 
-      const { data: activeRows, error: activeError } = await supabase
-        .from('charlotte_fabrics')
-        .select('legacy_id')
-        .eq('status', 'active');
-      if (activeError) throw activeError;
+      const activeRows = await fetchAllRows(() =>
+        supabase.from('charlotte_fabrics').select('legacy_id').eq('status', 'active')
+      );
 
-      const missingIds = (activeRows || [])
+      const missingIds = activeRows
         .map((row) => row.legacy_id)
         .filter((legacyId) => !seenIds.has(legacyId));
 

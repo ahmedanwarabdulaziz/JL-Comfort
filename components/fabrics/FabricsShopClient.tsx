@@ -111,6 +111,7 @@ function SidebarContent({
   activeCount,
   onClearAll,
   dynamicOptions,
+  facetCounts,
 }: {
   filters: Record<string, string[]>;
   toggleFilter: (category: string, value: string) => void;
@@ -119,15 +120,24 @@ function SidebarContent({
   activeCount: number;
   onClearAll: () => void;
   dynamicOptions: Record<string, FabricFacetOption[]>;
+  facetCounts: Record<string, Record<string, number>>;
 }) {
 
-  const renderFilterList = (categoryKey: string, options: FabricFacetOption[], isColor = false) => {
+  const renderFilterList = (categoryKey: string, allOptions: FabricFacetOption[], isColor = false) => {
+    // The hardcoded facet lists mirror charlottefabrics.com's full menu, so hide any option no
+    // loaded fabric has (it would only lead to an empty page). A currently-selected option stays
+    // visible so it can still be unticked.
+    const counts = facetCounts[categoryKey];
+    const options = counts
+      ? allOptions.filter((opt) => (counts[opt.value] ?? 0) > 0 || filters[categoryKey]?.includes(opt.value))
+      : allOptions;
     if (!options || options.length === 0) return null;
-    
+
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
         {options.map((opt) => {
           const active = filters[categoryKey]?.includes(opt.value);
+          const count = counts?.[opt.value];
           return (
             <Box
               key={opt.value}
@@ -171,6 +181,11 @@ function SidebarContent({
                 sx={{ fontSize: '0.85rem', color: active ? '#1a1a1a' : '#444', fontWeight: active ? 500 : 400 }}
               >
                 {opt.label}
+                {count !== undefined && (
+                  <Box component="span" sx={{ color: '#999', ml: 0.75, fontSize: '0.75rem' }}>
+                    ({count.toLocaleString()})
+                  </Box>
+                )}
               </Typography>
             </Box>
           );
@@ -372,6 +387,22 @@ export default function FabricsShopClient() {
     };
   }, [allFabrics]);
 
+  // How many fabrics carry each Color/Pattern/Material value. Empty until the catalog loads, so
+  // the sidebar shows every option (no counts) while loading rather than flashing an empty list.
+  const facetCounts = useMemo(() => {
+    const counts: Record<string, Record<string, number>> = {};
+    if (allFabrics.length === 0) return counts;
+    const tally = (key: 'color' | 'pattern' | 'material') => {
+      const byValue: Record<string, number> = {};
+      allFabrics.forEach((f) => (f[key] || []).forEach((v) => { byValue[v] = (byValue[v] || 0) + 1; }));
+      counts[key] = byValue;
+    };
+    tally('color');
+    tally('pattern');
+    tally('material');
+    return counts;
+  }, [allFabrics]);
+
   const filtered = useMemo(() => {
     const filtersObj: CharlotteFabricFilters = {
       color: filters.color,
@@ -405,7 +436,7 @@ export default function FabricsShopClient() {
     setSearch(''); 
   };
 
-  const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, dynamicOptions };
+  const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, dynamicOptions, facetCounts };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff' }}>

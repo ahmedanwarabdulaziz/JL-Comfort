@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import {
   CharlotteFabric,
   CharlotteFabricFilters,
@@ -66,18 +67,55 @@ const rowToCharlotteFabric = (row: any): CharlotteFabric => ({
 
 /** Fetches every active Charlotte Fabrics catalog item. Filtering happens client-side via filterFabrics(). */
 export const getCharlotteFabrics = async (): Promise<CharlotteFabric[]> => {
-  if (!supabase) return [];
+  const client = supabase;
+  if (!client) return [];
 
-  const { data, error } = await supabase
-    .from('charlotte_fabrics')
-    .select('*, fabric_group_members(group_id)')
-    .eq('status', 'active');
-
-  if (error) {
+  // Paged: a plain select is silently capped at 1000 rows, hiding most of the ~7000 fabrics.
+  try {
+    const rows = await fetchAllRows(() =>
+      client.from('charlotte_fabrics').select('*, fabric_group_members(group_id)').eq('status', 'active')
+    );
+    return rows.map(rowToCharlotteFabric);
+  } catch (error) {
     console.error('Error fetching Charlotte Fabrics catalog:', error);
     return [];
   }
-  return (data || []).map(rowToCharlotteFabric);
+};
+
+/**
+ * Active fabrics with no price from any source (no manual override, no master-list retail, no price
+ * tag) — exactly the ones the public snapshot excludes. Filtered in the database so the admin
+ * "Unpriced Fabrics" page doesn't have to download the whole ~7000-row catalog.
+ */
+export const getUnpricedCharlotteFabrics = async (): Promise<CharlotteFabric[]> => {
+  const client = supabase;
+  if (!client) return [];
+  const rows = await fetchAllRows(() =>
+    client
+      .from('charlotte_fabrics')
+      .select('*, fabric_group_members(group_id)')
+      .eq('status', 'active')
+      .is('manual_retail_price', null)
+      .is('retail_price', null)
+      .is('price_tag_id', null)
+  );
+  return rows.map(rowToCharlotteFabric);
+};
+
+/** Sets the same manual price on every given Charlotte Fabric row id. */
+export const bulkSetFabricManualPrice = async (ids: string[], manualRetailPrice: number): Promise<void> => {
+  if (!supabase || ids.length === 0) return;
+  // 200 per request: ids go in the URL query string, and 500 UUIDs (~19KB) risks exceeding proxy URL limits.
+  for (const group of chunk(ids, 200)) {
+    const { error } = await supabase
+      .from('charlotte_fabrics')
+      .update({ manual_retail_price: manualRetailPrice })
+      .in('id', group);
+    if (error) {
+      console.error('Error bulk-setting manual price:', error);
+      throw error;
+    }
+  }
 };
 
 // Same public R2 bucket URL/fallback as lib/cloudflare/r2.ts, exposed with the NEXT_PUBLIC_
