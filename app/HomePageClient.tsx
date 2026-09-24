@@ -245,8 +245,8 @@ export default function HomePageClient({ products }: HomePageClientProps) {
                     <Typography
                       sx={{
                         fontFamily: 'var(--font-label), sans-serif',
-                        fontSize: '0.7rem',
-                        letterSpacing: '0.06em',
+                        fontSize: '0.66rem',
+                        letterSpacing: '0.03em',
                         textTransform: 'uppercase',
                         opacity: 0.9,
                         mt: 0.5,
