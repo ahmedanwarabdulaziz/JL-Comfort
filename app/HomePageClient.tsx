@@ -1,523 +1,242 @@
 'use client';
 
-import { Typography, Button, Container, Box, Grid, Card, CardContent, CardActionArea } from '@mui/material';
-import { keyframes } from '@emotion/react';
 import Link from 'next/link';
-import { Product } from '@/lib/types/product';
-import { brand, swatchClip } from '@/lib/theme';
+import { Box, Container, Typography } from '@mui/material';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { brand } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
-import SampleBookCover from '@/components/fabrics/SampleBookCover';
-import CornerTag from '@/components/ui/CornerTag';
+import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
+import type { HomeCatalog } from '@/lib/data/homeCatalog';
 
-interface HomePageClientProps {
-  products: Product[];
-}
+const LINE = '#e5e0d9';
 
-const MARQUEE_MATERIALS = ['Velvet', 'Linen', 'Bouclé', 'Chenille', 'Crypton Performance', 'Tweed & Textures', 'Shearling'];
-
-// Hand-picked (not "first match") catalog photos — the naive query used
-// before this landed on flat, textureless macro crops that read as broken
-// images. These were checked by eye for real visible texture/color.
-const COLORWAY_TILES = [
-  {
-    value: 'velvet',
-    label: 'Velvet',
-    meta: 'Plush · Railroaded',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-05_Large-v1.jpg',
-  },
-  {
-    value: 'linen',
-    label: 'Linen',
-    meta: 'Breathable · Natural',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20420-01_Large-v1.jpg',
-  },
-  {
-    value: 'boucle',
-    label: 'Bouclé',
-    meta: 'Looped · Textured',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB800-450_Large-v1.jpg',
-  },
-  {
-    value: 'chenille',
-    label: 'Chenille',
-    meta: 'Deep Pile · Soft Hand',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB700-421_Large-v3.jpg',
-  },
-];
-
-// The hero panel uses the colorful linen print — more visual energy than
-// the velvet swatch for the page's single largest image.
-const HERO_FABRIC = COLORWAY_TILES.find((t) => t.value === 'linen')!;
+const HERO_PHOTO = 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20420-01_Large-v1.jpg';
 
 const SAMPLE_STEPS = [
-  { n: '01', title: 'Browse Collections', desc: 'Find a sample book that matches your project style or colour palette.' },
-  { n: '02', title: 'Select Fabrics', desc: "Click through to the fabric shop, filtered to that book's collection." },
-  { n: '03', title: 'Request Swatches', desc: "Add fabrics to your sample cart and we'll ship them to you, on us." },
+  { n: '01', title: 'Browse collections', desc: 'Find a sample book that suits your project, style or colour palette.' },
+  { n: '02', title: 'Pick your fabrics', desc: 'Open any fabric and add a free sample to your list.' },
+  { n: '03', title: 'Feel them at home', desc: "We ship the swatches to you and email the tracking number." },
 ];
 
-const SPEC_ROWS = [
-  { k: 'Fiber Content', v: 'Listed on every swatch' },
-  { k: 'Durability', v: 'Martindale double-rub tested' },
-  { k: 'Repeat', v: 'Noted per pattern, railroaded where available' },
-  { k: 'Cleanability', v: 'Code listed on every product page' },
-];
-
-const scroll = keyframes`
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-`;
-
-// Homepage sample book covers (drawn by SampleBookCover).
-const HOME_BOOKS = [
+// Image + text + two buttons, alternating sides, like a dealer's featured-brand blocks.
+const FEATURES: {
+  eyebrow: string;
+  title: string;
+  italic: string;
+  body: string;
+  photo: string;
+  primary: { label: string; href: string };
+  secondary?: { label: string; href: string };
+  steps?: boolean;
+}[] = [
   {
-    label: 'The Linen Edit',
-    series: 'Natural fibres',
-    sub: 'Breathable, natural textures',
+    eyebrow: 'Free samples',
+    title: 'See it in',
+    italic: 'your own light.',
+    body: 'Screens never show colour and texture quite right. Order free swatches of any fabric before you commit to yardage.',
     photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20440-01_Large-v1.jpg',
+    primary: { label: 'Order free samples', href: '/sample-books' },
+    secondary: { label: 'Your sample list', href: '/request-samples' },
+    steps: true,
   },
   {
-    label: 'Performance',
-    series: 'Easy care',
-    sub: 'Beautiful yet indestructible',
+    eyebrow: 'Performance fabrics',
+    title: 'Beautiful, and',
+    italic: 'built for real life.',
+    body: 'Stain-resistant, cleanable performance fabrics for homes with kids, pets and busy dining rooms, without giving up on texture.',
     photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20940-10_Large-v1.jpg',
+    primary: { label: 'Shop performance', href: '/fabrics?material=crypton' },
+    secondary: { label: 'Order samples', href: '/sample-books' },
   },
   {
-    label: 'Woven Geometry',
-    series: 'Patterns',
-    sub: 'Striking patterns & motifs',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10002-01_Large-v1.jpg',
+    eyebrow: 'Made in our workshop',
+    title: 'Custom foam and',
+    italic: 'bench cushions.',
+    body: 'Foam cut to your exact measurements, and bench cushions made to order in the fabric you choose.',
+    photo: '/images/bench-cushions.png',
+    primary: { label: 'Custom foam', href: '/foam' },
+    secondary: { label: 'Bench cushions', href: '/bench-cushions' },
   },
   {
-    label: 'Velvet Reserve',
-    series: 'Plush textures',
-    sub: 'The pinnacle of plush',
-    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-08_Large-v1.jpg',
+    eyebrow: 'AI visualizer',
+    title: 'Try the fabric',
+    italic: 'before you buy it.',
+    body: 'Upload a photo of your sofa or chair and see it in any fabric from the catalog.',
+    photo: '/images/ai-visualizer.png',
+    primary: { label: 'Try the visualizer', href: '/visualizer' },
   },
 ];
 
-export default function HomePageClient({ products }: HomePageClientProps) {
+function SectionHeading({ eyebrow, title, italic, link }: { eyebrow: string; title: string; italic: string; link?: { label: string; href: string } }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mb: { xs: 3.5, md: 4.5 } }}>
+      <Box>
+        <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1 }}>{eyebrow}</Typography>
+        <Typography variant="h2" sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' }, color: brand.ink }}>
+          {title}{' '}
+          <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{italic}</Box>
+        </Typography>
+      </Box>
+      {link && (
+        <Box component={Link} href={link.href} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, textDecoration: 'none', fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', borderBottom: `1px solid ${brand.ink}`, pb: 0.25, '&:hover': { color: brand.mocha, borderColor: brand.mocha } }}>
+          {link.label} <ArrowForwardIcon sx={{ fontSize: 16 }} />
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
   return (
     <>
-      {/* ── HERO ── */}
-      <Box sx={{ bgcolor: brand.ink, color: brand.chalk }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={{ xs: 5, md: 6 }} alignItems="center" sx={{ pt: { xs: 7, md: 9 }, pb: { xs: 5, md: 0 } }}>
-            <Grid item xs={12} md={7}>
-              <Typography variant="overline" sx={{ color: brand.lime, display: 'block', mb: 2.5 }}>
-                Colorway 001 / New Season
-              </Typography>
-              <Typography variant="h1" sx={{ fontSize: { xs: '2.7rem', sm: '3.6rem', md: '4.6rem' }, lineHeight: 0.98, letterSpacing: '-0.01em' }}>
-                Fabric that
-                <br />
-                reads the{' '}
-                <Box component="em" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.butter }}>
-                  room —
-                </Box>
-                <br />
-                and the trend.
-              </Typography>
-              <Typography sx={{ maxWidth: 480, mt: 3, fontSize: '1.05rem', lineHeight: 1.65, color: brand.inkSoft }}>
-                Upholstery textiles curated the way a stylist builds a rack: by hand-feel, by colorway, by what&apos;s
-                actually trending this season. Not another beige catalog.
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1.75, flexWrap: 'wrap', mt: 4.5 }}>
-                <TagButton tone="fill" component={Link} href="/fabrics">
-                  Shop Fabrics
-                </TagButton>
-                <TagButton tone="ghost" component={Link} href="/sample-books">
-                  Sample Books
-                </TagButton>
-              </Box>
-            </Grid>
-
-            <Grid item xs={12} md={5}>
-              <Box
-                sx={{
-                  position: 'relative',
-                  aspectRatio: '4/5',
-                  clipPath: 'polygon(0 0, 100% 0, 100% 86%, 84% 100%, 0 100%)',
-                  backgroundImage: `linear-gradient(180deg, rgba(33,23,18,0) 40%, rgba(33,23,18,0.92) 100%), url(${HERO_FABRIC.photo})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
-              >
-                <Typography
-                  sx={{
-                    position: 'absolute',
-                    left: 18,
-                    bottom: 18,
-                    right: 18,
-                    fontFamily: 'var(--font-label), sans-serif',
-                    fontSize: '0.7rem',
-                    letterSpacing: '0.08em',
-                    color: 'rgba(246,242,235,0.9)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {HERO_FABRIC.label} · {HERO_FABRIC.meta}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Container>
-
-        {/* Marquee ticker */}
-        <Box
-          sx={{
-            mt: { xs: 6, md: 7 },
-            bgcolor: brand.mocha,
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            borderTop: '1px solid rgba(0,0,0,0.15)',
-            borderBottom: '1px solid rgba(0,0,0,0.15)',
-          }}
-        >
-          <Box sx={{ display: 'inline-flex', py: 1.6, animation: `${scroll} 28s linear infinite` }}>
-            {[...MARQUEE_MATERIALS, ...MARQUEE_MATERIALS].map((m, i) => (
-              <Typography
-                key={`${m}-${i}`}
-                component="span"
-                sx={{
-                  fontFamily: 'var(--font-label), sans-serif',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  fontSize: '0.95rem',
-                  textTransform: 'uppercase',
-                  px: 2.75,
-                  '&::after': { content: '"✂"', ml: '22px', opacity: 0.6 },
-                }}
-              >
-                {m}
-              </Typography>
-            ))}
-          </Box>
-        </Box>
-      </Box>
-
-      {/* ── COLORWAY / MOSAIC ── */}
-      <Box sx={{ bgcolor: brand.chalk }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 9, md: 12 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-end',
-              gap: 3,
-              flexWrap: 'wrap',
-              mb: { xs: 5, md: 6 },
-            }}
-          >
-            <Box>
-              <Typography variant="overline" sx={{ color: brand.mochaDeep, display: 'block', mb: 1.25 }}>
-                This Season&apos;s Colorway
-              </Typography>
-              <Typography variant="h2" sx={{ fontSize: { xs: '2rem', md: '2.75rem' }, maxWidth: '14ch' }}>
-                Cut from the same cloth as the runway.
-              </Typography>
-            </Box>
-            <Typography sx={{ maxWidth: 360, color: brand.textSecondary, lineHeight: 1.65 }}>
-              Four textures pulled from the current forecast — swipe them onto any silhouette in the AI visualizer
-              before you commit a single yard.
-            </Typography>
-          </Box>
-
-          <Grid container spacing={2.25}>
-            {COLORWAY_TILES.map((tile, i) => (
-              <Grid item xs={12} sm={6} md={3} key={tile.value}>
-                <Box
-                  component={Link}
-                  href={`/fabrics?material=${tile.value}`}
-                  sx={{
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    textDecoration: 'none',
-                    aspectRatio: '3/4',
-                    p: 2,
-                    clipPath: swatchClip(20),
-                    backgroundImage: `linear-gradient(180deg, rgba(20,14,10,0.15) 0%, rgba(20,14,10,0.15) 30%, rgba(20,14,10,0.95) 100%), url(${tile.photo})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    transition: 'transform 0.3s ease',
-                    '&:hover': { transform: 'rotate(-2deg) translateY(-4px)' },
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      position: 'absolute',
-                      top: 14,
-                      left: 14,
-                      fontFamily: 'var(--font-label), sans-serif',
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      letterSpacing: '0.08em',
-                      color: brand.chalk,
-                      textShadow: '0 1px 4px rgba(0,0,0,0.6)',
-                    }}
-                  >
-                    0{i + 1}
-                  </Typography>
-                  <Box sx={{ position: 'relative' }}>
-                    <Typography
-                      sx={{
-                        fontFamily: 'var(--font-display), serif',
-                        fontStyle: 'italic',
-                        fontWeight: 600,
-                        fontSize: '1.3rem',
-                        color: brand.chalk,
-                        textShadow: '0 1px 6px rgba(0,0,0,0.7)',
-                      }}
-                    >
-                      {tile.label}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontFamily: 'var(--font-label), sans-serif',
-                        fontSize: '0.66rem',
-                        letterSpacing: '0.03em',
-                        textTransform: 'uppercase',
-                        opacity: 0.9,
-                        mt: 0.5,
-                        color: brand.chalk,
-                        textShadow: '0 1px 4px rgba(0,0,0,0.6)',
-                      }}
-                    >
-                      {tile.meta}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* ── TREND / SPEC BAND ── */}
-      <Box sx={{ bgcolor: brand.butter, color: brand.ink }}>
+      {/* ── HERO: full-width image with the main message ── */}
+      <Box
+        sx={{
+          position: 'relative',
+          minHeight: { xs: 460, md: 560 },
+          display: 'flex',
+          alignItems: 'center',
+          backgroundImage: `linear-gradient(90deg, rgba(33,23,18,0.88) 0%, rgba(33,23,18,0.62) 45%, rgba(33,23,18,0.15) 100%), url(${HERO_PHOTO})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: brand.chalk,
+        }}
+      >
         <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
-          <Grid container spacing={{ xs: 5, md: 6 }} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Typography
-                component="blockquote"
-                sx={{
-                  fontFamily: 'var(--font-display), serif',
-                  fontStyle: 'italic',
-                  fontWeight: 400,
-                  fontSize: { xs: '1.6rem', md: '2.2rem' },
-                  lineHeight: 1.28,
-                  m: 0,
-                }}
-              >
-                &ldquo;Mocha Mousse isn&apos;t just a wall color anymore — it&apos;s a couch, a headboard, a whole
-                mood.&rdquo;
-              </Typography>
-              <Typography
-                component="cite"
-                sx={{
-                  display: 'block',
-                  mt: 2.5,
-                  fontFamily: 'var(--font-label), sans-serif',
-                  fontStyle: 'normal',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  opacity: 0.7,
-                }}
-              >
-                — JL Comfort, Trend Desk
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Box sx={{ display: 'grid', gap: 2 }}>
-                {SPEC_ROWS.map((row) => (
-                  <Box
-                    key={row.k}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 2,
-                      pb: 1.75,
-                      borderBottom: '1px solid rgba(33,23,18,0.22)',
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontFamily: 'var(--font-label), sans-serif',
-                        fontWeight: 700,
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                        fontSize: '0.78rem',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {row.k}
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.92rem', color: 'rgba(33,23,18,0.7)', textAlign: 'right' }}>
-                      {row.v}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
+          <Typography sx={{ color: brand.butter, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 2 }}>
+            Designer fabric · Custom upholstery
+          </Typography>
+          <Typography variant="h1" sx={{ fontSize: { xs: '2.6rem', sm: '3.4rem', md: '4.2rem' }, lineHeight: 1.02, maxWidth: '13ch', color: brand.chalk }}>
+            Fabric by the yard,{' '}
+            <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.butter }}>shipped across Canada.</Box>
+          </Typography>
+          <Typography sx={{ maxWidth: 480, mt: 2.5, fontSize: '1.05rem', lineHeight: 1.7, color: 'rgba(246,242,235,0.85)' }}>
+            Thousands of upholstery and multipurpose fabrics, priced in Canadian dollars, with a free sample of every one.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1.75, flexWrap: 'wrap', mt: 4 }}>
+            <TagButton tone="fill" component={Link} href="/fabrics">Shop fabrics</TagButton>
+            <TagButton tone="ghost" component={Link} href="/sample-books">Order free samples</TagButton>
+          </Box>
         </Container>
       </Box>
 
-      {/* ── FEATURED PRODUCTS ── */}
-      {products.length > 0 && (
-        <Box sx={{ bgcolor: brand.chalk }}>
-          <Container maxWidth="lg" sx={{ py: { xs: 9, md: 12 } }}>
-            <Typography variant="overline" align="center" sx={{ display: 'block', color: brand.mochaDeep, mb: 1.5 }}>
-              Just Arrived
-            </Typography>
-            <Typography variant="h2" align="center" sx={{ mb: 6, fontSize: { xs: '2rem', md: '2.5rem' } }}>
-              New &amp; Noteworthy
-            </Typography>
-
-            <Grid container spacing={3}>
-              {products.map((product) => (
-                <Grid item xs={12} sm={6} md={4} key={product.id}>
-                  <Card elevation={0} sx={{ height: '100%', bgcolor: '#fff', border: `1px solid ${brand.chalkLine}` }}>
-                    <CardActionArea sx={{ height: '100%' }}>
-                      <Box sx={{ bgcolor: brand.chalk, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280, p: 3 }}>
-                        {product.imageUrl ? (
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          />
-                        ) : (
-                          <Typography sx={{ color: brand.textSecondary, letterSpacing: 2, textTransform: 'uppercase' }}>
-                            No Image
-                          </Typography>
-                        )}
-                      </Box>
-                      <CardContent sx={{ pt: 3, pb: 2.5, px: 2.5 }}>
-                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontWeight: 600, fontSize: '1.15rem', mb: 0.75 }}>
-                          {product.name}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            color: brand.textSecondary,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            mb: 1.5,
-                            fontSize: '0.88rem',
-                          }}
-                        >
-                          {product.description}
-                        </Typography>
-                        <Typography sx={{ fontWeight: 700, fontFamily: 'var(--font-label), sans-serif', letterSpacing: '0.03em' }}>
-                          {product.price} {product.currency}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                </Grid>
+      {/* ── COLLECTIONS ── */}
+      {catalog.collections.length > 0 && (
+        <Box sx={{ bgcolor: '#fff' }}>
+          <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 } }}>
+            <SectionHeading eyebrow="Sample books" title="Explore our" italic="collections" link={{ label: 'All sample books', href: '/sample-books' }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2.5, md: 3.5 } }}>
+              {catalog.collections.map((book) => (
+                <Box
+                  key={book.name}
+                  component={Link}
+                  href={`/fabrics?sampleBook=${encodeURIComponent(book.name)}`}
+                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.mocha } }}
+                >
+                  <Box className="cover">
+                    <SampleBookCover
+                      title={cleanBookName(book.name)}
+                      series={bookSeries(book.name)}
+                      footnote={`${book.count} fabrics`}
+                      photo={book.photos[0]}
+                      edgePhotos={book.photos.slice(1)}
+                    />
+                  </Box>
+                  <Typography className="name" sx={{ mt: 1.5, textAlign: 'center', fontWeight: 600, fontSize: '0.92rem', color: brand.ink, transition: 'color .2s' }}>
+                    {cleanBookName(book.name)}
+                  </Typography>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           </Container>
         </Box>
       )}
 
-      {/* ── SAMPLE BOOKS ── */}
-      <Box sx={{ bgcolor: '#fff' }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 9, md: 12 } }}>
-          <Grid container spacing={{ xs: 6, md: 8 }} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <CornerTag tone="dark" sx={{ mb: 2.5 }}>
-                Swatches &amp; Samples
-              </CornerTag>
-              <Typography variant="h2" sx={{ mb: 2.5, fontSize: { xs: '2rem', md: '2.6rem' } }}>
-                Experience it{' '}
-                <Box component="em" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>
-                  in your hands.
-                </Box>
-              </Typography>
-              <Typography sx={{ color: brand.textSecondary, mb: 4.5, lineHeight: 1.75, fontSize: '1.02rem' }}>
-                True design requires a tactile touch. Browse our curated sample books, find your favorite fabrics,
-                and request complimentary swatches to view in your own light and space.
-              </Typography>
-
-              <Box sx={{ display: 'grid', gap: 2.5, mb: 4.5 }}>
-                {SAMPLE_STEPS.map((step) => (
-                  <Box key={step.n} sx={{ display: 'flex', gap: 2 }}>
-                    <Typography
-                      sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', color: brand.mocha, fontSize: '1.15rem', mt: '-2px' }}
-                    >
-                      {step.n}
+      {/* ── SHOP BY MATERIAL ── */}
+      {catalog.materials.length > 0 && (
+        <Box sx={{ bgcolor: brand.chalk, borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}` }}>
+          <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 } }}>
+            <SectionHeading eyebrow="Shop by material" title="Find your" italic="texture" link={{ label: 'All fabrics', href: '/fabrics' }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2, md: 2.5 } }}>
+              {catalog.materials.map((m) => (
+                <Box
+                  key={m.value}
+                  component={Link}
+                  href={`/fabrics?material=${m.value}`}
+                  sx={{ position: 'relative', display: 'block', aspectRatio: '1 / 1', overflow: 'hidden', bgcolor: '#ddd6cc', textDecoration: 'none', '&:hover img': { transform: 'scale(1.06)' } }}
+                >
+                  {m.photo && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.photo} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .5s ease' }} />
+                  )}
+                  <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: { xs: 1.5, md: 2 }, background: 'linear-gradient(180deg, rgba(33,23,18,0) 0%, rgba(33,23,18,0.82) 100%)', color: brand.chalk }}>
+                    <Typography sx={{ fontFamily: 'var(--font-display), serif', fontSize: { xs: '1.15rem', md: '1.35rem' }, fontWeight: 600, lineHeight: 1.1 }}>{m.label}</Typography>
+                    <Typography sx={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, mt: 0.4 }}>
+                      {m.count.toLocaleString()} fabrics
                     </Typography>
-                    <Box>
-                      <Typography sx={{ fontWeight: 600, mb: 0.5 }}>{step.title}</Typography>
-                      <Typography sx={{ color: brand.textSecondary, fontSize: '0.92rem', lineHeight: 1.6 }}>{step.desc}</Typography>
-                    </Box>
                   </Box>
-                ))}
-              </Box>
+                </Box>
+              ))}
+            </Box>
+          </Container>
+        </Box>
+      )}
 
-              <Box sx={{ display: 'flex', gap: 1.75, flexWrap: 'wrap' }}>
-                <TagButton tone="dark" component={Link} href="/sample-books">
-                  View Sample Books
-                </TagButton>
-                <TagButton tone="ghostDark" component={Link} href="/request-samples">
-                  Your Sample Cart
-                </TagButton>
+      {/* ── FEATURE BLOCKS ── */}
+      <Box sx={{ bgcolor: '#fff' }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 }, display: 'grid', gap: { xs: 8, md: 11 } }}>
+          {FEATURES.map((f, i) => (
+            <Box
+              key={f.eyebrow}
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 7 }, alignItems: 'center' }}
+            >
+              <Box sx={{ order: { md: i % 2 === 0 ? 0 : 1 }, aspectRatio: '5 / 4', overflow: 'hidden', bgcolor: brand.chalk }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.photo} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </Box>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Grid container spacing={2.5}>
-                {HOME_BOOKS.map((book, i) => (
-                  <Grid item xs={6} key={book.label}>
-                    <Box
-                      component={Link}
-                      href="/sample-books"
-                      sx={{ display: 'block', textDecoration: 'none', transition: 'transform 0.35s ease', '&:hover': { transform: 'translateY(-5px)' } }}
-                    >
-                      <SampleBookCover
-                        title={book.label}
-                        series={book.series}
-                        footnote={book.sub}
-                        photo={book.photo}
-                        edgePhotos={[...HOME_BOOKS.slice(i + 1), ...HOME_BOOKS.slice(0, i)].map((b) => b.photo)}
-                      />
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </Grid>
-          </Grid>
+              <Box>
+                <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.25 }}>{f.eyebrow}</Typography>
+                <Typography variant="h2" sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' }, color: brand.ink, mb: 2 }}>
+                  {f.title}{' '}
+                  <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{f.italic}</Box>
+                </Typography>
+                <Typography sx={{ color: brand.textSecondary, lineHeight: 1.75, fontSize: '1rem', maxWidth: 480 }}>{f.body}</Typography>
+                {f.steps && (
+                  <Box sx={{ display: 'grid', gap: 2, mt: 3 }}>
+                    {SAMPLE_STEPS.map((step) => (
+                      <Box key={step.n} sx={{ display: 'flex', gap: 2 }}>
+                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', color: brand.mocha, fontSize: '1.1rem', mt: '-2px' }}>{step.n}</Typography>
+                        <Box>
+                          <Typography sx={{ fontWeight: 600, color: brand.ink }}>{step.title}</Typography>
+                          <Typography sx={{ color: brand.textSecondary, fontSize: '0.9rem', lineHeight: 1.6 }}>{step.desc}</Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 3.5 }}>
+                  <TagButton tone="dark" component={Link} href={f.primary.href}>{f.primary.label}</TagButton>
+                  {f.secondary && (
+                    <TagButton tone="ghostDark" component={Link} href={f.secondary.href}>{f.secondary.label}</TagButton>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          ))}
         </Container>
       </Box>
 
-      {/* ── CTA ── */}
+      {/* ── CLOSING CTA ── */}
       <Box sx={{ bgcolor: brand.ink, color: brand.chalk }}>
         <Container maxWidth="lg">
-          <Box
-            sx={{
-              py: { xs: 7, md: 9 },
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 4,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Typography variant="h2" sx={{ color: brand.chalk, fontSize: { xs: '1.9rem', md: '2.6rem' }, maxWidth: '16ch' }}>
-              Get the swatches before the season moves on.
+          <Box sx={{ py: { xs: 7, md: 9 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+            <Typography variant="h2" sx={{ color: brand.chalk, fontSize: { xs: '1.9rem', md: '2.5rem' }, maxWidth: '18ch' }}>
+              Not sure yet?{' '}
+              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.butter }}>Start with a sample.</Box>
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.75, flexWrap: 'wrap' }}>
-              <TagButton tone="fill" component={Link} href="/sample-books">
-                Order Sample Books
-              </TagButton>
-              <TagButton tone="ghost" component={Link} href="/visualizer">
-                Try the AI Visualizer
-              </TagButton>
+              <TagButton tone="fill" component={Link} href="/sample-books">Browse sample books</TagButton>
+              <TagButton tone="ghost" component={Link} href="/fabrics">Shop all fabrics</TagButton>
             </Box>
           </Box>
         </Container>
