@@ -11,6 +11,8 @@ import {
 import { CheckoutError } from '@/lib/checkout/errors';
 import { PricedLine } from '@/lib/checkout/serverPricing';
 import { CheckoutQuote } from '@/lib/types/checkout';
+import { AppliedDiscount } from '@/lib/types/discount';
+import { recordRedemption } from '@/lib/discounts/server';
 import {
   CARRIERS,
   EmailSettings,
@@ -44,6 +46,7 @@ export interface ShippingAddress {
 export async function createPendingOrder(
   lines: PricedLine[],
   quote: CheckoutQuote,
+  discount: AppliedDiscount | null,
   address: ShippingAddress
 ): Promise<{ id: string; orderNumber: string }> {
   const { data: order, error } = await db()
@@ -53,6 +56,10 @@ export async function createPendingOrder(
       shipping_cents: quote.shippingCents,
       tax_cents: quote.taxCents,
       total_cents: quote.totalCents,
+      discount_id: discount?.discountId || null,
+      discount_code_id: discount?.codeId || null,
+      discount_label: discount ? (discount.freeShipping ? `${discount.label} (free shipping)` : discount.label) : null,
+      discount_cents: quote.discountCents,
       taxes: quote.taxes.map((tax) => ({ label: tax.label, amountCents: tax.amountCents })),
       customer_email: address.email,
       customer_name: address.name,
@@ -147,7 +154,12 @@ export async function markOrderPaid(
     .in('status', ['pending_payment', 'expired'])
     .select('id');
   if (error) throw error;
-  return (data || []).length > 0;
+  const firstTime = (data || []).length > 0;
+  if (firstTime) {
+    // Count the discount use now that the order is paid (unique per order, so retries are harmless).
+    await recordRedemption(orderId).catch((redemptionError) => console.error('Recording discount use failed:', redemptionError));
+  }
+  return firstTime;
 }
 
 export async function markOrderExpired(orderId: string) {

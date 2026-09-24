@@ -25,6 +25,7 @@ export interface PricedLine extends ShippingLine {
   unitPriceCents: number;
   fabricId?: string; // Charlotte fabric sold by the yard (what the supplier PO lists)
   sku?: string;
+  sampleBooks?: string[]; // for discounts limited to specific collections
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,6 +40,7 @@ interface PricedFabric {
   sku: string;
   pricePerYard: number;
   isVinyl: boolean;
+  sampleBooks: string[];
 }
 
 const invalid = (message = 'Your cart contains an item we could not verify. Please remove it and add it again.') =>
@@ -62,7 +64,8 @@ const formatInches = (inches: number) => `${Number(inches.toFixed(3))}"`;
 // with the same resolveEffectivePrice() the fabric page uses to show the price. Carts refer to a
 // fabric either by its uuid (fabric page) or by its legacy_id slug (the catalog snapshot the bench
 // cushion fabric picker reads), so both are accepted and the result is keyed by whichever was sent.
-const FABRIC_COLUMNS = 'id, legacy_id, name, sku, status, manual_retail_price, retail_price, price_tag_id, material, construction_type, fiber_content';
+const FABRIC_COLUMNS =
+  'id, legacy_id, name, sku, status, manual_retail_price, retail_price, price_tag_id, material, construction_type, fiber_content, sample_books';
 
 const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> => {
   if (ids.length === 0) return new Map();
@@ -102,6 +105,7 @@ const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> =>
       name: row.name,
       sku: row.sku,
       pricePerYard: Number(pricePerYard),
+      sampleBooks: row.sample_books || [],
       isVinyl: [...(row.material || []), ...(row.construction_type || []), row.fiber_content || ''].some((value: string) =>
         VINYL_PATTERN.test(value)
       ),
@@ -127,6 +131,7 @@ const priceFabric = (item: CartItem, fabrics: Map<string, PricedFabric>): Priced
     kind: fabric.isVinyl ? 'vinyl' : 'fabric',
     fabricId: fabric.id,
     sku: fabric.sku,
+    sampleBooks: fabric.sampleBooks,
     name: fabric.name,
     description: `${fabric.sku ? `SKU ${fabric.sku} — ` : ''}${quantity} yard${quantity === 1 ? '' : 's'}`,
     quantity,

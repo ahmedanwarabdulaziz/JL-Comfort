@@ -53,6 +53,7 @@ const totalsTable = (order: Order) => {
     }">${value}</td></tr>`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-top:10px">
 ${row('Subtotal', money(order.subtotalCents, order.currency))}
+${order.discountCents > 0 ? row(`Discount (${order.discountLabel})`, `−${money(order.discountCents, order.currency)}`) : ''}
 ${row('Shipping', order.shippingCents === 0 ? 'Free' : money(order.shippingCents, order.currency))}
 ${order.taxes.map((tax) => row(tax.label, money(tax.amountCents, order.currency))).join('')}
 ${row('Total', money(order.totalCents, order.currency), true)}
@@ -71,6 +72,7 @@ const textItems = (items: OrderItem[], withPrices: boolean, currency: string) =>
 const textTotals = (order: Order) =>
   [
     `Subtotal: ${money(order.subtotalCents, order.currency)}`,
+    ...(order.discountCents > 0 ? [`Discount (${order.discountLabel}): -${money(order.discountCents, order.currency)}`] : []),
     `Shipping: ${order.shippingCents === 0 ? 'Free' : money(order.shippingCents, order.currency)}`,
     ...order.taxes.map((tax) => `${tax.label}: ${money(tax.amountCents, order.currency)}`),
     `Total: ${money(order.totalCents, order.currency)}`,
