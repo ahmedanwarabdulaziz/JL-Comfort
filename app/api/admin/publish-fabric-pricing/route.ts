@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
         priceTagId: data.price_tag_id || null,
         groupIds: (data.fabric_group_members || []).map((m: { group_id: string }) => m.group_id),
         sampleBooks: data.sample_books || [],
+        colorwayGroup: data.colorway_group || null, // shop cards show other colourways of the pattern
+        isNew: !!data.is_new,
         pricePerYard: effectivePrice.pricePerYard,
         priceTagName: effectivePrice.priceTagName,
       };
