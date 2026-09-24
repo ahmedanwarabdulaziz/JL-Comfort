@@ -168,7 +168,7 @@ export default function CartDrawer() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Typography variant="h6">Subtotal</Typography>
               <Typography variant="h6" fontWeight="bold">
-                ${cartTotal.toFixed(2)}
+                ${cartTotal.toFixed(2)} CAD
               </Typography>
             </Box>
             <Button

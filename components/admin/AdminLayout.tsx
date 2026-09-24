@@ -32,6 +32,10 @@ import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import EmailIcon from '@mui/icons-material/Email';
 import ChatIcon from '@mui/icons-material/Chat';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ExpandLess from '@mui/icons-material/ExpandLess';
@@ -53,7 +57,7 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
     pathname?.includes('/foam') || pathname?.includes('/categories') || pathname?.includes('/dimensions-rules') || pathname?.includes('/grades') || pathname?.includes('/fibre-wrap')
   );
   const [selectedView, setSelectedView] = useState<
-    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'unpriced-fabrics' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests' | 'ai-chat-logs' | 'ai-settings'
+    'dashboard' | 'products' | 'foam' | 'bench-cushions' | 'fabric-pricing' | 'unpriced-fabrics' | 'fabric-groups' | 'fabric-catalog' | 'sample-requests' | 'shipping' | 'taxes' | 'orders' | 'email-settings' | 'ai-chat-logs' | 'ai-settings'
   >(
     pathname?.includes('/foam')
       ? 'foam'
@@ -69,6 +73,14 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
       ? 'ai-chat-logs'
       : pathname?.includes('/sample-requests')
       ? 'sample-requests'
+      : pathname?.includes('/admin/orders')
+      ? 'orders'
+      : pathname?.includes('/admin/email-settings')
+      ? 'email-settings'
+      : pathname?.includes('/admin/shipping')
+      ? 'shipping'
+      : pathname?.includes('/admin/taxes')
+      ? 'taxes'
       : pathname?.includes('/bench-cushions')
       ? 'bench-cushions'
       : pathname?.includes('/ai-settings')
@@ -106,6 +118,20 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <DashboardIcon />
             </ListItemIcon>
             <ListItemText primary="Dashboard" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/orders')}
+            onClick={() => {
+              router.push('/admin/orders');
+              setSelectedView('orders');
+            }}
+          >
+            <ListItemIcon>
+              <ShoppingBagIcon />
+            </ListItemIcon>
+            <ListItemText primary="Orders" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
@@ -283,6 +309,48 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <LocalShippingIcon />
             </ListItemIcon>
             <ListItemText primary="Sample Requests" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/shipping')}
+            onClick={() => {
+              router.push('/admin/shipping');
+              setSelectedView('shipping');
+            }}
+          >
+            <ListItemIcon>
+              <LocalShippingOutlinedIcon />
+            </ListItemIcon>
+            <ListItemText primary="Shipping Rates" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/taxes')}
+            onClick={() => {
+              router.push('/admin/taxes');
+              setSelectedView('taxes');
+            }}
+          >
+            <ListItemIcon>
+              <ReceiptLongIcon />
+            </ListItemIcon>
+            <ListItemText primary="Sales Taxes" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/email-settings')}
+            onClick={() => {
+              router.push('/admin/email-settings');
+              setSelectedView('email-settings');
+            }}
+          >
+            <ListItemIcon>
+              <EmailIcon />
+            </ListItemIcon>
+            <ListItemText primary="Email Settings" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

@@ -54,7 +54,7 @@ const emptyFormData: BenchCushionStyleInput = {
   dimensions: [],
   variables: [],
   basePrice: 0,
-  currency: 'usd',
+  currency: 'cad',
   estimatedYards: 0,
 };
 
@@ -76,7 +76,7 @@ export default function BenchCushionForm({
         dimensions: style.dimensions || [],
         variables: style.variables || [],
         basePrice: style.basePrice ?? 0,
-        currency: style.currency || 'usd',
+        currency: 'cad',
         estimatedYards: style.estimatedYards ?? 0,
       });
     } else {
@@ -301,18 +301,7 @@ export default function BenchCushionForm({
                 />
               </Grid>
               <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  select
-                  SelectProps={{ native: true }}
-                  label="Currency"
-                  name="currency"
-                  value={formData.currency}
-                  onChange={handleChange}
-                >
-                  <option value="usd">USD</option>
-                  <option value="cad">CAD</option>
-                </TextField>
+                <TextField fullWidth label="Currency" value="CAD" disabled helperText="All store prices are CAD" />
               </Grid>
               <Grid item xs={12} md={2}>
                 <TextField

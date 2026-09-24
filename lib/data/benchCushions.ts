@@ -27,7 +27,7 @@ const rowToBenchCushionStyle = (row: any): BenchCushionStyle => {
     dimensions: row.dimensions || [],
     variables,
     basePrice: row.base_price ?? 0,
-    currency: row.currency || 'usd',
+    currency: row.currency || 'cad',
     estimatedYards: row.estimated_yards ?? 0,
     sortOrder: row.sort_order ?? 0,
     createdAt: new Date(row.created_at),

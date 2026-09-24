@@ -198,7 +198,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
               <Box sx={{ mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1.5 }}>
                   <Typography sx={{ color: '#252321', fontSize: '1.2rem', fontWeight: 500 }}>
-                    {hasPrice ? '$' + fabric.pricePerYard!.toFixed(2) : 'Price on request'}
+                    {hasPrice ? '$' + fabric.pricePerYard!.toFixed(2) + ' CAD' : 'Price on request'}
                     {hasPrice && <Typography component="span" sx={{ color: '#8b857e', fontSize: '0.78rem', ml: 0.75 }}>/ yard</Typography>}
                   </Typography>
                   {hasPrice && <Typography sx={{ color: '#8b857e', fontSize: '0.72rem' }}>Retail pricing</Typography>}
@@ -216,7 +216,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                 <Button variant="outlined" fullWidth startIcon={alreadySampled ? <CheckCircleIcon /> : undefined} disabled={alreadySampled || (isFull && !alreadySampled)} onClick={handleRequestSample} sx={{ height: 48, borderColor: '#c9c2ba', color: '#393532', borderRadius: 0, fontSize: '0.73rem', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', '&:hover': { borderColor: '#8d6c4b', color: '#8d6c4b', bgcolor: '#fbfaf8' } }}>
                   {alreadySampled ? 'Sample Requested' : sampleAdded ? 'Added to Samples' : 'Request Free Sample'}
                 </Button>
-                {hasPrice && <Typography sx={{ color: '#938d86', fontSize: '0.7rem', textAlign: 'center', mt: 1 }}>Total: {'$' + (fabric.pricePerYard! * yards).toFixed(2)} for {yards} yard{yards === 1 ? '' : 's'}</Typography>}
+                {hasPrice && <Typography sx={{ color: '#938d86', fontSize: '0.7rem', textAlign: 'center', mt: 1 }}>Total: {'$' + (fabric.pricePerYard! * yards).toFixed(2)} CAD for {yards} yard{yards === 1 ? '' : 's'}</Typography>}
               </Box>
 
               {fabric.productUrl && (

@@ -157,7 +157,7 @@ export default function Footer() {
           <Divider sx={{ my: 4, borderColor: 'rgba(255,255,255,0.1)' }} />
 
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', display: 'block', textAlign: 'center' }}>
-            © {new Date().getFullYear()} JL Comfort. All rights reserved. Contact details on this site are placeholders pending setup.
+            © {new Date().getFullYear()} JL Comfort. All rights reserved. All prices are in Canadian dollars (CAD). Contact details on this site are placeholders pending setup.
           </Typography>
         </Container>
       </Box>
