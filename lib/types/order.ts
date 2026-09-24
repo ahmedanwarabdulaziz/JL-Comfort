@@ -84,6 +84,7 @@ export interface EmailSettings {
   internalEmail: string | null;
   supplierName: string;
   supplierEmail: string | null;
+  supplierSampleEmail: string | null; // sample requests; null = use supplierEmail
   supplierAccountNumber: string | null;
   supplierNotes: string | null;
 }
@@ -150,6 +151,7 @@ export const rowToEmailSettings = (row: any): EmailSettings => ({
   internalEmail: row?.internal_email || null,
   supplierName: row?.supplier_name || 'Charlotte Fabrics',
   supplierEmail: row?.supplier_email || null,
+  supplierSampleEmail: row?.supplier_sample_email || null,
   supplierAccountNumber: row?.supplier_account_number || null,
   supplierNotes: row?.supplier_notes || null,
 });

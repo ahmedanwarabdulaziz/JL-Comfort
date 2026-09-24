@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { sendEmail, isEmailConfigured } from '@/lib/email/resend';
+import { deliverEmail, getEmailSettings } from '@/lib/email/deliver';
 import {
   EmailContent,
   customerConfirmation,
@@ -16,8 +16,6 @@ import {
   EmailSettings,
   Order,
   OrderStatus,
-  VERIFIED_SENDING_DOMAINS,
-  rowToEmailSettings,
   rowToOrder,
 } from '@/lib/types/order';
 
@@ -158,46 +156,25 @@ export async function markOrderExpired(orderId: string) {
 
 // --- email ---------------------------------------------------------------------------------
 
-export async function getEmailSettings(): Promise<EmailSettings> {
-  const { data, error } = await db().from('email_settings').select('*').eq('id', true).maybeSingle();
-  if (error) throw error;
-  return rowToEmailSettings(data);
-}
+export { getEmailSettings };
 
-const isVerifiedSender = (address: string) =>
-  VERIFIED_SENDING_DOMAINS.includes(address.split('@')[1]?.toLowerCase() || '');
-
-async function deliver(
+const deliver = (
   order: Order,
   settings: EmailSettings,
   to: string,
   content: EmailContent,
   eventType: string,
   idempotencyKey?: string
-): Promise<boolean> {
-  try {
-    if (!isEmailConfigured()) throw new Error('RESEND_API_KEY is not set');
-    if (!isVerifiedSender(settings.fromEmail)) {
-      throw new Error(`From address ${settings.fromEmail} is not on a verified domain (${VERIFIED_SENDING_DOMAINS.join(', ')})`);
-    }
-    const { id } = await sendEmail({
-      from: `${settings.fromName} <${settings.fromEmail}>`,
-      to: [to],
-      replyTo: settings.replyTo || undefined,
-      subject: content.subject,
-      html: content.html,
-      text: content.text,
-      idempotencyKey,
-    });
-    // The Resend id matches the email in the Resend dashboard (Emails), which shows delivered/bounced.
-    await logOrderEvent(order.id, eventType, `Emailed ${to}: "${content.subject}" (Resend id ${id})`);
-    return true;
-  } catch (error: any) {
-    console.error(`Order ${order.orderNumber}: ${eventType} email failed`, error);
-    await logOrderEvent(order.id, 'email_failed', `Could not email ${to} (${eventType}): ${error.message || error}`);
-    return false;
-  }
-}
+) =>
+  deliverEmail({
+    settings,
+    to,
+    content,
+    eventType,
+    idempotencyKey,
+    context: `Order ${order.orderNumber}`,
+    log: (type, message) => logOrderEvent(order.id, type, message),
+  });
 
 /** Sends the supplier PO if the order has supplier-fulfilled items. Returns a one-line status. */
 export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSettings, idempotencyKey?: string): Promise<string> {

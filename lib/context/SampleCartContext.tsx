@@ -1,9 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SampleRequestItem } from '@/lib/types/sampleRequest';
-
-export const MAX_SAMPLE_ITEMS = 5;
+import { DEFAULT_SAMPLE_SETTINGS, SampleRequestItem, SampleSettings } from '@/lib/types/sampleRequest';
+import { getSampleSettings } from '@/lib/data/sampleRequests';
 
 interface SampleCartContextType {
   items: SampleRequestItem[];
@@ -11,6 +10,7 @@ interface SampleCartContextType {
   removeSample: (fabricId: string) => void;
   clearSamples: () => void;
   isFull: boolean;
+  settings: SampleSettings; // admin limits; the server enforces them too
 }
 
 const SampleCartContext = createContext<SampleCartContextType | undefined>(undefined);
@@ -18,6 +18,11 @@ const SampleCartContext = createContext<SampleCartContextType | undefined>(undef
 export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<SampleRequestItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
+  const [settings, setSettings] = useState<SampleSettings>(DEFAULT_SAMPLE_SETTINGS);
+
+  useEffect(() => {
+    getSampleSettings().then(setSettings).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -40,7 +45,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addSample = (item: SampleRequestItem) => {
     setItems((prev) => {
       if (prev.some((i) => i.fabricId === item.fabricId)) return prev;
-      if (prev.length >= MAX_SAMPLE_ITEMS) return prev;
+      if (prev.length >= settings.maxPerRequest) return prev;
       return [...prev, item];
     });
   };
@@ -53,7 +58,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   return (
     <SampleCartContext.Provider
-      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= MAX_SAMPLE_ITEMS }}
+      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= settings.maxPerRequest, settings }}
     >
       {children}
     </SampleCartContext.Provider>

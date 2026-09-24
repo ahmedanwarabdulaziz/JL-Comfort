@@ -19,7 +19,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
 
 export default function RequestSamplesPage() {
-  const { items, removeSample, clearSamples } = useSampleCart();
+  const { items, removeSample, clearSamples, settings } = useSampleCart();
+  const [requestNumber, setRequestNumber] = useState<string | null>(null);
+  const overLimit = items.length > settings.maxPerRequest;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -34,7 +36,7 @@ export default function RequestSamplesPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const canSubmit =
-    items.length > 0 && name.trim() && email.trim() && line1.trim() && city.trim() && state.trim() && zip.trim() && country.trim();
+    settings.requestsEnabled && !overLimit && items.length > 0 && name.trim() && email.trim() && line1.trim() && city.trim() && state.trim() && zip.trim() && country.trim();
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -57,6 +59,7 @@ export default function RequestSamplesPage() {
         setError(data.error || 'Failed to submit sample request.');
         return;
       }
+      setRequestNumber(data.requestNumber || null);
       clearSamples();
       setSubmitted(true);
     } catch (err) {
@@ -74,7 +77,8 @@ export default function RequestSamplesPage() {
           Sample request submitted!
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          We&apos;ll ship your swatches shortly.
+          {requestNumber ? <>Your request number is <strong>{requestNumber}</strong>. </> : null}
+          A confirmation is on its way to your inbox, and we&apos;ll email you a tracking number as soon as your swatches ship.
         </Typography>
         <Button component={Link} href="/fabrics" variant="contained" sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#222' } }}>
           Continue Browsing Fabrics
@@ -106,8 +110,20 @@ export default function RequestSamplesPage() {
         Request Free Samples
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 4 }}>
-        We&apos;ll mail these swatches to you at no cost.
+        We&apos;ll mail these swatches to you at no cost. You can request up to {settings.maxPerRequest} at a time, and up to{' '}
+        {settings.maxPerCustomer} every {settings.periodDays} days.
       </Typography>
+      {!settings.requestsEnabled && (
+        <Typography sx={{ mb: 3, p: 2, bgcolor: '#f5f1eb', color: '#625b54' }}>
+          Sample requests are paused at the moment. Please check back soon.
+        </Typography>
+      )}
+      {overLimit && (
+        <Typography sx={{ mb: 3, p: 2, bgcolor: '#fdecea', color: '#8a2a1f' }}>
+          Please remove {items.length - settings.maxPerRequest} sample{items.length - settings.maxPerRequest === 1 ? '' : 's'} — the limit is{' '}
+          {settings.maxPerRequest} per request.
+        </Typography>
+      )}
 
       <Grid container spacing={4}>
         <Grid item xs={12} md={5}>
