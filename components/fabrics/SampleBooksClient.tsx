@@ -9,7 +9,6 @@ import {
   Grid,
   CircularProgress,
   Button,
-  Chip,
   InputAdornment,
   TextField,
 } from '@mui/material';
@@ -19,6 +18,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot } from '@/lib/data/charlotteFabricCatalog';
+import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
 
 interface SampleBook {
   name: string;
@@ -59,8 +59,8 @@ export default function SampleBooksClient() {
         name,
         fabricCount: fabrics.length,
         previewImages: fabrics
-          .filter((f) => f.imageUrl)
-          .slice(0, 4)
+          .filter((f) => f.imageUrl && f.imageOk !== false)
+          .slice(0, 7)
           .map((f) => f.imageUrl),
         sampleFabrics: fabrics.slice(0, 4),
       }))
@@ -247,7 +247,7 @@ export default function SampleBooksClient() {
         {!loading && !error && filtered.length > 0 && (
           <Grid container spacing={3}>
             {filtered.map((book) => (
-              <Grid item xs={12} sm={6} md={4} key={book.name}>
+              <Grid item xs={6} sm={4} md={3} key={book.name}>
                 <BookCard book={book} />
               </Grid>
             ))}
@@ -311,89 +311,37 @@ export default function SampleBooksClient() {
 
 // ── Book card ────────────────────────────────────────────────────────────────
 function BookCard({ book }: { book: SampleBook }) {
-  const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
+  const title = cleanBookName(book.name);
+  const href = `/fabrics?sampleBook=${encodeURIComponent(book.name)}`;
 
   return (
     <Box
+      component={Link}
+      href={href}
       sx={{
-        bgcolor: '#fff',
-        borderRadius: '14px',
-        overflow: 'hidden',
-        border: '1px solid rgba(0,0,0,0.07)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-        transition: 'transform 0.22s ease, box-shadow 0.22s ease',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.13)',
-        },
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'block',
+        textDecoration: 'none',
+        color: 'inherit',
+        '& .book-cover': { transition: 'transform 0.22s ease' },
+        '&:hover .book-cover': { transform: 'translateY(-4px)' },
+        '&:hover .book-name': { color: '#8d6c4b' },
       }}
     >
-      {/* 2×2 image mosaic */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', aspectRatio: '16/9', overflow: 'hidden' }}>
-        {[0, 1, 2, 3].map((i) => {
-          const src = book.previewImages[i];
-          return (
-            <Box key={i} sx={{ bgcolor: '#ede9e3', overflow: 'hidden', position: 'relative' }}>
-              {src && !imgErrors[i] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={src}
-                  alt={`${book.name} fabric preview ${i + 1}`}
-                  loading="lazy"
-                  onError={() => setImgErrors((prev) => ({ ...prev, [i]: true }))}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
-              ) : (
-                <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <AutoStoriesIcon sx={{ color: '#ccc', fontSize: 22 }} />
-                </Box>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-
-      {/* Info */}
-      <Box sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Chip
-          label={`${book.fabricCount} fabric${book.fabricCount !== 1 ? 's' : ''}`}
-          size="small"
-          sx={{ alignSelf: 'flex-start', mb: 1.25, bgcolor: '#f5f0e8', color: '#b8935f', fontWeight: 700, fontSize: '0.7rem', height: 22, '& .MuiChip-label': { px: 1 } }}
+      <Box className="book-cover">
+        <SampleBookCover
+          title={title}
+          series={bookSeries(book.name)}
+          footnote={`${book.fabricCount} fabric${book.fabricCount !== 1 ? 's' : ''}`}
+          photo={book.previewImages[0]}
+          edgePhotos={book.previewImages.slice(1)}
         />
-        <Typography
-          variant="subtitle1"
-          sx={{ fontWeight: 800, color: '#1a1a1a', mb: 0.5, lineHeight: 1.3, fontSize: '0.95rem' }}
-        >
-          {book.name}
-        </Typography>
-        <Typography variant="body2" sx={{ color: '#888', fontSize: '0.78rem', mb: 2.5, lineHeight: 1.5 }}>
-          Browse {book.fabricCount} curated fabric{book.fabricCount !== 1 ? 's' : ''} from this collection.
-        </Typography>
-
-        <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
-          <Button
-            component={Link}
-            href={`/fabrics?sampleBook=${encodeURIComponent(book.name)}`}
-            variant="contained"
-            size="small"
-            fullWidth
-            sx={{ bgcolor: '#1a1a1a', color: '#e3c29a', fontWeight: 700, borderRadius: '7px', textTransform: 'none', fontSize: '0.8rem', py: 0.9, '&:hover': { bgcolor: '#333' } }}
-          >
-            Browse Fabrics
-          </Button>
-          <Button
-            component={Link}
-            href="/request-samples"
-            variant="outlined"
-            size="small"
-            sx={{ borderColor: 'rgba(0,0,0,0.15)', color: '#555', fontWeight: 600, borderRadius: '7px', textTransform: 'none', fontSize: '0.8rem', py: 0.9, whiteSpace: 'nowrap', flexShrink: 0, '&:hover': { borderColor: '#b8935f', color: '#b8935f', bgcolor: 'transparent' } }}
-          >
-            Samples
-          </Button>
-        </Box>
       </Box>
+      <Typography className="book-name" sx={{ textAlign: 'center', mt: 1.5, fontWeight: 600, fontSize: '0.92rem', color: '#252321', transition: 'color 0.2s' }}>
+        {title}
+      </Typography>
+      <Typography sx={{ textAlign: 'center', color: '#8b857e', fontSize: '0.75rem' }}>
+        Browse {book.fabricCount} fabric{book.fabricCount !== 1 ? 's' : ''} →
+      </Typography>
     </Box>
   );
 }
