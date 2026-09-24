@@ -320,6 +320,8 @@ export default function FabricsShopClient() {
     return initial;
   });
   const [sampleBook, setSampleBook] = useState(searchParams?.get('sampleBook') ?? '');
+  const [groupId, setGroupId] = useState(searchParams?.get('groupId') ?? '');
+  const [groupName] = useState(searchParams?.get('groupName') ?? ''); // carried in the link so no extra fetch is needed
   const [newOnly, setNewOnly] = useState(searchParams?.get('isNew') === 'true');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('featured');
@@ -411,25 +413,32 @@ export default function FabricsShopClient() {
   }, [allFabrics]);
 
   const filtered = useMemo(() => {
-    const filtersObj: CharlotteFabricFilters = { ...filters, search, sampleBook: sampleBook || undefined };
+    const filtersObj: CharlotteFabricFilters = { ...filters, search, sampleBook: sampleBook || undefined, groupId: groupId || undefined };
     const matched = filterFabrics(allFabrics, filtersObj);
     return sortFabrics(newOnly ? matched.filter((f) => f.isNew) : matched, sort);
-  }, [allFabrics, filters, search, sampleBook, sort, newOnly]);
+  }, [allFabrics, filters, search, sampleBook, groupId, sort, newOnly]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filters, search, sort, sampleBook, newOnly]);
+  }, [filters, search, sort, sampleBook, groupId, newOnly]);
 
   const bookLabel = sampleBook ? cleanBookName(sampleBook) : '';
+  // A curated group link carries its own name; a sample book falls back to its cleaned name.
+  const collectionLabel = groupId ? groupName || 'Group' : bookLabel;
   const visibleFabrics = filtered.slice(0, visibleCount);
   const hasMore = filtered.length > visibleCount;
   const activeCount =
-    FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) + (search ? 1 : 0) + (sampleBook ? 1 : 0) + (newOnly ? 1 : 0);
+    FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) +
+    (search ? 1 : 0) +
+    (sampleBook ? 1 : 0) +
+    (groupId ? 1 : 0) +
+    (newOnly ? 1 : 0);
 
   const clearAll = () => {
     setFilters(emptyFilters());
     setSearch('');
     setSampleBook('');
+    setGroupId('');
     setNewOnly(false);
   };
 
@@ -445,17 +454,17 @@ export default function FabricsShopClient() {
             <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.mocha } }}>Home</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
             <Box component="span" sx={{ color: brand.ink }}>Fabrics</Box>
-            {sampleBook && (
+            {collectionLabel && (
               <>
                 <Box component="span" sx={{ mx: 0.75 }}>›</Box>
-                <Box component="span" sx={{ color: brand.ink }}>{bookLabel}</Box>
+                <Box component="span" sx={{ color: brand.ink }}>{collectionLabel}</Box>
               </>
             )}
           </Typography>
           <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.9rem' }, color: brand.ink }}>
-            {sampleBook ? (
+            {collectionLabel ? (
               <>
-                {bookLabel} <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>collection</Box>
+                {collectionLabel} <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{groupId ? 'picks' : 'collection'}</Box>
               </>
             ) : (
               <>
@@ -518,6 +527,7 @@ export default function FabricsShopClient() {
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', pt: 2 }}>
                 {newOnly && <Chip size="small" label="New arrivals" onDelete={() => setNewOnly(false)} sx={chipSx} />}
                 {sampleBook && <Chip size="small" label={`Collection: ${bookLabel}`} onDelete={() => setSampleBook('')} sx={chipSx} />}
+                {groupId && <Chip size="small" label={`Group: ${groupName || 'Selected'}`} onDelete={() => setGroupId('')} sx={chipSx} />}
                 {search && <Chip size="small" label={`"${search}"`} onDelete={() => setSearch('')} sx={chipSx} />}
                 {FILTER_KEYS.flatMap((key) =>
                   filters[key].map((value) => (

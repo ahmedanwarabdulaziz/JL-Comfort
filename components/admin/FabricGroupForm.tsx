@@ -11,6 +11,8 @@ import {
   Typography,
   Divider,
   Stack,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { FabricGroup, FabricGroupInput } from '@/lib/types/fabricGroup';
 import { createFabricGroup, updateFabricGroup } from '@/lib/data/fabricGroups';
@@ -25,6 +27,7 @@ interface FabricGroupFormProps {
 const emptyFormData: FabricGroupInput = {
   name: '',
   description: '',
+  showOnHomepage: false,
 };
 
 export default function FabricGroupForm({ open, onClose, onSave, group }: FabricGroupFormProps) {
@@ -34,7 +37,7 @@ export default function FabricGroupForm({ open, onClose, onSave, group }: Fabric
 
   useEffect(() => {
     if (group) {
-      setFormData({ name: group.name, description: group.description || '' });
+      setFormData({ name: group.name, description: group.description || '', showOnHomepage: group.showOnHomepage });
     } else {
       setFormData(emptyFormData);
     }
@@ -86,6 +89,20 @@ export default function FabricGroupForm({ open, onClose, onSave, group }: Fabric
             rows={3}
             placeholder="Optional notes about this group"
           />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.showOnHomepage ?? false}
+                onChange={(e) => setFormData((prev) => ({ ...prev, showOnHomepage: e.target.checked }))}
+              />
+            }
+            label="Show this group on the homepage"
+          />
+          {formData.showOnHomepage && (
+            <Typography variant="caption" color="text.secondary">
+              After saving, open &quot;Manage fabrics&quot; on this group to star which fabrics appear as its homepage photos.
+            </Typography>
+          )}
 
           {error && (
             <Typography variant="body2" color="error">

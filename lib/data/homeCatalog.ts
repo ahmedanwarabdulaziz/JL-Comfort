@@ -19,9 +19,17 @@ export interface HomeMaterial {
   count: number;
 }
 
+export interface HomeGroup {
+  id: string;
+  name: string;
+  count: number;
+  photos: string[]; // featured members first, then the rest, cover first
+}
+
 export interface HomeCatalog {
   collections: HomeCollection[];
   materials: HomeMaterial[];
+  groups: HomeGroup[]; // admin-curated fabric groups marked "show on homepage"
 }
 
 // Materials shown on the homepage, in order. Hand-picked photos (checked by eye for visible texture)
@@ -39,8 +47,60 @@ const FEATURED_MATERIALS: { value: string; label: string; photo?: string }[] = [
 
 const COLLECTION_COUNT = 8;
 
+const GROUP_PHOTO_COUNT = 7; // cover + edge strip, matching SampleBookCover's edgePhotos
+
+/**
+ * Admin-curated fabric groups marked to show on the homepage, with their featured members' photos
+ * first (falling back to whichever members exist). Isolated in its own try/catch: the
+ * show_on_homepage / is_featured columns are a later migration, so a site that hasn't run it yet
+ * still gets the rest of the homepage instead of an empty page.
+ */
+async function loadHomeGroups(client: NonNullable<typeof supabase>): Promise<HomeGroup[]> {
+  try {
+    const { data: groups, error: groupsError } = await client
+      .from('fabric_groups')
+      .select('id, name, sort_order')
+      .eq('show_on_homepage', true)
+      .order('sort_order', { ascending: true });
+    if (groupsError) throw groupsError;
+    if (!groups || groups.length === 0) return [];
+
+    const members = await fetchAllRows<any>(
+      () =>
+        client
+          .from('fabric_group_members')
+          .select('group_id, is_featured, charlotte_fabrics(image_url, image_ok, status)')
+          .in('group_id', groups.map((g) => g.id)),
+      'group_id'
+    );
+
+    const byGroup = new Map<string, { count: number; featured: string[]; other: string[] }>();
+    for (const row of members) {
+      const fabric = row.charlotte_fabrics;
+      if (!fabric || fabric.status !== 'active') continue;
+      const entry = byGroup.get(row.group_id) || { count: 0, featured: [], other: [] };
+      entry.count++;
+      if (fabric.image_url && fabric.image_ok !== false) {
+        (row.is_featured ? entry.featured : entry.other).push(fabric.image_url);
+      }
+      byGroup.set(row.group_id, entry);
+    }
+
+    return groups
+      .map((g) => {
+        const entry = byGroup.get(g.id);
+        if (!entry || entry.count === 0) return null;
+        return { id: g.id, name: g.name, count: entry.count, photos: [...entry.featured, ...entry.other].slice(0, GROUP_PHOTO_COUNT) };
+      })
+      .filter((g): g is HomeGroup => g !== null && g.photos.length > 0);
+  } catch (error) {
+    console.error('Homepage fabric groups failed (has the fabric_group_homepage migration run?):', error);
+    return [];
+  }
+}
+
 async function loadHomeCatalog(): Promise<HomeCatalog> {
-  if (!supabase) return { collections: [], materials: [] };
+  if (!supabase) return { collections: [], materials: [], groups: [] };
   const client = supabase;
 
   const rows = await fetchAllRows<any>(() =>
@@ -75,7 +135,9 @@ async function loadHomeCatalog(): Promise<HomeCatalog> {
     return { value: m.value, label: m.label, photo: m.photo || matching[0]?.image_url || null, count: matching.length };
   }).filter((m) => m.count > 0);
 
-  return { collections, materials };
+  const groups = await loadHomeGroups(client);
+
+  return { collections, materials, groups };
 }
 
 export const getHomeCatalog = unstable_cache(loadHomeCatalog, ['home-catalog-v1'], { revalidate: 1800 });

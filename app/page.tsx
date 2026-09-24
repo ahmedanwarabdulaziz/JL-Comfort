@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const catalog = await getHomeCatalog().catch((error) => {
     console.error('Homepage catalog summary failed:', error);
-    return { collections: [], materials: [] };
+    return { collections: [], materials: [], groups: [] };
   });
 
   return <HomePageClient catalog={catalog} />;

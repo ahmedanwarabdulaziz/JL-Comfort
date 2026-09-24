@@ -3,6 +3,7 @@ export interface FabricGroup {
   name: string; // e.g. "Most Selling Fabrics"
   description?: string;
   sortOrder?: number;
+  showOnHomepage: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -11,4 +12,22 @@ export interface FabricGroupInput {
   name: string;
   description?: string;
   sortOrder?: number;
+  showOnHomepage?: boolean;
+}
+
+/** A fabric that belongs to a group, as shown in the group's member manager. */
+export interface FabricGroupMember {
+  fabricId: string;
+  name: string;
+  sku: string;
+  imageUrl: string;
+  isFeatured: boolean; // used as a homepage cover photo when the group is shown there
+}
+
+/** A catalog fabric matched while searching to add to a group. */
+export interface FabricSearchResult {
+  id: string;
+  name: string;
+  sku: string;
+  imageUrl: string;
 }

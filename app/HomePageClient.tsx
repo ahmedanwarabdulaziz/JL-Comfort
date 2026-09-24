@@ -155,6 +155,38 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
         </Box>
       )}
 
+      {/* ── FEATURED GROUPS (admin-curated, e.g. "Most Selling Fabrics") ── */}
+      {catalog.groups.length > 0 && (
+        <Box sx={{ bgcolor: brand.chalk, borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}` }}>
+          <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 } }}>
+            <SectionHeading eyebrow="Handpicked" title="Our favourite" italic="fabrics" link={{ label: 'All fabrics', href: '/fabrics' }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2.5, md: 3.5 } }}>
+              {catalog.groups.map((group) => (
+                <Box
+                  key={group.id}
+                  component={Link}
+                  href={`/fabrics?groupId=${group.id}&groupName=${encodeURIComponent(group.name)}`}
+                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.mocha } }}
+                >
+                  <Box className="cover">
+                    <SampleBookCover
+                      title={group.name}
+                      series="Featured"
+                      footnote={`${group.count} fabric${group.count === 1 ? '' : 's'}`}
+                      photo={group.photos[0]}
+                      edgePhotos={group.photos.slice(1)}
+                    />
+                  </Box>
+                  <Typography className="name" sx={{ mt: 1.5, textAlign: 'center', fontWeight: 600, fontSize: '0.92rem', color: brand.ink, transition: 'color .2s' }}>
+                    {group.name}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Container>
+        </Box>
+      )}
+
       {/* ── SHOP BY MATERIAL ── */}
       {catalog.materials.length > 0 && (
         <Box sx={{ bgcolor: brand.chalk, borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}` }}>
