@@ -136,6 +136,7 @@ export default function FabricGroupsList() {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell />
               <TableCell>Name</TableCell>
               <TableCell>Description</TableCell>
               <TableCell align="center">Fabrics</TableCell>
@@ -146,19 +147,40 @@ export default function FabricGroupsList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : groups.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No fabric groups found
                 </TableCell>
               </TableRow>
             ) : (
               groups.map((group) => (
                 <TableRow key={group.id} hover>
+                  <TableCell sx={{ width: 48 }}>
+                    <Box
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 1,
+                        bgcolor: 'action.hover',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {group.coverImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={group.coverImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <StyleIcon fontSize="small" color="disabled" />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontWeight="bold">{group.name}</Typography>
                   </TableCell>

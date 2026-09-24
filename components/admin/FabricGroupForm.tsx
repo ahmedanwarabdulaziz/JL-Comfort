@@ -13,9 +13,13 @@ import {
   Stack,
   FormControlLabel,
   Switch,
+  Box,
 } from '@mui/material';
+import ImageIcon from '@mui/icons-material/Image';
+import CloseIcon from '@mui/icons-material/Close';
 import { FabricGroup, FabricGroupInput } from '@/lib/types/fabricGroup';
 import { createFabricGroup, updateFabricGroup } from '@/lib/data/fabricGroups';
+import ImagePickerDialog from './ImagePickerDialog';
 
 interface FabricGroupFormProps {
   open: boolean;
@@ -28,16 +32,23 @@ const emptyFormData: FabricGroupInput = {
   name: '',
   description: '',
   showOnHomepage: false,
+  coverImageUrl: null,
 };
 
 export default function FabricGroupForm({ open, onClose, onSave, group }: FabricGroupFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FabricGroupInput>(emptyFormData);
   const [error, setError] = useState<string | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
 
   useEffect(() => {
     if (group) {
-      setFormData({ name: group.name, description: group.description || '', showOnHomepage: group.showOnHomepage });
+      setFormData({
+        name: group.name,
+        description: group.description || '',
+        showOnHomepage: group.showOnHomepage,
+        coverImageUrl: group.coverImageUrl ?? null,
+      });
     } else {
       setFormData(emptyFormData);
     }
@@ -89,6 +100,59 @@ export default function FabricGroupForm({ open, onClose, onSave, group }: Fabric
             rows={3}
             placeholder="Optional notes about this group"
           />
+
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Cover photo
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Optional. Shown as this group&apos;s homepage tile photo instead of its fabrics&apos; own photos.
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                onClick={() => setImagePickerOpen(true)}
+                sx={{
+                  width: 96,
+                  height: 96,
+                  flexShrink: 0,
+                  borderRadius: 1,
+                  border: '2px dashed',
+                  borderColor: 'divider',
+                  bgcolor: 'action.hover',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  '&:hover': { borderColor: 'primary.main' },
+                }}
+              >
+                {formData.coverImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={formData.coverImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ImageIcon color="disabled" />
+                )}
+              </Box>
+              <Stack spacing={0.5}>
+                <Button size="small" variant="outlined" onClick={() => setImagePickerOpen(true)}>
+                  {formData.coverImageUrl ? 'Change photo' : 'Choose photo'}
+                </Button>
+                {formData.coverImageUrl && (
+                  <Button
+                    size="small"
+                    color="inherit"
+                    startIcon={<CloseIcon fontSize="small" />}
+                    onClick={() => setFormData((prev) => ({ ...prev, coverImageUrl: null }))}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </Stack>
+            </Box>
+          </Box>
+
           <FormControlLabel
             control={
               <Switch
@@ -98,9 +162,10 @@ export default function FabricGroupForm({ open, onClose, onSave, group }: Fabric
             }
             label="Show this group on the homepage"
           />
-          {formData.showOnHomepage && (
+          {formData.showOnHomepage && !formData.coverImageUrl && (
             <Typography variant="caption" color="text.secondary">
-              After saving, open &quot;Manage fabrics&quot; on this group to star which fabrics appear as its homepage photos.
+              After saving, open &quot;Manage fabrics&quot; on this group to star which fabrics appear as its homepage
+              photos, or upload a cover photo above instead.
             </Typography>
           )}
 
@@ -125,6 +190,12 @@ export default function FabricGroupForm({ open, onClose, onSave, group }: Fabric
           {loading ? 'Saving...' : group ? 'Update' : 'Create'}
         </Button>
       </DialogActions>
+
+      <ImagePickerDialog
+        open={imagePickerOpen}
+        onClose={() => setImagePickerOpen(false)}
+        onSelect={(url) => setFormData((prev) => ({ ...prev, coverImageUrl: url }))}
+      />
     </Dialog>
   );
 }

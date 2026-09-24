@@ -4,6 +4,7 @@ export interface FabricGroup {
   description?: string;
   sortOrder?: number;
   showOnHomepage: boolean;
+  coverImageUrl?: string | null; // uploaded photo shown on the homepage tile; null/unset = use member fabric photos
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,6 +14,7 @@ export interface FabricGroupInput {
   description?: string;
   sortOrder?: number;
   showOnHomepage?: boolean;
+  coverImageUrl?: string | null;
 }
 
 /** A fabric that belongs to a group, as shown in the group's member manager. */

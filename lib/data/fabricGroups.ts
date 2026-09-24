@@ -7,6 +7,7 @@ const rowToFabricGroup = (row: any): FabricGroup => ({
   description: row.description || '',
   sortOrder: row.sort_order ?? 0,
   showOnHomepage: row.show_on_homepage ?? false,
+  coverImageUrl: row.cover_image_url ?? null,
   createdAt: new Date(row.created_at),
   updatedAt: new Date(row.updated_at),
 });
@@ -39,6 +40,7 @@ export const createFabricGroup = async (input: FabricGroupInput): Promise<Fabric
       description: input.description,
       sort_order: input.sortOrder ?? maxSortOrder + 1,
       show_on_homepage: input.showOnHomepage ?? false,
+      cover_image_url: input.coverImageUrl ?? null,
     })
     .select()
     .single();
@@ -61,6 +63,7 @@ export const updateFabricGroup = async (
   if (input.description !== undefined) patch.description = input.description;
   if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
   if (input.showOnHomepage !== undefined) patch.show_on_homepage = input.showOnHomepage;
+  if (input.coverImageUrl !== undefined) patch.cover_image_url = input.coverImageUrl;
 
   const { data, error } = await supabase
     .from('fabric_groups')

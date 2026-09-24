@@ -50,16 +50,16 @@ const COLLECTION_COUNT = 8;
 const GROUP_PHOTO_COUNT = 7; // cover + edge strip, matching SampleBookCover's edgePhotos
 
 /**
- * Admin-curated fabric groups marked to show on the homepage, with their featured members' photos
- * first (falling back to whichever members exist). Isolated in its own try/catch: the
- * show_on_homepage / is_featured columns are a later migration, so a site that hasn't run it yet
- * still gets the rest of the homepage instead of an empty page.
+ * Admin-curated fabric groups marked to show on the homepage. Each group's photos are its uploaded
+ * cover photo first (if set), then its featured members' photos, then whichever members exist.
+ * Isolated in its own try/catch: show_on_homepage / cover_image_url / is_featured are later
+ * migrations, so a site that hasn't run them yet still gets the rest of the homepage.
  */
 async function loadHomeGroups(client: NonNullable<typeof supabase>): Promise<HomeGroup[]> {
   try {
     const { data: groups, error: groupsError } = await client
       .from('fabric_groups')
-      .select('id, name, sort_order')
+      .select('id, name, sort_order, cover_image_url')
       .eq('show_on_homepage', true)
       .order('sort_order', { ascending: true });
     if (groupsError) throw groupsError;
@@ -88,11 +88,13 @@ async function loadHomeGroups(client: NonNullable<typeof supabase>): Promise<Hom
 
     return groups
       .map((g) => {
-        const entry = byGroup.get(g.id);
-        if (!entry || entry.count === 0) return null;
-        return { id: g.id, name: g.name, count: entry.count, photos: [...entry.featured, ...entry.other].slice(0, GROUP_PHOTO_COUNT) };
+        const entry = byGroup.get(g.id) || { count: 0, featured: [], other: [] };
+        const fabricPhotos = [...entry.featured, ...entry.other];
+        // An uploaded cover photo leads; member fabric photos fill the rest of the edge strip.
+        const photos = (g.cover_image_url ? [g.cover_image_url, ...fabricPhotos] : fabricPhotos).slice(0, GROUP_PHOTO_COUNT);
+        return { id: g.id, name: g.name, count: entry.count, photos };
       })
-      .filter((g): g is HomeGroup => g !== null && g.photos.length > 0);
+      .filter((g): g is HomeGroup => g.photos.length > 0);
   } catch (error) {
     console.error('Homepage fabric groups failed (has the fabric_group_homepage migration run?):', error);
     return [];
