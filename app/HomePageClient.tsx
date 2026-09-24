@@ -28,6 +28,7 @@ const FEATURES: {
   primary: { label: string; href: string };
   secondary?: { label: string; href: string };
   steps?: boolean;
+  hidden?: boolean; // not launched yet: kept here, not shown
 }[] = [
   {
     eyebrow: 'Free samples',
@@ -56,6 +57,7 @@ const FEATURES: {
     photo: '/images/bench-cushions.png',
     primary: { label: 'Custom foam', href: '/foam' },
     secondary: { label: 'Bench cushions', href: '/bench-cushions' },
+    hidden: true,
   },
   {
     eyebrow: 'AI visualizer',
@@ -64,6 +66,7 @@ const FEATURES: {
     body: 'Upload a photo of your sofa or chair and see it in any fabric from the catalog.',
     photo: '/images/ai-visualizer.png',
     primary: { label: 'Try the visualizer', href: '/visualizer' },
+    hidden: true,
   },
 ];
 
@@ -185,7 +188,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
       {/* ── FEATURE BLOCKS ── */}
       <Box sx={{ bgcolor: '#fff' }}>
         <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 }, display: 'grid', gap: { xs: 8, md: 11 } }}>
-          {FEATURES.map((f, i) => (
+          {FEATURES.filter((f) => !f.hidden).map((f, i) => (
             <Box
               key={f.eyebrow}
               sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 7 }, alignItems: 'center' }}

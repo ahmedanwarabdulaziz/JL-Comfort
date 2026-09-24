@@ -27,6 +27,9 @@ const fraunces = Fraunces({
   variable: '--font-display',
 });
 
+// The AI shopping assistant (Yousha) is built but not launched yet. Set to true to show it.
+const SHOW_AI_GUIDE = false;
+
 export const metadata: Metadata = {
   title: {
     default: 'JL Comfort | Custom Foam & Upholstery',
@@ -55,7 +58,7 @@ export default function RootLayout({
           <SiteHeader />
           <div style={{ flex: 1 }}>{children}</div>
           <Footer />
-          <AIGuide />
+          {SHOW_AI_GUIDE && <AIGuide />}
         </Providers>
       </body>
     </html>

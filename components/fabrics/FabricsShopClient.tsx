@@ -320,6 +320,7 @@ export default function FabricsShopClient() {
     return initial;
   });
   const [sampleBook, setSampleBook] = useState(searchParams?.get('sampleBook') ?? '');
+  const [newOnly, setNewOnly] = useState(searchParams?.get('isNew') === 'true');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('featured');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -411,22 +412,25 @@ export default function FabricsShopClient() {
 
   const filtered = useMemo(() => {
     const filtersObj: CharlotteFabricFilters = { ...filters, search, sampleBook: sampleBook || undefined };
-    return sortFabrics(filterFabrics(allFabrics, filtersObj), sort);
-  }, [allFabrics, filters, search, sampleBook, sort]);
+    const matched = filterFabrics(allFabrics, filtersObj);
+    return sortFabrics(newOnly ? matched.filter((f) => f.isNew) : matched, sort);
+  }, [allFabrics, filters, search, sampleBook, sort, newOnly]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filters, search, sort, sampleBook]);
+  }, [filters, search, sort, sampleBook, newOnly]);
 
   const bookLabel = sampleBook ? cleanBookName(sampleBook) : '';
   const visibleFabrics = filtered.slice(0, visibleCount);
   const hasMore = filtered.length > visibleCount;
-  const activeCount = FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) + (search ? 1 : 0) + (sampleBook ? 1 : 0);
+  const activeCount =
+    FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) + (search ? 1 : 0) + (sampleBook ? 1 : 0) + (newOnly ? 1 : 0);
 
   const clearAll = () => {
     setFilters(emptyFilters());
     setSearch('');
     setSampleBook('');
+    setNewOnly(false);
   };
 
   const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, options, counts };
@@ -512,6 +516,7 @@ export default function FabricsShopClient() {
             {/* Active filters */}
             {activeCount > 0 && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', pt: 2 }}>
+                {newOnly && <Chip size="small" label="New arrivals" onDelete={() => setNewOnly(false)} sx={chipSx} />}
                 {sampleBook && <Chip size="small" label={`Collection: ${bookLabel}`} onDelete={() => setSampleBook('')} sx={chipSx} />}
                 {search && <Chip size="small" label={`"${search}"`} onDelete={() => setSearch('')} sx={chipSx} />}
                 {FILTER_KEYS.flatMap((key) =>
