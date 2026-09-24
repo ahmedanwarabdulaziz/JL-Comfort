@@ -209,18 +209,18 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                     <Button disabled sx={{ px: 1.5, '&.Mui-disabled': { color: '#393532', fontWeight: 600 } }}>{yards}</Button>
                     <Button onClick={() => setYards((y) => y + 1)} aria-label="Increase quantity"><AddIcon fontSize="small" /></Button>
                   </ButtonGroup>
-                  <Button variant="contained" fullWidth disabled={!hasPrice || !inStock} onClick={handleAddToCart} disableElevation sx={{ borderRadius: 0, bgcolor: '#252321', color: '#fff', fontSize: '0.73rem', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', '&:hover': { bgcolor: '#8d6c4b' }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}>
+                  <Button variant="contained" fullWidth disabled={!hasPrice || !inStock} onClick={handleAddToCart} disableElevation sx={{ borderRadius: 0, bgcolor: '#252321', color: '#fff', fontSize: '0.75rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', '&:hover': { bgcolor: '#8d6c4b' }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}>
                     {added ? 'Added to Cart' : 'Add to Cart'}
                   </Button>
                 </Box>
-                <Button variant="outlined" fullWidth startIcon={alreadySampled ? <CheckCircleIcon /> : undefined} disabled={alreadySampled || (isFull && !alreadySampled)} onClick={handleRequestSample} sx={{ height: 48, borderColor: '#c9c2ba', color: '#393532', borderRadius: 0, fontSize: '0.73rem', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', '&:hover': { borderColor: '#8d6c4b', color: '#8d6c4b', bgcolor: '#fbfaf8' } }}>
+                <Button variant="outlined" fullWidth startIcon={alreadySampled ? <CheckCircleIcon /> : undefined} disabled={alreadySampled || (isFull && !alreadySampled)} onClick={handleRequestSample} sx={{ height: 48, borderColor: '#c9c2ba', color: '#393532', borderRadius: 0, fontSize: '0.75rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', '&:hover': { borderColor: '#8d6c4b', color: '#8d6c4b', bgcolor: '#fbfaf8' } }}>
                   {alreadySampled ? 'Sample Requested' : sampleAdded ? 'Added to Samples' : 'Request Free Sample'}
                 </Button>
                 {hasPrice && <Typography sx={{ color: '#938d86', fontSize: '0.7rem', textAlign: 'center', mt: 1 }}>Total: {'$' + (fabric.pricePerYard! * yards).toFixed(2)} CAD for {yards} yard{yards === 1 ? '' : 's'}</Typography>}
               </Box>
 
               {fabric.productUrl && (
-                <Button component="a" href={fabric.productUrl} target="_blank" rel="noreferrer" endIcon={<OpenInNewIcon sx={{ fontSize: '14px !important' }} />} sx={{ p: 0, color: '#8d6c4b', fontSize: '0.7rem', letterSpacing: 1.1, textTransform: 'uppercase', '&:hover': { bgcolor: 'transparent', color: '#252321' } }}>
+                <Button component="a" href={fabric.productUrl} target="_blank" rel="noreferrer" endIcon={<OpenInNewIcon sx={{ fontSize: '14px !important' }} />} sx={{ p: 0, color: '#8d6c4b', fontSize: '0.7rem', letterSpacing: 0.6, textTransform: 'uppercase', '&:hover': { bgcolor: 'transparent', color: '#252321' } }}>
                   View original Charlotte listing
                 </Button>
               )}
