@@ -14,6 +14,7 @@ import {
   Divider,
   FormControl,
   IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Paper,
@@ -31,6 +32,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import { getOrderWithHistory, getOrders, runOrderAction } from '@/lib/data/orders';
 import { CARRIERS, ORDER_STATUS_LABELS, Order, OrderStatus } from '@/lib/types/order';
 
@@ -63,6 +65,7 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
   const [carrier, setCarrier] = useState('ups');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
+  const [supplierOrderNumber, setSupplierOrderNumber] = useState(order.supplierOrderNumber || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -75,6 +78,7 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
         carrier: carrier === 'other' ? 'Other' : carrier,
         trackingNumber,
         trackingUrl: carrier === 'other' ? trackingUrl : undefined,
+        supplierOrderNumber,
       });
       onDone(updated, ok ? 'Marked shipped and the customer was emailed their tracking number.' : 'Marked shipped, but the email to the customer failed. See the history below.', ok);
     } catch (err: any) {
@@ -97,12 +101,43 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
           </Select>
         </FormControl>
         <TextField size="small" label="Tracking number" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
+        <TextField
+          size="small"
+          label="Charlotte order # (optional)"
+          placeholder="e.g. 871459"
+          value={supplierOrderNumber}
+          onChange={(e) => setSupplierOrderNumber(e.target.value)}
+          sx={{ gridColumn: { sm: 'span 2' } }}
+        />
         {carrier === 'other' && (
           <TextField size="small" label="Tracking link (https://…)" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} sx={{ gridColumn: { sm: 'span 2' } }} />
         )}
       </Box>
       <Button variant="contained" sx={{ mt: 1.5 }} disabled={busy || !trackingNumber.trim()} onClick={submit}>
         {busy ? 'Saving…' : 'Mark shipped & email customer'}
+      </Button>
+    </Box>
+  );
+}
+
+function SupplierOrderField({ value, busy, onSave }: { value: string | null; busy: boolean; onSave: (value: string) => void }) {
+  const [draft, setDraft] = useState(value || '');
+  useEffect(() => setDraft(value || ''), [value]);
+  const changed = draft.trim().replace(/^#\s*/, '') !== (value || '');
+
+  return (
+    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
+      <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 150 }}>Charlotte order #</Typography>
+      <TextField
+        size="small"
+        placeholder="e.g. 871459"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        helperText="From Charlotte's confirmation or shipped email / invoice"
+        sx={{ minWidth: 220 }}
+      />
+      <Button size="small" variant="outlined" disabled={busy || !changed} onClick={() => onSave(draft)} sx={{ alignSelf: 'flex-start', mt: 0.5 }}>
+        Save
       </Button>
     </Box>
   );
@@ -140,6 +175,9 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 6 }}>
         {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />}
+        {order?.supplierOrderNumber && (
+          <Typography component="span" variant="body2" color="text.secondary">Charlotte #{order.supplierOrderNumber}</Typography>
+        )}
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 12, top: 12 }}><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
@@ -206,6 +244,13 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
             {paid && (
               <>
                 <Divider sx={{ my: 3 }} />
+                {supplierItems.length > 0 && (
+                  <SupplierOrderField
+                    value={order.supplierOrderNumber}
+                    busy={busy}
+                    onSave={(value) => act({ action: 'set_supplier_order', supplierOrderNumber: value }, value ? `Linked to Charlotte order #${value.replace(/^#\s*/, '')}.` : 'Charlotte order number cleared.')}
+                  />
+                )}
                 <Typography variant="subtitle1" fontWeight={600} gutterBottom>Shipping</Typography>
                 {order.trackingNumber ? (
                   <Typography variant="body2" sx={{ mb: 2 }}>
@@ -288,6 +333,15 @@ export default function OrdersList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openOrderId, setOpenOrderId] = useState<string | null>(searchParams?.get('order') || null);
+  const [search, setSearch] = useState('');
+
+  const term = search.trim().toLowerCase().replace(/^#\s*/, '');
+  const visibleOrders = term
+    ? orders.filter((o) =>
+        [o.orderNumber, o.supplierOrderNumber, o.customerName, o.customerEmail, o.trackingNumber, o.shipCity]
+          .some((field) => (field || '').toLowerCase().includes(term))
+      )
+    : orders;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -312,17 +366,27 @@ export default function OrdersList() {
         <Button startIcon={<RefreshIcon />} onClick={load}>Refresh</Button>
       </Box>
 
-      <ToggleButtonGroup size="small" exclusive value={filter} onChange={(_, value) => value && setFilter(value)} sx={{ mb: 2, flexWrap: 'wrap' }}>
-        {Object.entries(FILTERS).map(([key, f]) => <ToggleButton key={key} value={key}>{f.label}</ToggleButton>)}
-      </ToggleButtonGroup>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <ToggleButtonGroup size="small" exclusive value={filter} onChange={(_, value) => value && setFilter(value)} sx={{ flexWrap: 'wrap' }}>
+          {Object.entries(FILTERS).map(([key, f]) => <ToggleButton key={key} value={key}>{f.label}</ToggleButton>)}
+        </ToggleButtonGroup>
+        <TextField
+          size="small"
+          placeholder="Search JL #, Charlotte #, customer, tracking…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ minWidth: 300, flexGrow: 1, maxWidth: 420 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+        />
+      </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-      ) : orders.length === 0 ? (
+      ) : visibleOrders.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">No orders here yet.</Typography>
+          <Typography color="text.secondary">{term ? `No orders match "${search.trim()}" in this view. Try the "All" filter.` : 'No orders here yet.'}</Typography>
         </Paper>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -330,6 +394,7 @@ export default function OrdersList() {
             <TableHead>
               <TableRow>
                 <TableCell>Order</TableCell>
+                <TableCell>Charlotte #</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Customer</TableCell>
                 <TableCell>Ship to</TableCell>
@@ -339,9 +404,10 @@ export default function OrdersList() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <TableRow key={order.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpenOrderId(order.id)}>
                   <TableCell><strong>{order.orderNumber}</strong></TableCell>
+                  <TableCell>{order.supplierOrderNumber ? `#${order.supplierOrderNumber}` : <Typography variant="caption" color="text.disabled">—</Typography>}</TableCell>
                   <TableCell>{order.createdAt.toLocaleDateString('en-CA', { dateStyle: 'medium' })}</TableCell>
                   <TableCell>{order.customerName}<br /><Typography variant="caption" color="text.secondary">{order.customerEmail}</Typography></TableCell>
                   <TableCell>{order.shipCity}, {order.shipRegion}</TableCell>

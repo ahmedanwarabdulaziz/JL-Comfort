@@ -5,10 +5,12 @@ import {
   getOrder,
   logOrderEvent,
   markOrderShipped,
+  normalizeSupplierOrderNumber,
   resendShippedEmail,
   sendCustomerConfirmation,
   sendSupplierPurchaseOrder,
   setOrderStatus,
+  setSupplierOrderNumber,
 } from '@/lib/orders/server';
 import { CARRIERS, ORDER_STATUS_LABELS, OrderStatus } from '@/lib/types/order';
 
@@ -40,9 +42,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         if (customUrl && !/^https:\/\//i.test(customUrl)) {
           return NextResponse.json({ error: 'The tracking link must start with https://' }, { status: 400 });
         }
+        const supplierOrderNumber = normalizeSupplierOrderNumber(body.supplierOrderNumber);
+        if (supplierOrderNumber && supplierOrderNumber !== order.supplierOrderNumber) {
+          await setSupplierOrderNumber(order.id, supplierOrderNumber);
+        }
         ok = await markOrderShipped(order.id, carrier, trackingNumber, customUrl);
         break;
       }
+      case 'set_supplier_order':
+        await setSupplierOrderNumber(order.id, body.supplierOrderNumber);
+        break;
       case 'resend_supplier_po': {
         const result = await sendSupplierPurchaseOrder(order, await getEmailSettings());
         ok = !result.startsWith('NOT SENT');

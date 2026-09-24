@@ -246,6 +246,20 @@ export async function sendNewOrderEmails(orderId: string, siteOrigin: string) {
   }
 }
 
+/** Charlotte's own order number ("#871459"), normalized without the leading "#". */
+export const normalizeSupplierOrderNumber = (value: unknown) => String(value ?? '').trim().replace(/^#\s*/, '');
+
+export async function setSupplierOrderNumber(orderId: string, value: unknown) {
+  const supplierOrderNumber = normalizeSupplierOrderNumber(value) || null;
+  const { error } = await db().from('orders').update({ supplier_order_number: supplierOrderNumber }).eq('id', orderId);
+  if (error) throw error;
+  await logOrderEvent(
+    orderId,
+    'supplier_order',
+    supplierOrderNumber ? `Linked to supplier order #${supplierOrderNumber}` : 'Supplier order number cleared'
+  );
+}
+
 export async function markOrderShipped(orderId: string, carrierId: string, trackingNumber: string, customUrl?: string) {
   const order = await getOrder(orderId);
   if (!order) throw new CheckoutError('Order not found', 404);

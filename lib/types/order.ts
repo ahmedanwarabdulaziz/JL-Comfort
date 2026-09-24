@@ -62,6 +62,7 @@ export interface Order {
   shipCountry: string;
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
+  supplierOrderNumber: string | null; // e.g. Charlotte's "Order #871459"
   carrier: string | null;
   trackingNumber: string | null;
   trackingUrl: string | null;
@@ -109,6 +110,7 @@ export const rowToOrder = (row: any): Order => ({
   shipCountry: row.ship_country,
   stripeCheckoutSessionId: row.stripe_checkout_session_id,
   stripePaymentIntentId: row.stripe_payment_intent_id,
+  supplierOrderNumber: row.supplier_order_number ?? null,
   carrier: row.carrier,
   trackingNumber: row.tracking_number,
   trackingUrl: row.tracking_url,
