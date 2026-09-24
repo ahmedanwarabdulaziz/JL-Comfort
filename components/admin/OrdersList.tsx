@@ -65,7 +65,7 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
   const [carrier, setCarrier] = useState('ups');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
-  const [supplierOrderNumber, setSupplierOrderNumber] = useState(order.supplierOrderNumber || '');
+  const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState(order.supplierInvoiceNumber || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -78,7 +78,7 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
         carrier: carrier === 'other' ? 'Other' : carrier,
         trackingNumber,
         trackingUrl: carrier === 'other' ? trackingUrl : undefined,
-        supplierOrderNumber,
+        supplierInvoiceNumber,
       });
       onDone(updated, ok ? 'Marked shipped and the customer was emailed their tracking number.' : 'Marked shipped, but the email to the customer failed. See the history below.', ok);
     } catch (err: any) {
@@ -103,10 +103,10 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
         <TextField size="small" label="Tracking number" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
         <TextField
           size="small"
-          label="Charlotte order # (optional)"
+          label="Charlotte invoice # (optional, from the shipped email)"
           placeholder="e.g. 871459"
-          value={supplierOrderNumber}
-          onChange={(e) => setSupplierOrderNumber(e.target.value)}
+          value={supplierInvoiceNumber}
+          onChange={(e) => setSupplierInvoiceNumber(e.target.value)}
           sx={{ gridColumn: { sm: 'span 2' } }}
         />
         {carrier === 'other' && (
@@ -120,25 +120,34 @@ function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message:
   );
 }
 
-function SupplierOrderField({ value, busy, onSave }: { value: string | null; busy: boolean; onSave: (value: string) => void }) {
-  const [draft, setDraft] = useState(value || '');
-  useEffect(() => setDraft(value || ''), [value]);
-  const changed = draft.trim().replace(/^#\s*/, '') !== (value || '');
+const cleanRef = (value: string) => value.trim().replace(/^#\s*/, '');
+
+function SupplierRefsField({ order, busy, onSave }: { order: Order; busy: boolean; onSave: (refs: { orderNumber: string; invoiceNumber: string }) => void }) {
+  const [orderNumber, setOrderNumber] = useState(order.supplierOrderNumber || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(order.supplierInvoiceNumber || '');
+  useEffect(() => {
+    setOrderNumber(order.supplierOrderNumber || '');
+    setInvoiceNumber(order.supplierInvoiceNumber || '');
+  }, [order.supplierOrderNumber, order.supplierInvoiceNumber]);
+  const changed =
+    cleanRef(orderNumber) !== (order.supplierOrderNumber || '') || cleanRef(invoiceNumber) !== (order.supplierInvoiceNumber || '');
 
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
-      <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 150 }}>Charlotte order #</Typography>
-      <TextField
-        size="small"
-        placeholder="e.g. 871459"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        helperText="From Charlotte's confirmation or shipped email / invoice"
-        sx={{ minWidth: 220 }}
-      />
-      <Button size="small" variant="outlined" disabled={busy || !changed} onClick={() => onSave(draft)} sx={{ alignSelf: 'flex-start', mt: 0.5 }}>
-        Save
-      </Button>
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="subtitle1" fontWeight={600} gutterBottom>Charlotte references</Typography>
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <TextField size="small" label="Order ref #" placeholder="e.g. 4333624" value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} helperText="From Charlotte's order receipt" />
+        <TextField size="small" label="Invoice #" placeholder="e.g. 871459" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} helperText="From Charlotte's shipped email" />
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={busy || !changed}
+          onClick={() => onSave({ orderNumber: cleanRef(orderNumber), invoiceNumber: cleanRef(invoiceNumber) })}
+          sx={{ mt: 0.5 }}
+        >
+          Save
+        </Button>
+      </Box>
     </Box>
   );
 }
@@ -175,8 +184,13 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 6 }}>
         {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />}
-        {order?.supplierOrderNumber && (
-          <Typography component="span" variant="body2" color="text.secondary">Charlotte #{order.supplierOrderNumber}</Typography>
+        {order && (order.supplierOrderNumber || order.supplierInvoiceNumber) && (
+          <Typography component="span" variant="body2" color="text.secondary">
+            Charlotte{' '}
+            {[order.supplierOrderNumber && `order #${order.supplierOrderNumber}`, order.supplierInvoiceNumber && `invoice #${order.supplierInvoiceNumber}`]
+              .filter(Boolean)
+              .join(' · ')}
+          </Typography>
         )}
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 12, top: 12 }}><CloseIcon /></IconButton>
       </DialogTitle>
@@ -245,10 +259,12 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
               <>
                 <Divider sx={{ my: 3 }} />
                 {supplierItems.length > 0 && (
-                  <SupplierOrderField
-                    value={order.supplierOrderNumber}
+                  <SupplierRefsField
+                    order={order}
                     busy={busy}
-                    onSave={(value) => act({ action: 'set_supplier_order', supplierOrderNumber: value }, value ? `Linked to Charlotte order #${value.replace(/^#\s*/, '')}.` : 'Charlotte order number cleared.')}
+                    onSave={(refs) =>
+                      act({ action: 'set_supplier_refs', supplierOrderNumber: refs.orderNumber, supplierInvoiceNumber: refs.invoiceNumber }, 'Charlotte references saved.')
+                    }
                   />
                 )}
                 <Typography variant="subtitle1" fontWeight={600} gutterBottom>Shipping</Typography>
@@ -338,7 +354,7 @@ export default function OrdersList() {
   const term = search.trim().toLowerCase().replace(/^#\s*/, '');
   const visibleOrders = term
     ? orders.filter((o) =>
-        [o.orderNumber, o.supplierOrderNumber, o.customerName, o.customerEmail, o.trackingNumber, o.shipCity]
+        [o.orderNumber, o.supplierOrderNumber, o.supplierInvoiceNumber, o.customerName, o.customerEmail, o.trackingNumber, o.shipCity]
           .some((field) => (field || '').toLowerCase().includes(term))
       )
     : orders;
@@ -394,7 +410,7 @@ export default function OrdersList() {
             <TableHead>
               <TableRow>
                 <TableCell>Order</TableCell>
-                <TableCell>Charlotte #</TableCell>
+                <TableCell>Charlotte</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Customer</TableCell>
                 <TableCell>Ship to</TableCell>
@@ -407,7 +423,16 @@ export default function OrdersList() {
               {visibleOrders.map((order) => (
                 <TableRow key={order.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpenOrderId(order.id)}>
                   <TableCell><strong>{order.orderNumber}</strong></TableCell>
-                  <TableCell>{order.supplierOrderNumber ? `#${order.supplierOrderNumber}` : <Typography variant="caption" color="text.disabled">—</Typography>}</TableCell>
+                  <TableCell>
+                    {order.supplierOrderNumber || order.supplierInvoiceNumber ? (
+                      <>
+                        {order.supplierOrderNumber && <div>Order #{order.supplierOrderNumber}</div>}
+                        {order.supplierInvoiceNumber && <Typography variant="caption" color="text.secondary">Inv #{order.supplierInvoiceNumber}</Typography>}
+                      </>
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    )}
+                  </TableCell>
                   <TableCell>{order.createdAt.toLocaleDateString('en-CA', { dateStyle: 'medium' })}</TableCell>
                   <TableCell>{order.customerName}<br /><Typography variant="caption" color="text.secondary">{order.customerEmail}</Typography></TableCell>
                   <TableCell>{order.shipCity}, {order.shipRegion}</TableCell>

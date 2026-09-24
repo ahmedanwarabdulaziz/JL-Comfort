@@ -246,18 +246,28 @@ export async function sendNewOrderEmails(orderId: string, siteOrigin: string) {
   }
 }
 
-/** Charlotte's own order number ("#871459"), normalized without the leading "#". */
-export const normalizeSupplierOrderNumber = (value: unknown) => String(value ?? '').trim().replace(/^#\s*/, '');
+/** A supplier reference such as "#871459", normalized without the leading "#". */
+export const normalizeSupplierRef = (value: unknown) => String(value ?? '').trim().replace(/^#\s*/, '');
 
-export async function setSupplierOrderNumber(orderId: string, value: unknown) {
-  const supplierOrderNumber = normalizeSupplierOrderNumber(value) || null;
-  const { error } = await db().from('orders').update({ supplier_order_number: supplierOrderNumber }).eq('id', orderId);
+const SUPPLIER_REF_FIELDS = {
+  orderNumber: { column: 'supplier_order_number', label: 'order ref' },
+  invoiceNumber: { column: 'supplier_invoice_number', label: 'invoice' },
+} as const;
+
+/** Sets the supplier's order ref # and/or invoice #; only the keys passed are changed. */
+export async function setSupplierRefs(orderId: string, refs: { orderNumber?: unknown; invoiceNumber?: unknown }) {
+  const patch: Record<string, string | null> = {};
+  const notes: string[] = [];
+  for (const key of Object.keys(SUPPLIER_REF_FIELDS) as (keyof typeof SUPPLIER_REF_FIELDS)[]) {
+    if (refs[key] === undefined) continue;
+    const value = normalizeSupplierRef(refs[key]) || null;
+    patch[SUPPLIER_REF_FIELDS[key].column] = value;
+    notes.push(value ? `supplier ${SUPPLIER_REF_FIELDS[key].label} #${value}` : `supplier ${SUPPLIER_REF_FIELDS[key].label} # cleared`);
+  }
+  if (notes.length === 0) return;
+  const { error } = await db().from('orders').update(patch).eq('id', orderId);
   if (error) throw error;
-  await logOrderEvent(
-    orderId,
-    'supplier_order',
-    supplierOrderNumber ? `Linked to supplier order #${supplierOrderNumber}` : 'Supplier order number cleared'
-  );
+  await logOrderEvent(orderId, 'supplier_order', `Linked: ${notes.join(', ')}`);
 }
 
 export async function markOrderShipped(orderId: string, carrierId: string, trackingNumber: string, customUrl?: string) {

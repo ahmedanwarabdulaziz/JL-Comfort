@@ -5,12 +5,12 @@ import {
   getOrder,
   logOrderEvent,
   markOrderShipped,
-  normalizeSupplierOrderNumber,
+  normalizeSupplierRef,
   resendShippedEmail,
   sendCustomerConfirmation,
   sendSupplierPurchaseOrder,
   setOrderStatus,
-  setSupplierOrderNumber,
+  setSupplierRefs,
 } from '@/lib/orders/server';
 import { CARRIERS, ORDER_STATUS_LABELS, OrderStatus } from '@/lib/types/order';
 
@@ -42,15 +42,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         if (customUrl && !/^https:\/\//i.test(customUrl)) {
           return NextResponse.json({ error: 'The tracking link must start with https://' }, { status: 400 });
         }
-        const supplierOrderNumber = normalizeSupplierOrderNumber(body.supplierOrderNumber);
-        if (supplierOrderNumber && supplierOrderNumber !== order.supplierOrderNumber) {
-          await setSupplierOrderNumber(order.id, supplierOrderNumber);
+        const invoiceNumber = normalizeSupplierRef(body.supplierInvoiceNumber);
+        if (invoiceNumber && invoiceNumber !== order.supplierInvoiceNumber) {
+          await setSupplierRefs(order.id, { invoiceNumber });
         }
         ok = await markOrderShipped(order.id, carrier, trackingNumber, customUrl);
         break;
       }
-      case 'set_supplier_order':
-        await setSupplierOrderNumber(order.id, body.supplierOrderNumber);
+      case 'set_supplier_refs':
+        await setSupplierRefs(order.id, {
+          orderNumber: normalizeSupplierRef(body.supplierOrderNumber) === (order.supplierOrderNumber || '') ? undefined : body.supplierOrderNumber,
+          invoiceNumber: normalizeSupplierRef(body.supplierInvoiceNumber) === (order.supplierInvoiceNumber || '') ? undefined : body.supplierInvoiceNumber,
+        });
         break;
       case 'resend_supplier_po': {
         const result = await sendSupplierPurchaseOrder(order, await getEmailSettings());
