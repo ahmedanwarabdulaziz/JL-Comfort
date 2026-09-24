@@ -156,10 +156,19 @@ export async function logSampleEvent(id: string, type: string, message: string) 
   if (error) console.error('Error logging sample request event:', error);
 }
 
-const deliver = (request: SampleRequest, settings: EmailSettings, to: string, content: EmailContent, eventType: string, idempotencyKey?: string) =>
+const deliver = (
+  request: SampleRequest,
+  settings: EmailSettings,
+  to: string,
+  content: EmailContent,
+  eventType: string,
+  idempotencyKey?: string,
+  toName?: string
+) =>
   deliverEmail({
     settings,
     to,
+    toName,
     content,
     eventType,
     idempotencyKey,
@@ -173,7 +182,7 @@ export async function sendSupplierSampleRequest(request: SampleRequest, settings
     await logSampleEvent(request.id, 'email_failed', 'Sample request NOT sent to the supplier: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';
   }
-  const sent = await deliver(request, settings, to, supplierSampleRequest(request, settings), 'supplier_sample_request', idempotencyKey);
+  const sent = await deliver(request, settings, to, supplierSampleRequest(request, settings), 'supplier_sample_request', idempotencyKey, settings.supplierName);
   if (!sent) return `NOT SENT: email to ${to} failed (see request history)`;
   const patch: Record<string, unknown> = { supplier_emailed_at: new Date().toISOString() };
   if (request.status === 'pending') patch.status = 'sent_to_supplier';
@@ -182,7 +191,7 @@ export async function sendSupplierSampleRequest(request: SampleRequest, settings
 }
 
 export async function sendCustomerSampleConfirmation(request: SampleRequest, settings: EmailSettings, idempotencyKey?: string) {
-  return deliver(request, settings, request.email, customerSampleConfirmation(request, settings), 'customer_confirmation', idempotencyKey);
+  return deliver(request, settings, request.email, customerSampleConfirmation(request, settings), 'customer_confirmation', idempotencyKey, request.name);
 }
 
 /** Everything that happens after a request is stored. Never throws: failures are logged on the request. */
@@ -232,7 +241,7 @@ export async function markSamplesShipped(id: string, carrierId: string, tracking
 export async function resendSamplesShippedEmail(request: SampleRequest) {
   if (!request.trackingNumber) throw new CheckoutError('This request has no tracking number yet.');
   const settings = await getEmailSettings();
-  return deliver(request, settings, request.email, customerSamplesShipped(request, settings), 'customer_shipped');
+  return deliver(request, settings, request.email, customerSamplesShipped(request, settings), 'customer_shipped', undefined, request.name);
 }
 
 export async function setSampleStatus(id: string, status: SampleRequestStatus, note?: string) {

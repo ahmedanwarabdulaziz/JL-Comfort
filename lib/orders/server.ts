@@ -164,11 +164,13 @@ const deliver = (
   to: string,
   content: EmailContent,
   eventType: string,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  toName?: string
 ) =>
   deliverEmail({
     settings,
     to,
+    toName,
     content,
     eventType,
     idempotencyKey,
@@ -183,7 +185,7 @@ export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSet
     await logOrderEvent(order.id, 'email_failed', 'Purchase order NOT sent: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';
   }
-  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey);
+  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey, settings.supplierName);
   if (!sent) return `NOT SENT: email to ${settings.supplierEmail} failed (see order history)`;
   if (order.status === 'paid') {
     await setOrderStatus(order.id, 'sent_to_supplier', { supplier_emailed_at: new Date().toISOString() });
@@ -194,7 +196,7 @@ export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSet
 }
 
 export async function sendCustomerConfirmation(order: Order, settings: EmailSettings, idempotencyKey?: string) {
-  return deliver(order, settings, order.customerEmail, customerConfirmation(order, settings), 'customer_confirmation', idempotencyKey);
+  return deliver(order, settings, order.customerEmail, customerConfirmation(order, settings), 'customer_confirmation', idempotencyKey, order.customerName);
 }
 
 /** Everything that happens once a payment is confirmed. Never throws: failures are logged on the order. */
@@ -264,11 +266,11 @@ export async function markOrderShipped(orderId: string, carrierId: string, track
 
   const settings = await getEmailSettings();
   const updated = (await getOrder(orderId))!;
-  return deliver(updated, settings, updated.customerEmail, customerShipped(updated, carrierName, settings), 'customer_shipped');
+  return deliver(updated, settings, updated.customerEmail, customerShipped(updated, carrierName, settings), 'customer_shipped', undefined, updated.customerName);
 }
 
 export async function resendShippedEmail(order: Order) {
   if (!order.trackingNumber) throw new CheckoutError('This order has no tracking number yet.');
   const settings = await getEmailSettings();
-  return deliver(order, settings, order.customerEmail, customerShipped(order, order.carrier || 'Carrier', settings), 'customer_shipped');
+  return deliver(order, settings, order.customerEmail, customerShipped(order, order.carrier || 'Carrier', settings), 'customer_shipped', undefined, order.customerName);
 }

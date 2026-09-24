@@ -13,6 +13,19 @@ export interface OutgoingEmail {
 
 export const isEmailConfigured = (): boolean => !!process.env.RESEND_API_KEY;
 
+/**
+ * Formats an RFC 5322 address ("Name <email>"), quoting the name if it contains characters that
+ * would otherwise break the header. Falls back to the bare address when there's no name -- used
+ * for every From, Reply-To and To this app sends, so a customer or supplier always sees a real
+ * name ("JL Comfort", their own name) instead of a raw email address in their inbox.
+ */
+export const formatAddress = (name: string | undefined | null, email: string): string => {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return email;
+  const needsQuotes = /[",<>@]/.test(trimmed);
+  return needsQuotes ? `"${trimmed.replace(/"/g, '\\"')}" <${email}>` : `${trimmed} <${email}>`;
+};
+
 export async function sendEmail(email: OutgoingEmail): Promise<{ id: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error('RESEND_API_KEY is not set');

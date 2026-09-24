@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { isEmailConfigured, sendEmail } from '@/lib/email/resend';
+import { formatAddress, isEmailConfigured, sendEmail } from '@/lib/email/resend';
 import { EmailContent } from '@/lib/email/layout';
 import { EmailSettings, VERIFIED_SENDING_DOMAINS, rowToEmailSettings } from '@/lib/types/order';
 
@@ -22,22 +22,25 @@ const isVerifiedSender = (address: string) =>
 export async function deliverEmail(options: {
   settings: EmailSettings;
   to: string;
+  toName?: string; // shown as the recipient's display name; without it some clients show the bare address
   content: EmailContent;
   eventType: string;
   log: (type: string, message: string) => Promise<void>;
   context: string; // e.g. "Order JL-1002", for server logs
   idempotencyKey?: string;
 }): Promise<boolean> {
-  const { settings, to, content, eventType, log, context, idempotencyKey } = options;
+  const { settings, to, toName, content, eventType, log, context, idempotencyKey } = options;
   try {
     if (!isEmailConfigured()) throw new Error('RESEND_API_KEY is not set');
     if (!isVerifiedSender(settings.fromEmail)) {
       throw new Error(`From address ${settings.fromEmail} is not on a verified domain (${VERIFIED_SENDING_DOMAINS.join(', ')})`);
     }
     const { id } = await sendEmail({
-      from: `${settings.fromName} <${settings.fromEmail}>`,
-      to: [to],
-      replyTo: settings.replyTo || undefined,
+      from: formatAddress(settings.fromName, settings.fromEmail),
+      to: [formatAddress(toName, to)],
+      // Reply-To carries the same display name as From -- otherwise mail clients show the bare
+      // reply-to address (e.g. when the customer hits Reply) instead of "JL Comfort".
+      replyTo: settings.replyTo ? formatAddress(settings.fromName, settings.replyTo) : undefined,
       subject: content.subject,
       html: content.html,
       text: content.text,
