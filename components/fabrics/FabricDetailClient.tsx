@@ -110,7 +110,7 @@ const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?
 
 export default function FabricDetailClient({ fabric }: { fabric: FabricDetailData }) {
   const { addToCart, items } = useCart();
-  const { items: sampleItems, addSample, isFull, settings: sampleSettings } = useSampleCart();
+  const { items: sampleItems, addSample, isFull, settings: sampleSettings, setListOpen } = useSampleCart();
   const [yards, setYards] = useState(1);
   const [added, setAdded] = useState(false);
   const [sampleAdded, setSampleAdded] = useState(false);
@@ -151,6 +151,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
   };
 
   const handleRequestSample = () => {
+    if (alreadySampled) return setListOpen(true);
     addSample({ fabricId: fabric.id, name: fabric.name, sku: fabric.sku, imageUrl: fabric.imageUrl });
     setSampleAdded(true);
     setTimeout(() => setSampleAdded(false), 2000);
@@ -273,15 +274,17 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
               variant="outlined"
               fullWidth
               startIcon={alreadySampled ? <CheckCircleIcon /> : undefined}
-              disabled={alreadySampled || (isFull && !alreadySampled) || !sampleSettings.requestsEnabled}
+              disabled={(!alreadySampled && isFull) || !sampleSettings.requestsEnabled}
               onClick={handleRequestSample}
               sx={{ mt: 2.5, height: 52, borderColor: brand.ink, color: brand.ink, borderWidth: 1.5, fontSize: '0.8rem', '&:hover': { borderColor: brand.mocha, color: brand.mocha, bgcolor: brand.chalk, borderWidth: 1.5 } }}
             >
-              {alreadySampled ? 'Sample in your list' : sampleAdded ? 'Added to samples' : 'Order free sample'}
+              {alreadySampled ? (sampleAdded ? 'Added to your samples' : 'In your samples · view list') : isFull ? `Sample list full (${sampleSettings.maxPerRequest})` : 'Order free sample'}
             </Button>
-            {alreadySampled && (
+            {sampleItems.length > 0 && (
               <Typography sx={{ textAlign: 'center', mt: 0.75, fontSize: '0.78rem' }}>
-                <Box component={Link} href="/request-samples" sx={{ color: brand.mocha }}>Review your sample request</Box>
+                <Box component={Link} href="/request-samples" sx={{ color: brand.mocha }}>
+                  Request your {sampleItems.length} sample{sampleItems.length === 1 ? '' : 's'} →
+                </Box>
               </Typography>
             )}
 

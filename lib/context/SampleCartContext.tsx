@@ -11,6 +11,8 @@ interface SampleCartContextType {
   clearSamples: () => void;
   isFull: boolean;
   settings: SampleSettings; // admin limits; the server enforces them too
+  isListOpen: boolean; // the slide-in sample list (components/samples/SampleListDrawer)
+  setListOpen: (open: boolean) => void;
 }
 
 const SampleCartContext = createContext<SampleCartContextType | undefined>(undefined);
@@ -19,6 +21,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [items, setItems] = useState<SampleRequestItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<SampleSettings>(DEFAULT_SAMPLE_SETTINGS);
+  const [isListOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     getSampleSettings().then(setSettings).catch(() => {});
@@ -48,6 +51,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (prev.length >= settings.maxPerRequest) return prev;
       return [...prev, item];
     });
+    setListOpen(true); // show the customer what happened and where to go next
   };
 
   const removeSample = (fabricId: string) => {
@@ -58,7 +62,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   return (
     <SampleCartContext.Provider
-      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= settings.maxPerRequest, settings }}
+      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= settings.maxPerRequest, settings, isListOpen, setListOpen }}
     >
       {children}
     </SampleCartContext.Provider>

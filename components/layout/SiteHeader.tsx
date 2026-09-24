@@ -9,6 +9,7 @@ import {
   Button,
   IconButton,
   Badge,
+  Tooltip,
   Drawer,
   Box,
   List,
@@ -20,10 +21,12 @@ import {
 } from '@mui/material';
 import Link from 'next/link';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useCart } from '@/lib/context/CartContext';
+import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { brand } from '@/lib/theme';
 import CornerTag from '@/components/ui/CornerTag';
 
@@ -205,6 +208,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 export default function SiteHeader() {
   const pathname = usePathname();
   const { items } = useCart();
+  const { items: sampleItems, setListOpen } = useSampleCart();
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -433,7 +437,14 @@ export default function SiteHeader() {
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
             <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
 
-            <IconButton component={Link} href="/checkout" sx={{ ml: 2, color: brand.ink, '&:hover': { color: brand.mocha } }}>
+            <Tooltip title="Your free samples">
+              <IconButton onClick={() => setListOpen(true)} aria-label="Your free samples" sx={{ ml: 2, color: brand.ink, '&:hover': { color: brand.mocha } }}>
+                <Badge badgeContent={sampleItems.length} color="secondary" invisible={sampleItems.length === 0}>
+                  <StyleOutlinedIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <IconButton component={Link} href="/checkout" aria-label="Cart" sx={{ ml: 0.5, color: brand.ink, '&:hover': { color: brand.mocha } }}>
               <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
                 <ShoppingCartOutlinedIcon />
               </Badge>
@@ -442,7 +453,12 @@ export default function SiteHeader() {
 
           {/* Mobile controls */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
-            <IconButton component={Link} href="/checkout" sx={{ color: '#555' }}>
+            <IconButton onClick={() => setListOpen(true)} aria-label="Your free samples" sx={{ color: '#555' }}>
+              <Badge badgeContent={sampleItems.length} color="secondary" invisible={sampleItems.length === 0}>
+                <StyleOutlinedIcon />
+              </Badge>
+            </IconButton>
+            <IconButton component={Link} href="/checkout" aria-label="Cart" sx={{ color: '#555' }}>
               <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
                 <ShoppingCartOutlinedIcon />
               </Badge>
