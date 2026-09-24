@@ -65,6 +65,7 @@ export const saveEmailSettings = async (settings: EmailSettings): Promise<EmailS
       internal_email: settings.internalEmail,
       supplier_name: settings.supplierName,
       supplier_email: settings.supplierEmail,
+      supplier_sample_email: settings.supplierSampleEmail,
       supplier_account_number: settings.supplierAccountNumber,
       supplier_notes: settings.supplierNotes,
     })

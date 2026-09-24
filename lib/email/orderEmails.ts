@@ -1,22 +1,10 @@
 import { EmailSettings, Order, OrderItem } from '@/lib/types/order';
+import { COUNTRY_NAMES, EmailContent, block, escape, firstName, label, layout, p, trackButton } from '@/lib/email/layout';
 
 // Order email content. Each builder returns a subject plus matching HTML and plain-text bodies
 // (the text part helps deliverability and is what some mail clients show in previews).
 
-export interface EmailContent {
-  subject: string;
-  html: string;
-  text: string;
-}
-
-const COUNTRY_NAMES: Record<string, string> = { CA: 'Canada', US: 'United States' };
-
-const escape = (value: string | null | undefined) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+export type { EmailContent };
 
 const money = (cents: number, currency = 'cad') => `$${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 
@@ -32,29 +20,6 @@ const addressLines = (order: Order): string[] =>
 const yards = (item: OrderItem) => `${item.quantity} yard${item.quantity === 1 ? '' : 's'}`;
 
 export const supplierItems = (order: Order) => order.items.filter((item) => item.fulfilledBy === 'supplier');
-
-// --- shared layout -------------------------------------------------------------------------
-
-const layout = (title: string, body: string) => `<!doctype html>
-<html><body style="margin:0;padding:0;background:#f5f1eb;font-family:Arial,Helvetica,sans-serif;color:#252321">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1eb;padding:24px 12px">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e1dc">
-<tr><td style="padding:22px 28px;border-bottom:1px solid #e5e1dc;font-size:18px;letter-spacing:2px;font-weight:bold">JL COMFORT</td></tr>
-<tr><td style="padding:28px">
-<h1 style="margin:0 0 16px;font-size:21px;font-weight:normal">${escape(title)}</h1>
-${body}
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>`;
-
-const p = (text: string) => `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#4a4540">${text}</p>`;
-const label = (text: string) =>
-  `<div style="margin:22px 0 6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8d6c4b">${escape(text)}</div>`;
-const block = (lines: string[]) =>
-  `<div style="font-size:14px;line-height:1.6;color:#252321">${lines.map(escape).join('<br>')}</div>`;
 
 const itemsTable = (items: OrderItem[], withPrices: boolean, currency: string) => `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px">
@@ -155,12 +120,12 @@ ${p(`Thank you,<br>${escape(settings.fromName)}`)}`
 };
 
 export const customerConfirmation = (order: Order, settings: EmailSettings): EmailContent => {
-  const firstName = order.customerName.split(' ')[0] || order.customerName;
+  const name = firstName(order.customerName);
   return {
     subject: `Your JL Comfort order ${order.orderNumber} is confirmed`,
     html: layout(
       'Thank you for your order',
-      `${p(`Hi ${escape(firstName)}, we've received your order <strong>${escape(order.orderNumber)}</strong> and it's being prepared.
+      `${p(`Hi ${escape(name)}, we've received your order <strong>${escape(order.orderNumber)}</strong> and it's being prepared.
 We'll email you a tracking number as soon as it ships.`)}
 ${label('Your order')}${itemsTable(order.items, true, order.currency)}${totalsTable(order)}
 ${label('Shipping to')}${block(addressLines(order))}
@@ -168,7 +133,7 @@ ${p(`<br>Questions? Just reply to this email.`)}
 ${p(`— ${escape(settings.fromName)}`)}`
     ),
     text: [
-      `Hi ${firstName},`,
+      `Hi ${name},`,
       '',
       `Thank you for your order ${order.orderNumber}. We'll email you a tracking number as soon as it ships.`,
       '',
@@ -213,15 +178,13 @@ ${p(`<br><a href="${escape(adminUrl)}" style="color:#8d6c4b">Open the order in a
 });
 
 export const customerShipped = (order: Order, carrierName: string, settings: EmailSettings): EmailContent => {
-  const firstName = order.customerName.split(' ')[0] || order.customerName;
-  const link = order.trackingUrl
-    ? `<a href="${escape(order.trackingUrl)}" style="display:inline-block;margin:6px 0 18px;padding:12px 22px;background:#252321;color:#ffffff;text-decoration:none;font-size:14px">Track your package</a>`
-    : '';
+  const name = firstName(order.customerName);
+  const link = trackButton(order.trackingUrl);
   return {
     subject: `Your JL Comfort order ${order.orderNumber} has shipped`,
     html: layout(
       'Your order is on its way',
-      `${p(`Hi ${escape(firstName)}, good news: your order <strong>${escape(order.orderNumber)}</strong> has shipped.`)}
+      `${p(`Hi ${escape(name)}, good news: your order <strong>${escape(order.orderNumber)}</strong> has shipped.`)}
 ${p(`<strong>Carrier:</strong> ${escape(carrierName)}<br><strong>Tracking number:</strong> ${escape(order.trackingNumber)}`)}
 ${link}
 ${label('Shipping to')}${block(addressLines(order))}
@@ -229,7 +192,7 @@ ${p(`<br>Questions? Just reply to this email.`)}
 ${p(`— ${escape(settings.fromName)}`)}`
     ),
     text: [
-      `Hi ${firstName},`,
+      `Hi ${name},`,
       '',
       `Your order ${order.orderNumber} has shipped.`,
       `Carrier: ${carrierName}`,
