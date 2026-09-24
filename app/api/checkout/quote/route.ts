@@ -5,11 +5,14 @@ import { CheckoutError, quoteCart } from '@/lib/checkout/quote';
 // server-side when creating the Stripe session, so nothing here is trusted later.
 export async function POST(req: Request) {
   try {
-    const { items, country, region } = await req.json();
+    const { items, country, region, discountCode, email } = await req.json();
     if (!country || !region) {
       return NextResponse.json({ error: 'Country and province/state are required.' }, { status: 400 });
     }
-    const { quote } = await quoteCart(items, String(country).toUpperCase(), String(region).toUpperCase());
+    const { quote } = await quoteCart(items, String(country).toUpperCase(), String(region).toUpperCase(), {
+      discountCode: typeof discountCode === 'string' ? discountCode : undefined,
+      email: typeof email === 'string' ? email : undefined,
+    });
     return NextResponse.json(quote);
   } catch (error: any) {
     if (error instanceof CheckoutError) {

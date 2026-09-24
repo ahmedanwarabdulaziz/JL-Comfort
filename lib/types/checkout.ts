@@ -46,6 +46,9 @@ export interface TaxLine {
 export interface CheckoutQuote {
   subtotalCents: number;
   shippingCents: number;
+  discountCents: number; // off the items, before tax
+  discount: { label: string; amountCents: number; freeShipping: boolean; shippingSavedCents: number } | null;
+  discountError?: string; // a code was entered but couldn't be used
   taxes: TaxLine[];
   taxCents: number;
   totalCents: number;

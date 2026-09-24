@@ -50,6 +50,8 @@ export default function ShippingPageClient() {
   const [quoteError, setQuoteError] = useState('');
   const [isQuoting, setIsQuoting] = useState(false);
   const [pricesUpdated, setPricesUpdated] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [discountCode, setDiscountCode] = useState(''); // the code sent with the quote/checkout
 
   // Re-quote shipping + tax whenever the destination province or the cart changes.
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function ShippingPageClient() {
     fetch('/api/checkout/quote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, country: 'CA', region: form.province }),
+      body: JSON.stringify({ items, country: 'CA', region: form.province, discountCode: discountCode || undefined }),
     })
       .then(async (response) => {
         const data = await response.json();
@@ -84,10 +86,17 @@ export default function ShippingPageClient() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- syncPrices changes identity every render
-  }, [form.province, items]);
+  }, [form.province, items, discountCode]);
 
   const updateField = (field: keyof ShippingForm) => (event: React.ChangeEvent<HTMLInputElement | { value: unknown }>) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const codeRejected = !!discountCode && !!quote?.discountError;
+  const applyCode = () => setDiscountCode(codeInput.trim().toUpperCase());
+  const removeCode = () => {
+    setDiscountCode('');
+    setCodeInput('');
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -98,7 +107,7 @@ export default function ShippingPageClient() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, shippingAddress: { ...form, country: 'CA' } }),
+        body: JSON.stringify({ items, shippingAddress: { ...form, country: 'CA' }, discountCode: discountCode || undefined }),
       });
       const session = await response.json();
       if (!response.ok || session.error) throw new Error(session.error || 'Unable to start checkout.');
@@ -168,6 +177,43 @@ export default function ShippingPageClient() {
                 </Box>
               ))}
               <Divider sx={{ my: 2 }} />
+              <Box sx={{ mb: 2 }}>
+                {discountCode && !codeRejected && quote?.discount ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 1.5, py: 1, bgcolor: '#f5f1eb', border: '1px dashed #c9b8a4' }}>
+                    <Typography sx={{ fontSize: '0.85rem', color: '#393532' }}>
+                      Code <strong>{discountCode}</strong> applied
+                    </Typography>
+                    <Button size="small" onClick={removeCode} sx={{ minWidth: 0, p: 0, fontSize: '0.7rem', color: '#8d6c4b' }}>Remove</Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      placeholder="Discount code"
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          applyCode();
+                        }
+                      }}
+                      inputProps={{ 'aria-label': 'Discount code', style: { textTransform: 'uppercase' } }}
+                    />
+                    <Button variant="outlined" onClick={applyCode} disabled={!codeInput.trim() || !form.province} sx={{ flexShrink: 0, borderColor: '#252321', color: '#252321' }}>
+                      Apply
+                    </Button>
+                  </Box>
+                )}
+                {!form.province && codeInput.trim() && (
+                  <Typography sx={{ fontSize: '0.75rem', color: '#77716b', mt: 0.75 }}>Choose your province first, then apply the code.</Typography>
+                )}
+                {codeRejected && <Typography sx={{ fontSize: '0.78rem', color: '#b3261e', mt: 0.75 }}>{quote?.discountError}</Typography>}
+                {!discountCode && quote?.discount && (
+                  <Typography sx={{ fontSize: '0.78rem', color: '#6E4F3F', mt: 0.75 }}>{quote.discount.label} applied automatically.</Typography>
+                )}
+              </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography color="text.secondary">Subtotal</Typography><Typography>{'$' + cartTotal.toFixed(2)} CAD</Typography></Box>
               {!form.province ? (
                 <Typography sx={{ color: '#77716b', fontSize: '0.82rem', mb: 2 }}>Choose your province or territory to see shipping and tax.</Typography>
@@ -177,8 +223,16 @@ export default function ShippingPageClient() {
                 <Alert severity="warning" sx={{ mb: 2 }}>{quoteError}</Alert>
               ) : quote ? (
                 <Box sx={{ opacity: isQuoting ? 0.5 : 1, transition: 'opacity .2s' }}>
+                  {quote.discount && quote.discountCents > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: '#6E4F3F' }}>
+                      <Typography sx={{ color: 'inherit' }}>Discount ({quote.discount.label})</Typography>
+                      <Typography sx={{ color: 'inherit' }}>−{formatCents(quote.discountCents)}</Typography>
+                    </Box>
+                  )}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography color="text.secondary">Shipping</Typography>
+                    <Typography color="text.secondary">
+                      Shipping{quote.discount?.freeShipping ? ` (${quote.discount.label})` : ''}
+                    </Typography>
                     <Typography>{quote.shippingCents === 0 ? 'Free' : formatCents(quote.shippingCents)}</Typography>
                   </Box>
                   {quote.taxes.map((tax) => (
@@ -198,7 +252,7 @@ export default function ShippingPageClient() {
                 </Box>
               ) : null}
               <Divider sx={{ mb: 2 }} />
-              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
+              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote || codeRejected} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
             </Paper>
           </Box>
         </Box>

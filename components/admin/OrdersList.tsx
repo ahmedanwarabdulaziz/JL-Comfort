@@ -246,7 +246,10 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
                       <TableCell align="right">{money(item.amountCents)}</TableCell>
                     </TableRow>
                   ))}
-                  <TableRow><TableCell colSpan={3} align="right">Shipping</TableCell><TableCell align="right">{money(order.shippingCents)}</TableCell></TableRow>
+                  {order.discountCents > 0 && (
+                    <TableRow><TableCell colSpan={3} align="right">Discount ({order.discountLabel})</TableCell><TableCell align="right">−{money(order.discountCents)}</TableCell></TableRow>
+                  )}
+                  <TableRow><TableCell colSpan={3} align="right">Shipping{order.shippingCents === 0 && order.discountLabel?.includes('free shipping') ? ` (${order.discountLabel})` : ''}</TableCell><TableCell align="right">{money(order.shippingCents)}</TableCell></TableRow>
                   {order.taxes.map((tax) => (
                     <TableRow key={tax.label}><TableCell colSpan={3} align="right">{tax.label}</TableCell><TableCell align="right">{money(tax.amountCents)}</TableCell></TableRow>
                   ))}

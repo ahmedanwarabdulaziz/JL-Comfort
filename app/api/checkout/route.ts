@@ -47,7 +47,7 @@ async function resolveStripeTaxRates(taxRates: TaxRate[]): Promise<Map<string, s
 
 export async function POST(req: Request) {
   try {
-    const { items, origin: clientOrigin, shippingAddress } = await req.json();
+    const { items, origin: clientOrigin, shippingAddress, discountCode } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -68,7 +68,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please complete your delivery address.' }, { status: 400 });
     }
 
-    const { quote, lines, shippingRate, taxRates } = await quoteCart(items, country, region);
+    const { quote, lines, shippingRate, taxRates, discount } = await quoteCart(items, country, region, {
+      discountCode: typeof discountCode === 'string' ? discountCode : undefined,
+      email: String(shippingAddress.email || '').trim(),
+    });
+    // The shopper saw this on the shipping page already; don't take payment without the code they chose.
+    if (discountCode && quote.discountError) {
+      return NextResponse.json({ error: quote.discountError }, { status: 400 });
+    }
     const stripeTaxRateIdsById = await resolveStripeTaxRates(taxRates);
     const productTaxRates = taxRates.map((tax) => stripeTaxRateIdsById.get(tax.id)!);
     const shippingTaxRates = taxRates
@@ -111,7 +118,7 @@ export async function POST(req: Request) {
     const serverOrigin = host ? `${protocol}://${host}` : 'http://localhost:3000';
     const finalOrigin = clientOrigin || req.headers.get('origin') || serverOrigin;
 
-    const order = await createPendingOrder(lines, quote, {
+    const order = await createPendingOrder(lines, quote, discount, {
       email: String(shippingAddress.email || '').trim(),
       name: String(shippingAddress.name).trim(),
       phone: shippingAddress.phone ? String(shippingAddress.phone).trim() : undefined,
@@ -127,7 +134,22 @@ export async function POST(req: Request) {
     // Stripe doesn't ask for it again -- it's attached to the payment as the shipping address.
     let session: Stripe.Checkout.Session;
     try {
+      // An order-level coupon for exactly the discount we quoted. Stripe spreads it across the line
+      // items and taxes what's left, the same way lib/checkout/pricing.ts computes the quote.
+      const coupon =
+        quote.discountCents > 0
+          ? await stripe.coupons.create({
+              amount_off: quote.discountCents,
+              currency: CURRENCY,
+              duration: 'once',
+              max_redemptions: 1,
+              name: `Discount (${discount!.label})`.slice(0, 40),
+              metadata: { order_id: order.id, discount_id: discount!.discountId },
+            })
+          : null;
+
       session = await stripe.checkout.sessions.create({
+        discounts: coupon ? [{ coupon: coupon.id }] : undefined,
         payment_method_types: ['card'],
         line_items: lineItems,
         mode: 'payment',

@@ -50,6 +50,8 @@ export interface Order {
   shippingCents: number;
   taxCents: number;
   totalCents: number;
+  discountLabel: string | null;
+  discountCents: number;
   taxes: { label: string; amountCents: number }[];
   customerEmail: string;
   customerName: string;
@@ -100,6 +102,8 @@ export const rowToOrder = (row: any): Order => ({
   shippingCents: row.shipping_cents,
   taxCents: row.tax_cents,
   totalCents: row.total_cents,
+  discountLabel: row.discount_label ?? null,
+  discountCents: row.discount_cents ?? 0,
   taxes: row.taxes || [],
   customerEmail: row.customer_email,
   customerName: row.customer_name,
