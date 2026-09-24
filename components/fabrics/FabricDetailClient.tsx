@@ -1,28 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+  Badge,
   Box,
-  Container,
-  Typography,
-  Grid,
-  Chip,
-  Stack,
   Button,
   ButtonGroup,
-  Divider,
+  Chip,
+  Container,
+  Dialog,
   IconButton,
-  Badge,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import CloseIcon from '@mui/icons-material/Close';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import { useCart } from '@/lib/context/CartContext';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
+import { getShippingRate } from '@/lib/data/shippingRates';
+import { ShippingRate } from '@/lib/types/checkout';
+import { brand } from '@/lib/theme';
 import FabricPropertyIcons from './FabricPropertyIcons';
 
 export interface ColorwaySibling {
@@ -64,39 +69,66 @@ export interface FabricDetailData {
   colorwaySiblings: ColorwaySibling[];
 }
 
-const specRows = (fabric: FabricDetailData): [string, string][] => {
+// Shared look for this page: brand ink/mocha/chalk, Work Sans labels, Fraunces headings.
+const LINE = '#e5e0d9';
+const MUTED = '#8b857e';
+const labelSx = { color: MUTED, fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' as const };
+
+// Catalog facet values are slugs ("small-scale", "woven-patterns"); show them as words.
+const words = (values?: string[]) =>
+  (values || []).map((v) => v.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())).join(', ');
+
+const specRows = (fabric: FabricDetailData, pattern: string): [string, string][] => {
   const rows: [string, string | undefined][] = [
-    ['Fiber Content', fabric.fiberContent],
-    ['Durability', fabric.durability],
+    ['Pattern number', pattern || fabric.sku],
+    ['Style', words(fabric.pattern)],
+    ['Type', words(fabric.material)],
+    ['Colour', words(fabric.color)],
+    ['Collection', fabric.sampleBooks?.join(', ')],
+    ['Content', fabric.fiberContent],
     ['Width', fabric.width],
     ['Repeat', fabric.repeat],
-    ['Pattern Direction', fabric.patternDirection],
-    ['Cleanability', fabric.cleanability],
+    ['Pattern direction', fabric.patternDirection],
+    ['Durability', fabric.durability],
+    ['Cleaning', fabric.cleanability],
     ['Flammability', fabric.flammability],
-    ['Origin', fabric.origin],
-    ['Applications', fabric.applications.join(', ')],
-    ['Markets', fabric.markets.join(', ')],
-    ['Construction Type', fabric.constructionType?.join(', ')],
-    ['Sample Book(s)', fabric.sampleBooks?.join(', ')],
+    ['Country of origin', fabric.origin],
+    ['Use', fabric.applications.join(', ')],
+    ['Construction', fabric.constructionType?.join(', ')],
   ];
   return rows.filter((r): r is [string, string] => !!r[1]);
 };
 
-const displayValue = (value?: string[]) => value?.filter(Boolean).join(' / ');
+/** "D2144 Wedgewood Scales" -> { pattern: "D2144", colourway: "Wedgewood Scales" }. */
+const splitName = (name: string, sku: string) => {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  if (rest.length > 0 && /\d/.test(first)) return { pattern: first, colourway: rest.join(' ') };
+  return { pattern: sku && sku !== name ? sku : '', colourway: name };
+};
+
+const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?\s*\w+\s*$/i, '').trim();
 
 export default function FabricDetailClient({ fabric }: { fabric: FabricDetailData }) {
   const { addToCart, items } = useCart();
-  const { items: sampleItems, addSample, isFull } = useSampleCart();
+  const { items: sampleItems, addSample, isFull, settings: sampleSettings } = useSampleCart();
   const [yards, setYards] = useState(1);
   const [added, setAdded] = useState(false);
   const [sampleAdded, setSampleAdded] = useState(false);
   const [activeImage, setActiveImage] = useState(fabric.imageUrl);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [shipping, setShipping] = useState<ShippingRate | null>(null);
+
+  useEffect(() => {
+    getShippingRate('CA').then(setShipping).catch(() => {});
+  }, []);
 
   const inStock = fabric.availability === 'InStock';
   const hasPrice = fabric.pricePerYard != null;
   const alreadySampled = sampleItems.some((i) => i.fabricId === fabric.id);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const rows = specRows(fabric);
+  const { pattern, colourway } = splitName(fabric.name, fabric.sku);
+  const collections = (fabric.sampleBooks || []).map((book) => ({ raw: book, label: cleanBookName(book) })).filter((b) => b.label);
   const gallery = [
     { id: fabric.id, name: fabric.name, imageUrl: fabric.imageUrl },
     ...fabric.colorwaySiblings.map((sibling) => ({ id: sibling.id, name: sibling.name, imageUrl: sibling.imageUrl })),
@@ -124,148 +156,257 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     setTimeout(() => setSampleAdded(false), 2000);
   };
 
+  const style = words(fabric.pattern).toLowerCase();
+  const type = words(fabric.material).toLowerCase();
+  const description = [
+    `${colourway}${pattern ? ` (${pattern})` : ''} is sold by the yard${collections[0] ? ` and belongs to our ${collections[0].label} collection` : ''}.`,
+    style || type ? `Style: ${[style, type].filter(Boolean).join(', ')}.` : '',
+    fabric.fiberContent ? `Content: ${fabric.fiberContent}.` : '',
+    fabric.applications.length ? `Suited to ${fabric.applications.join(', ').toLowerCase()}.` : '',
+    fabric.durability ? `Durability: ${fabric.durability}.` : '',
+    fabric.cleanability ? `Care: ${fabric.cleanability}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#fff', pb: { xs: 8, md: 14 }, color: '#222' }}>
-      <Box sx={{ borderBottom: '1px solid #e5e2dd', bgcolor: '#fbfaf8' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#fff', pb: { xs: 8, md: 14 }, color: brand.ink }}>
+      <Box sx={{ borderBottom: `1px solid ${LINE}`, bgcolor: brand.chalk }}>
         <Container maxWidth="xl" sx={{ py: 1.25 }}>
-          <Button component={Link} href="/fabrics" startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />} sx={{ color: '#716b64', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: 1.5, p: 0.5, '&:hover': { bgcolor: 'transparent', color: '#a87945' } }}>
-            All Fabrics
+          <Button component={Link} href="/fabrics" startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />} sx={{ color: MUTED, fontSize: '0.68rem', p: 0.5, '&:hover': { bgcolor: 'transparent', color: brand.mocha } }}>
+            All fabrics
           </Button>
         </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ mt: { xs: 3, md: 5 }, px: { xs: 2, md: 4 } }}>
-        <Grid container spacing={{ xs: 5, md: 8 }}>
-          <Grid item xs={12} md={7}>
-            <Box sx={{ position: { md: 'sticky' }, top: { md: 92 } }}>
-              <Box sx={{ bgcolor: '#f5f3f0', aspectRatio: '1 / 1', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {activeImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={activeImage} alt={fabric.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <Typography sx={{ color: '#8c8882', letterSpacing: 1 }}>Image unavailable</Typography>
-                )}
-              </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 7fr) minmax(0, 5fr)' }, gap: { xs: 4, md: 7 } }}>
+          {/* ── Image ─────────────────────────────────────────────── */}
+          <Box sx={{ position: { md: 'sticky' }, top: { md: 92 }, alignSelf: 'start' }}>
+            <Box
+              component="button"
+              type="button"
+              onClick={() => activeImage && setZoomOpen(true)}
+              aria-label="Enlarge image"
+              sx={{ position: 'relative', display: 'block', width: '100%', p: 0, border: 0, cursor: activeImage ? 'zoom-in' : 'default', bgcolor: '#f5f3f0', aspectRatio: '1 / 1', overflow: 'hidden', '&:hover .zoom-hint': { opacity: 1 } }}
+            >
+              {activeImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activeImage} alt={fabric.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <Typography sx={{ color: MUTED }}>Image unavailable</Typography>
+              )}
+              {activeImage && (
+                <Box className="zoom-hint" sx={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 0.5, px: 1.25, py: 0.6, bgcolor: 'rgba(33,23,18,0.72)', color: brand.chalk, fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, transition: 'opacity .2s' }}>
+                  <ZoomInIcon sx={{ fontSize: 16 }} /> Click to enlarge
+                </Box>
+              )}
+            </Box>
+            <Typography sx={{ color: MUTED, fontSize: '0.75rem', mt: 1, fontStyle: 'italic' }}>Colour and scale may not be an exact depiction.</Typography>
 
-              {gallery.length > 0 && (
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5, pb: 0.5 }}>
-                  {gallery.map((image) => (
-                    <Box key={image.id} component="button" type="button" onClick={() => setActiveImage(image.imageUrl)} aria-label={'View ' + image.name} sx={{ flex: '0 0 auto', width: { xs: 64, md: 76 }, height: { xs: 64, md: 76 }, p: 0, border: '1px solid', borderColor: activeImage === image.imageUrl ? '#8d6c4b' : '#e5e2dd', bgcolor: '#f5f3f0', cursor: 'pointer', overflow: 'hidden', opacity: activeImage === image.imageUrl ? 1 : 0.72, transition: 'all .2s ease', '&:hover': { opacity: 1, borderColor: '#8d6c4b' } }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {gallery.length > 1 && (
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
+                {gallery.map((image) => (
+                  <Box key={image.id} component="button" type="button" onClick={() => setActiveImage(image.imageUrl)} aria-label={'View ' + image.name} sx={{ width: { xs: 60, md: 72 }, height: { xs: 60, md: 72 }, p: 0, border: '1px solid', borderColor: activeImage === image.imageUrl ? brand.mocha : LINE, bgcolor: '#f5f3f0', cursor: 'pointer', overflow: 'hidden', opacity: activeImage === image.imageUrl ? 1 : 0.72, transition: 'all .2s ease', '&:hover': { opacity: 1, borderColor: brand.mocha } }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Box>
+
+          {/* ── Details ───────────────────────────────────────────── */}
+          <Box sx={{ maxWidth: 520 }}>
+            {/* Stacked title: house, pattern, colour, collection */}
+            <Typography sx={{ ...labelSx, color: brand.mocha, mb: 1 }}>JL Comfort</Typography>
+            {pattern && (
+              <Typography sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' }, fontWeight: 600, letterSpacing: '0.06em', color: brand.ink }}>{pattern}</Typography>
+            )}
+            <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.8rem' }, lineHeight: 1.08, color: brand.ink, mt: 0.25 }}>
+              {colourway}{' '}
+              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>Fabric</Box>
+            </Typography>
+            {collections.length > 0 && (
+              <Typography sx={{ mt: 1, color: brand.textSecondary, fontSize: '0.92rem' }}>
+                {collections.map((book, i) => (
+                  <span key={book.raw}>
+                    {i > 0 && ', '}
+                    <Box component={Link} href={`/fabrics?sampleBook=${encodeURIComponent(book.raw)}`} sx={{ color: 'inherit', textDecorationColor: LINE, '&:hover': { color: brand.mocha } }}>
+                      {book.label}
+                    </Box>
+                  </span>
+                ))}{' '}
+                Collection
+              </Typography>
+            )}
+
+            {/* Price block */}
+            <Box sx={{ mt: 3, border: `1px solid ${LINE}` }}>
+              <Box sx={{ px: 2.5, py: 2, bgcolor: brand.chalk, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2 }}>
+                <Box>
+                  <Typography sx={labelSx}>Sample</Typography>
+                  <Typography sx={{ fontSize: '1.35rem', fontWeight: 600, color: brand.ink }}>Free</Typography>
+                </Box>
+                <Typography sx={{ color: brand.mocha, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'right' }}>Sample recommended</Typography>
+              </Box>
+              <Box sx={{ px: 2.5, py: 2, borderTop: `1px solid ${LINE}` }}>
+                <Typography sx={labelSx}>Product details</Typography>
+                <Typography sx={{ fontSize: '1.35rem', fontWeight: 600, color: brand.ink, mt: 0.25 }}>
+                  {hasPrice ? `$${fabric.pricePerYard!.toFixed(2)} CAD` : 'Price on request'}
+                  {hasPrice && <Box component="span" sx={{ fontSize: '0.85rem', fontWeight: 400, color: MUTED, ml: 0.75 }}>per yard</Box>}
+                </Typography>
+                <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.25, color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.8 }}>
+                  <li>Sold in 1 yard increments</li>
+                  {shipping?.freeShippingOver != null ? (
+                    <li>Free shipping on orders over ${shipping.freeShippingOver.toFixed(0)} CAD</li>
+                  ) : (
+                    <li>Shipping and tax calculated at checkout</li>
+                  )}
+                  <li>{inStock ? 'In stock' : 'Currently out of stock'}</li>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Actions */}
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={alreadySampled ? <CheckCircleIcon /> : undefined}
+              disabled={alreadySampled || (isFull && !alreadySampled) || !sampleSettings.requestsEnabled}
+              onClick={handleRequestSample}
+              sx={{ mt: 2.5, height: 52, borderColor: brand.ink, color: brand.ink, borderWidth: 1.5, fontSize: '0.8rem', '&:hover': { borderColor: brand.mocha, color: brand.mocha, bgcolor: brand.chalk, borderWidth: 1.5 } }}
+            >
+              {alreadySampled ? 'Sample in your list' : sampleAdded ? 'Added to samples' : 'Order free sample'}
+            </Button>
+            {alreadySampled && (
+              <Typography sx={{ textAlign: 'center', mt: 0.75, fontSize: '0.78rem' }}>
+                <Box component={Link} href="/request-samples" sx={{ color: brand.mocha }}>Review your sample request</Box>
+              </Typography>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 1, mt: 1.25 }}>
+              <ButtonGroup variant="outlined" sx={{ height: 52, '& .MuiButton-root': { minWidth: 42, borderColor: '#c9c2ba', color: brand.ink } }}>
+                <Button onClick={() => setYards((y) => Math.max(1, y - 1))} disabled={yards <= 1} aria-label="Fewer yards"><RemoveIcon fontSize="small" /></Button>
+                <Button disabled sx={{ px: 1.5, minWidth: 64, '&.Mui-disabled': { color: brand.ink, fontWeight: 600 } }}>{yards} yd</Button>
+                <Button onClick={() => setYards((y) => y + 1)} aria-label="More yards"><AddIcon fontSize="small" /></Button>
+              </ButtonGroup>
+              <Button
+                variant="contained"
+                fullWidth
+                disabled={!hasPrice || !inStock}
+                onClick={handleAddToCart}
+                disableElevation
+                sx={{ height: 52, bgcolor: brand.ink, color: brand.chalk, fontSize: '0.8rem', '&:hover': { bgcolor: brand.mocha }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}
+              >
+                {added ? 'Added to cart' : 'Order product'}
+              </Button>
+            </Box>
+            {hasPrice && (
+              <Typography sx={{ color: MUTED, fontSize: '0.78rem', textAlign: 'right', mt: 0.75 }}>
+                {yards} yard{yards === 1 ? '' : 's'} · ${(fabric.pricePerYard! * yards).toFixed(2)} CAD
+              </Typography>
+            )}
+
+            {/* Alternative colourways */}
+            {fabric.colorwaySiblings.length > 0 && (
+              <Box sx={{ mt: 3.5 }}>
+                <Typography sx={{ ...labelSx, mb: 1.25 }}>Alternative colourways</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
+                  {fabric.colorwaySiblings.map((sibling) => (
+                    <Box key={sibling.id} component={Link} href={'/fabrics/' + sibling.id} sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.mocha } }}>
+                      <Box className="cw" sx={{ aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: `1px solid ${LINE}`, transition: 'border-color .2s' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {sibling.imageUrl && <img src={sibling.imageUrl} alt={sibling.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      </Box>
+                      <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: brand.textSecondary }}>{splitName(sibling.name, '').colourway}</Typography>
                     </Box>
                   ))}
-                </Stack>
-              )}
-            </Box>
-          </Grid>
-
-          <Grid item xs={12} md={5}>
-            <Box sx={{ maxWidth: 520, pl: { md: 1 } }}>
-              <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 0.75 }}>
-                {fabric.brand && <Chip label={fabric.brand} size="small" sx={{ bgcolor: '#f3ede5', color: '#795638', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1.1, fontSize: '0.62rem', fontWeight: 700 }} />}
-                {fabric.performance && <Chip label={fabric.performance} size="small" sx={{ bgcolor: '#f7f7f6', color: '#77716b', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1.1, fontSize: '0.62rem', fontWeight: 700 }} />}
-              </Stack>
-              <Typography component="h1" sx={{ fontSize: { xs: '2rem', md: '2.75rem' }, lineHeight: 1.08, fontWeight: 400, letterSpacing: '-0.02em', color: '#252321', mb: 1 }}>{fabric.name}</Typography>
-              <Typography sx={{ color: '#8b857e', fontSize: '0.76rem', letterSpacing: 1.3, textTransform: 'uppercase', mb: 3 }}>SKU {fabric.sku}</Typography>
-
-              <Divider sx={{ borderColor: '#e5e2dd', mb: 2.5 }} />
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', borderBottom: '1px solid #e5e2dd', mb: 3 }}>
-                {[
-                  ['Status', inStock ? 'Current Pattern' : 'Unavailable'],
-                  ['Availability', inStock ? 'In stock' : 'Out of stock'],
-                  ['Collection', displayValue(fabric.sampleBooks) || fabric.brand || 'JL Comfort Collection'],
-                  ['Color', displayValue(fabric.color) || 'N/A'],
-                ].map(([label, value]) => (
-                  <Box key={label} sx={{ py: 1.5, pr: 1.5, borderTop: '1px solid #e5e2dd' }}>
-                    <Typography sx={{ color: '#938d86', fontSize: '0.63rem', textTransform: 'uppercase', letterSpacing: 1.2, mb: 0.45 }}>{label}</Typography>
-                    <Typography sx={{ color: '#393532', fontSize: '0.9rem' }}>{value}</Typography>
-                  </Box>
-                ))}
-              </Box>
-
-              {fabric.properties && fabric.properties.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography sx={{ color: '#938d86', fontSize: '0.63rem', textTransform: 'uppercase', letterSpacing: 1.2, mb: 1 }}>Features</Typography>
-                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                    {fabric.properties.slice(0, 5).map((property) => <Chip key={property} label={property} size="small" variant="outlined" sx={{ borderColor: '#d7d0c8', color: '#625b54', borderRadius: 0, fontSize: '0.7rem' }} />)}
-                  </Stack>
                 </Box>
-              )}
+              </Box>
+            )}
 
+            <Box sx={{ mt: 3.5 }}>
               <FabricPropertyIcons fabric={fabric} />
-
-              <Box sx={{ mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Typography sx={{ color: '#252321', fontSize: '1.2rem', fontWeight: 500 }}>
-                    {hasPrice ? '$' + fabric.pricePerYard!.toFixed(2) + ' CAD' : 'Price on request'}
-                    {hasPrice && <Typography component="span" sx={{ color: '#8b857e', fontSize: '0.78rem', ml: 0.75 }}>/ yard</Typography>}
-                  </Typography>
-                  {hasPrice && <Typography sx={{ color: '#8b857e', fontSize: '0.72rem' }}>Retail pricing</Typography>}
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <ButtonGroup variant="outlined" sx={{ height: 48, '& .MuiButton-root': { minWidth: 42, borderColor: '#c9c2ba', color: '#393532', borderRadius: 0 } }}>
-                    <Button onClick={() => setYards((y) => Math.max(1, y - 1))} disabled={yards <= 1} aria-label="Decrease quantity"><RemoveIcon fontSize="small" /></Button>
-                    <Button disabled sx={{ px: 1.5, '&.Mui-disabled': { color: '#393532', fontWeight: 600 } }}>{yards}</Button>
-                    <Button onClick={() => setYards((y) => y + 1)} aria-label="Increase quantity"><AddIcon fontSize="small" /></Button>
-                  </ButtonGroup>
-                  <Button variant="contained" fullWidth disabled={!hasPrice || !inStock} onClick={handleAddToCart} disableElevation sx={{ borderRadius: 0, bgcolor: '#252321', color: '#fff', fontSize: '0.75rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', '&:hover': { bgcolor: '#8d6c4b' }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}>
-                    {added ? 'Added to Cart' : 'Add to Cart'}
-                  </Button>
-                </Box>
-                <Button variant="outlined" fullWidth startIcon={alreadySampled ? <CheckCircleIcon /> : undefined} disabled={alreadySampled || (isFull && !alreadySampled)} onClick={handleRequestSample} sx={{ height: 48, borderColor: '#c9c2ba', color: '#393532', borderRadius: 0, fontSize: '0.75rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', '&:hover': { borderColor: '#8d6c4b', color: '#8d6c4b', bgcolor: '#fbfaf8' } }}>
-                  {alreadySampled ? 'Sample Requested' : sampleAdded ? 'Added to Samples' : 'Request Free Sample'}
-                </Button>
-                {hasPrice && <Typography sx={{ color: '#938d86', fontSize: '0.7rem', textAlign: 'center', mt: 1 }}>Total: {'$' + (fabric.pricePerYard! * yards).toFixed(2)} CAD for {yards} yard{yards === 1 ? '' : 's'}</Typography>}
-              </Box>
-
-              {fabric.productUrl && (
-                <Button component="a" href={fabric.productUrl} target="_blank" rel="noreferrer" endIcon={<OpenInNewIcon sx={{ fontSize: '14px !important' }} />} sx={{ p: 0, color: '#8d6c4b', fontSize: '0.7rem', letterSpacing: 0.6, textTransform: 'uppercase', '&:hover': { bgcolor: 'transparent', color: '#252321' } }}>
-                  View original Charlotte listing
-                </Button>
-              )}
             </Box>
-          </Grid>
-        </Grid>
-
-        <Box sx={{ mt: { xs: 8, md: 12 }, pt: { xs: 5, md: 7 }, borderTop: '1px solid #ded9d3' }}>
-          <Grid container spacing={{ xs: 5, md: 10 }}>
-            <Grid item xs={12} md={4}>
-              <Typography sx={{ color: '#252321', fontSize: '1.35rem', fontWeight: 400, mb: 1 }}>Product Specs</Typography>
-              <Typography sx={{ color: '#817a73', fontSize: '0.9rem', lineHeight: 1.7 }}>Detailed construction, care, and application information for {fabric.name}.</Typography>
-            </Grid>
-            <Grid item xs={12} md={8}>
-              <Box sx={{ borderTop: '1px solid #ded9d3' }}>
-                {rows.map(([label, value]) => (
-                  <Box key={label} sx={{ display: 'grid', gridTemplateColumns: { xs: '42% 58%', md: '32% 68%' }, gap: 2, py: 1.45, borderBottom: '1px solid #ded9d3' }}>
-                    <Typography sx={{ color: '#817a73', fontSize: '0.68rem', letterSpacing: 1.05, textTransform: 'uppercase' }}>{label}</Typography>
-                    <Typography sx={{ color: '#3f3a36', fontSize: '0.88rem', lineHeight: 1.55 }}>{value}</Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
+          </Box>
         </Box>
 
-        {fabric.colorwaySiblings.length > 0 && (
-          <Box sx={{ mt: { xs: 8, md: 12 }, pt: { xs: 5, md: 7 }, borderTop: '1px solid #ded9d3' }}>
-            <Typography sx={{ color: '#252321', fontSize: '1.35rem', fontWeight: 400, mb: 0.75 }}>Colorways</Typography>
-            <Typography sx={{ color: '#817a73', fontSize: '0.9rem', mb: 3 }}>Explore more colors in this collection.</Typography>
-            <Grid container spacing={2}>
-              {fabric.colorwaySiblings.map((sibling) => (
-                <Grid item xs={6} sm={4} md={2} key={sibling.id}>
-                  <Box component={Link} href={'/fabrics/' + sibling.id} sx={{ color: 'inherit', textDecoration: 'none', display: 'block', '&:hover .colorway-image': { opacity: 0.82 } }}>
-                    <Box className="colorway-image" sx={{ aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', transition: 'opacity .2s' }}>
-                      {sibling.imageUrl && <img src={sibling.imageUrl} alt={sibling.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </Box>
-                    <Typography sx={{ mt: 1, color: '#3f3a36', fontSize: '0.78rem', lineHeight: 1.35 }}>{sibling.name}</Typography>
+        {/* ── Tabs ─────────────────────────────────────────────── */}
+        <Box sx={{ mt: { xs: 6, md: 9 }, borderTop: `1px solid ${LINE}` }}>
+          <Tabs
+            value={tab}
+            onChange={(_, value) => setTab(value)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            sx={{ borderBottom: `1px solid ${LINE}`, '& .MuiTab-root': { color: MUTED, fontSize: '0.78rem', minHeight: 56 }, '& .Mui-selected': { color: `${brand.ink} !important` }, '& .MuiTabs-indicator': { bgcolor: brand.mocha, height: 2 } }}
+          >
+            <Tab label="Specifications" />
+            <Tab label="Description" />
+            <Tab label="Samples" />
+            <Tab label="Shipping" />
+          </Tabs>
+
+          <Box sx={{ py: { xs: 3, md: 4 }, maxWidth: 860 }}>
+            {tab === 0 && (
+              <Box sx={{ borderTop: `1px solid ${LINE}` }}>
+                {specRows(fabric, pattern).map(([label, value]) => (
+                  <Box key={label} sx={{ display: 'grid', gridTemplateColumns: { xs: '40% 60%', md: '30% 70%' }, gap: 2, py: 1.4, borderBottom: `1px solid ${LINE}` }}>
+                    <Typography sx={labelSx}>{label}</Typography>
+                    <Typography sx={{ color: brand.ink, fontSize: '0.9rem', lineHeight: 1.55 }}>{value}</Typography>
                   </Box>
-                </Grid>
-              ))}
-            </Grid>
+                ))}
+              </Box>
+            )}
+            {tab === 1 && (
+              <Box>
+                <Typography sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>{description}</Typography>
+                {fabric.properties && fabric.properties.length > 0 && (
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+                    {fabric.properties.map((property) => (
+                      <Chip key={property} label={property} size="small" variant="outlined" sx={{ borderColor: LINE, color: brand.textSecondary, borderRadius: 0 }} />
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            )}
+            {tab === 2 && (
+              <Typography component="div" sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>
+                <p style={{ marginTop: 0 }}>
+                  Samples are free. We recommend ordering one before buying yardage: screens show colour and scale differently, and a
+                  swatch lets you see the texture and colour in your own light.
+                </p>
+                <p>
+                  You can request up to {sampleSettings.maxPerRequest} samples at a time, and up to {sampleSettings.maxPerCustomer} every{' '}
+                  {sampleSettings.periodDays} days. We email you a tracking number as soon as your samples ship.
+                </p>
+              </Typography>
+            )}
+            {tab === 3 && (
+              <Typography component="div" sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>
+                <p style={{ marginTop: 0 }}>
+                  We ship across Canada. Shipping and tax are shown before you pay, once you enter your delivery address.
+                  {shipping?.freeShippingOver != null && ` Orders over $${shipping.freeShippingOver.toFixed(0)} CAD ship free.`}
+                </p>
+                <p>
+                  Fabric is cut to order and usually arrives within {shipping ? `${shipping.deliveryMinDays}–${shipping.deliveryMaxDays}` : 'a few'} business
+                  days of shipping. You&apos;ll get a tracking number by email when it ships. Cut fabric is made to order, so please order a sample first if
+                  you&apos;re unsure about the colour.
+                </p>
+              </Typography>
+            )}
           </Box>
-        )}
+        </Box>
       </Container>
+
+      {/* Enlarged image */}
+      <Dialog open={zoomOpen} onClose={() => setZoomOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { bgcolor: '#111', borderRadius: 0 } }}>
+        <IconButton onClick={() => setZoomOpen(false)} aria-label="Close" sx={{ position: 'absolute', right: 8, top: 8, color: '#fff', bgcolor: 'rgba(0,0,0,0.4)', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}>
+          <CloseIcon />
+        </IconButton>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {activeImage && <img src={activeImage} alt={fabric.name} style={{ width: '100%', maxHeight: '88vh', objectFit: 'contain', display: 'block' }} />}
+      </Dialog>
 
       <IconButton
         component={Link}
@@ -274,15 +415,15 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
         title="Open cart"
         sx={{
           position: 'fixed',
-          right: { xs: 24, md: 24 },
+          right: 24,
           bottom: { xs: 104, md: 108 },
           zIndex: 1200,
           width: 54,
           height: 54,
           color: '#fff',
-          bgcolor: '#252321',
+          bgcolor: brand.ink,
           boxShadow: '0 8px 24px rgba(37,35,33,0.22)',
-          '&:hover': { bgcolor: '#8d6c4b' },
+          '&:hover': { bgcolor: brand.mocha },
         }}
       >
         <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
