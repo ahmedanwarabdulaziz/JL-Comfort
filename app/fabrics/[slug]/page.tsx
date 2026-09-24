@@ -95,7 +95,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     if (!fabric) return { title: 'Fabric Not Found' };
     return {
       title: `${fabric.name} — Fabric by the Yard`,
-      description: `${fabric.name}${fabric.brand ? ` by ${fabric.brand}` : ''}. ${fabric.fiberContent || ''} Shop fabric by the yard at JL Comfort.`.trim(),
+      description: `${fabric.name}. ${fabric.fiberContent || ''} Shop fabric by the yard at JL Comfort.`.trim(),
     };
   } catch {
     // Don't let a data-load error break metadata generation — the page component below surfaces

@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Badge,
   Drawer,
   Box,
   List,
@@ -19,11 +18,11 @@ import {
   Collapse,
 } from '@mui/material';
 import Link from 'next/link';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { useCart } from '@/lib/context/CartContext';
+import SampleIconButton from '@/components/samples/SampleIconButton';
+import CartIconButton from '@/components/cart/CartIconButton';
 import { brand } from '@/lib/theme';
 import CornerTag from '@/components/ui/CornerTag';
 
@@ -204,8 +203,6 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 // ─── Main header ─────────────────────────────────────────────────────────────
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { items } = useCart();
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileFabricsOpen, setMobileFabricsOpen] = useState(false);
@@ -275,10 +272,6 @@ export default function SiteHeader() {
           >
             <Box component="span" sx={{ color: brand.mocha }}>JL</Box> COMFORT
           </Typography>
-
-          <CornerTag tone="dark" sx={{ display: { xs: 'none', md: 'inline-block' } }}>
-            SS26 Drop
-          </CornerTag>
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
@@ -437,20 +430,14 @@ export default function SiteHeader() {
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
             <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
 
-            <IconButton component={Link} href="/checkout" sx={{ ml: 2, color: brand.ink, '&:hover': { color: brand.mocha } }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <SampleIconButton sx={{ ml: 2 }} />
+            <CartIconButton sx={{ ml: 0.5 }} />
           </Box>
 
           {/* Mobile controls */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
-            <IconButton component={Link} href="/checkout" sx={{ color: '#555' }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <SampleIconButton sx={{ color: '#555' }} />
+            <CartIconButton sx={{ color: '#555' }} />
             <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#555' }}>
               <MenuIcon />
             </IconButton>

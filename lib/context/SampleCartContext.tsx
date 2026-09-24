@@ -4,13 +4,30 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_SAMPLE_SETTINGS, SampleRequestItem, SampleSettings } from '@/lib/types/sampleRequest';
 import { getSampleSettings } from '@/lib/data/sampleRequests';
 
+/** Where the "add sample" click happened, so the header can animate the swatch flying to its icon. */
+export interface SampleOrigin {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface LastAddedSample {
+  item: SampleRequestItem;
+  origin: SampleOrigin | null;
+  at: number; // changes on every add, so the header reacts even to the same fabric twice
+}
+
 interface SampleCartContextType {
   items: SampleRequestItem[];
-  addSample: (item: SampleRequestItem) => void;
+  addSample: (item: SampleRequestItem, origin?: SampleOrigin | null) => void;
+  lastAdded: LastAddedSample | null; // drives the header icon highlight (components/samples/SampleIconButton)
   removeSample: (fabricId: string) => void;
   clearSamples: () => void;
   isFull: boolean;
   settings: SampleSettings; // admin limits; the server enforces them too
+  isListOpen: boolean; // the slide-in sample list (components/samples/SampleListDrawer)
+  setListOpen: (open: boolean) => void;
 }
 
 const SampleCartContext = createContext<SampleCartContextType | undefined>(undefined);
@@ -19,6 +36,8 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [items, setItems] = useState<SampleRequestItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<SampleSettings>(DEFAULT_SAMPLE_SETTINGS);
+  const [isListOpen, setListOpen] = useState(false);
+  const [lastAdded, setLastAdded] = useState<LastAddedSample | null>(null);
 
   useEffect(() => {
     getSampleSettings().then(setSettings).catch(() => {});
@@ -42,12 +61,10 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [items, isMounted]);
 
-  const addSample = (item: SampleRequestItem) => {
-    setItems((prev) => {
-      if (prev.some((i) => i.fabricId === item.fabricId)) return prev;
-      if (prev.length >= settings.maxPerRequest) return prev;
-      return [...prev, item];
-    });
+  const addSample = (item: SampleRequestItem, origin: SampleOrigin | null = null) => {
+    if (items.some((i) => i.fabricId === item.fabricId) || items.length >= settings.maxPerRequest) return;
+    setItems((prev) => [...prev, item]);
+    setLastAdded({ item, origin, at: Date.now() });
   };
 
   const removeSample = (fabricId: string) => {
@@ -58,7 +75,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   return (
     <SampleCartContext.Provider
-      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= settings.maxPerRequest, settings }}
+      value={{ items, addSample, removeSample, clearSamples, isFull: items.length >= settings.maxPerRequest, settings, isListOpen, setListOpen, lastAdded }}
     >
       {children}
     </SampleCartContext.Provider>

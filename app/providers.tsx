@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from '@/lib/theme';
 import { CartProvider } from '@/lib/context/CartContext';
 import { SampleCartProvider } from '@/lib/context/SampleCartContext';
+import SampleListDrawer from '@/components/samples/SampleListDrawer';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CartProvider>
         <SampleCartProvider>
           {children}
+          <SampleListDrawer />
         </SampleCartProvider>
       </CartProvider>
     </ThemeProvider>
