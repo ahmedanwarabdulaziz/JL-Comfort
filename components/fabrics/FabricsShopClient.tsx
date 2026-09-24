@@ -1,29 +1,30 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Box,
-  Container,
-  Typography,
-  Grid,
-  InputAdornment,
-  TextField,
-  CircularProgress,
   Button,
+  Checkbox,
   Chip,
-  IconButton,
-  Drawer,
-  Divider,
+  CircularProgress,
   Collapse,
+  Container,
+  Divider,
+  Drawer,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
   useMediaQuery,
   useTheme,
-  Checkbox,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { CharlotteFabricSnapshotItem, CharlotteFabricFilters } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
@@ -33,76 +34,155 @@ import {
   CHARLOTTE_FABRIC_MATERIALS,
   FabricFacetOption,
 } from '@/lib/data/charlotteFabricFacets';
-import FabricCard from './FabricCard';
+import { brand } from '@/lib/theme';
+import FabricCard, { CardColourway } from './FabricCard';
+import { cleanBookName } from './SampleBookCover';
 
 const PAGE_SIZE = 32;
-const SIDEBAR_WIDTH = 280;
+const SIDEBAR_WIDTH = 272;
+const HEADER_OFFSET = 89; // sticky site header (65px) + breathing room
+const LINE = '#e5e0d9';
+const MUTED = '#8b857e';
 
-// Dot color map
-const COLOR_DOT: Record<string, string> = {
-  'red-burgundy':   '#8B1A2B',
-  'orange-rust':    '#C2612A',
-  'gold-yellow':    '#D4A017',
-  'green':          '#3A7A47',
-  'aqua-teal':      '#2A8A8A',
-  'blue':           '#2A5FA8',
-  'purple':         '#6A3A9A',
-  'coral-peach':    '#E07060',
-  'pink':           '#D4608A',
-  'beige-taupe':    '#B8A898',
-  'brown':          '#6B4226',
-  'black':          '#1A1A1A',
-  'grey-silver':    '#8A8A8A',
-  'white-ivory':    '#F0EDE5',
+// Dot colours for the colour facet.
+export const COLOR_DOT: Record<string, string> = {
+  'red-burgundy': '#8B1A2B',
+  'orange-rust': '#C2612A',
+  'gold-yellow': '#D4A017',
+  green: '#3A7A47',
+  'aqua-teal': '#2A8A8A',
+  blue: '#2A5FA8',
+  purple: '#6A3A9A',
+  'coral-peach': '#E07060',
+  pink: '#D4608A',
+  'beige-taupe': '#B8A898',
+  brown: '#6B4226',
+  black: '#1A1A1A',
+  'grey-silver': '#8A8A8A',
+  'white-ivory': '#F0EDE5',
 };
 
-// ─── Collapsible sidebar section ────────────────────────────────────────────
-function SidebarSection({
+type FilterKey =
+  | 'color'
+  | 'pattern'
+  | 'material'
+  | 'application'
+  | 'market'
+  | 'features'
+  | 'performance'
+  | 'fiberContent'
+  | 'durability'
+  | 'patternDirection';
+
+const FILTER_KEYS: FilterKey[] = ['color', 'pattern', 'material', 'application', 'market', 'features', 'performance', 'fiberContent', 'durability', 'patternDirection'];
+
+const SECTION_TITLES: Record<FilterKey, string> = {
+  color: 'Colour',
+  pattern: 'Pattern',
+  material: 'Material',
+  application: 'Use',
+  market: 'Market',
+  features: 'Features',
+  performance: 'Performance',
+  fiberContent: 'Content',
+  durability: 'Rub count',
+  patternDirection: 'Pattern direction',
+};
+
+const STATIC_OPTIONS: Partial<Record<FilterKey, FabricFacetOption[]>> = {
+  color: CHARLOTTE_FABRIC_COLORS,
+  pattern: CHARLOTTE_FABRIC_PATTERNS,
+  material: CHARLOTTE_FABRIC_MATERIALS,
+};
+
+const optionLabel = (key: FilterKey, value: string) => STATIC_OPTIONS[key]?.find((o) => o.value === value)?.label || value;
+
+type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'name';
+const SORTS: Record<SortKey, string> = {
+  featured: 'Featured',
+  newest: 'Newest',
+  'price-asc': 'Price: low to high',
+  'price-desc': 'Price: high to low',
+  name: 'Name: A to Z',
+};
+
+const sortFabrics = (fabrics: CharlotteFabricSnapshotItem[], sort: SortKey) => {
+  if (sort === 'featured') return fabrics;
+  const list = fabrics.slice();
+  const price = (f: CharlotteFabricSnapshotItem) => f.pricePerYard;
+  switch (sort) {
+    case 'newest':
+      return list.sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew) || new Date(b.firstSeenAt).getTime() - new Date(a.firstSeenAt).getTime());
+    case 'price-asc':
+      return list.sort((a, b) => (price(a) ?? Infinity) - (price(b) ?? Infinity));
+    case 'price-desc':
+      return list.sort((a, b) => (price(b) ?? -Infinity) - (price(a) ?? -Infinity));
+    case 'name':
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+};
+
+// ─── Filter section: one open at a time; closed sections list what's selected ──
+function FilterSection({
   title,
+  open,
+  onToggle,
+  selected,
   children,
-  defaultOpen = true,
 }: {
   title: string;
+  open: boolean;
+  onToggle: () => void;
+  selected: string[];
   children: React.ReactNode;
-  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   return (
-    <Box sx={{ mb: 0 }}>
+    <Box sx={{ borderBottom: `1px solid ${LINE}` }}>
       <Box
-        onClick={() => setOpen((o) => !o)}
+        component="button"
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
         sx={{
+          width: '100%',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
+          gap: 1,
           py: 1.5,
-          px: 2,
-          '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
-          userSelect: 'none',
+          px: 0,
+          bgcolor: 'transparent',
+          border: 0,
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+          color: brand.ink,
         }}
       >
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#1a1a1a', fontSize: '0.75rem' }}
-        >
-          {title}
-        </Typography>
-        {open ? (
-          <ExpandLessIcon sx={{ fontSize: 18, color: '#888' }} />
-        ) : (
-          <ExpandMoreIcon sx={{ fontSize: 18, color: '#888' }} />
-        )}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: '0.74rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            {title}
+            {selected.length > 0 && (
+              <Box component="span" sx={{ ml: 0.75, px: 0.75, py: '1px', bgcolor: brand.ink, color: brand.chalk, fontSize: '0.62rem', letterSpacing: 0 }}>
+                {selected.length}
+              </Box>
+            )}
+          </Typography>
+          {!open && selected.length > 0 && (
+            <Typography sx={{ mt: 0.4, fontSize: '0.78rem', color: brand.mocha, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {selected.join(', ')}
+            </Typography>
+          )}
+        </Box>
+        <ExpandMoreIcon sx={{ fontSize: 20, color: MUTED, transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
       </Box>
-      <Collapse in={open}>
-        <Box sx={{ px: 2, pb: 2 }}>{children}</Box>
+      <Collapse in={open} unmountOnExit>
+        <Box sx={{ pb: 1.75 }}>{children}</Box>
       </Collapse>
-      <Divider />
     </Box>
   );
 }
 
-// ─── The sidebar content (reused in both desktop + mobile drawer) ────────────
+// ─── Sidebar (desktop + mobile drawer) ───────────────────────────────────────
 function SidebarContent({
   filters,
   toggleFilter,
@@ -110,79 +190,58 @@ function SidebarContent({
   setSearch,
   activeCount,
   onClearAll,
-  dynamicOptions,
-  facetCounts,
+  options,
+  counts,
 }: {
-  filters: Record<string, string[]>;
-  toggleFilter: (category: string, value: string) => void;
+  filters: Record<FilterKey, string[]>;
+  toggleFilter: (category: FilterKey, value: string) => void;
   search: string;
   setSearch: (v: string) => void;
   activeCount: number;
   onClearAll: () => void;
-  dynamicOptions: Record<string, FabricFacetOption[]>;
-  facetCounts: Record<string, Record<string, number>>;
+  options: Record<FilterKey, FabricFacetOption[]>;
+  counts: Record<FilterKey, Record<string, number>>;
 }) {
+  const sections = FILTER_KEYS.filter((key) => options[key].length > 0);
+  const [openKey, setOpenKey] = useState<FilterKey | null>(() => sections.find((key) => filters[key].length > 0) || 'color');
 
-  const renderFilterList = (categoryKey: string, allOptions: FabricFacetOption[], isColor = false) => {
-    // The hardcoded facet lists mirror charlottefabrics.com's full menu, so hide any option no
-    // loaded fabric has (it would only lead to an empty page). A currently-selected option stays
-    // visible so it can still be unticked.
-    const counts = facetCounts[categoryKey];
-    const options = counts
-      ? allOptions.filter((opt) => (counts[opt.value] ?? 0) > 0 || filters[categoryKey]?.includes(opt.value))
-      : allOptions;
-    if (!options || options.length === 0) return null;
-
+  const renderOptions = (key: FilterKey) => {
+    // Hide options no fabric has; keep a selected one visible so it can be unticked.
+    const list = options[key].filter((opt) => (counts[key][opt.value] ?? 0) > 0 || filters[key].includes(opt.value));
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-        {options.map((opt) => {
-          const active = filters[categoryKey]?.includes(opt.value);
-          const count = counts?.[opt.value];
+      <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflowY: 'auto', pr: 0.5 }}>
+        {list.map((opt) => {
+          const active = filters[key].includes(opt.value);
+          const count = counts[key][opt.value];
           return (
             <Box
               key={opt.value}
-              onClick={() => toggleFilter(categoryKey, opt.value)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                px: 0.5,
-                py: 0.2,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)' },
-                transition: 'background 0.15s',
-              }}
+              component="label"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25, cursor: 'pointer', '&:hover .opt-label': { color: brand.mocha } }}
             >
               <Checkbox
                 checked={active}
+                onChange={() => toggleFilter(key, opt.value)}
                 size="small"
                 disableRipple
-                sx={{
-                  color: 'rgba(0,0,0,0.2)',
-                  p: 0.5,
-                  '&.Mui-checked': { color: '#1a1a1a' },
-                }}
+                sx={{ p: 0.5, color: '#c9c2ba', '&.Mui-checked': { color: brand.ink } }}
               />
-              {isColor && (
+              {key === 'color' && (
                 <Box
                   sx={{
                     width: 14,
                     height: 14,
                     borderRadius: '50%',
+                    flexShrink: 0,
                     bgcolor: COLOR_DOT[opt.value] ?? '#ccc',
                     border: opt.value === 'white-ivory' ? '1px solid #ccc' : '1px solid rgba(0,0,0,0.1)',
-                    flexShrink: 0,
                   }}
                 />
               )}
-              <Typography
-                variant="body2"
-                sx={{ fontSize: '0.85rem', color: active ? '#1a1a1a' : '#444', fontWeight: active ? 500 : 400 }}
-              >
+              <Typography className="opt-label" sx={{ fontSize: '0.86rem', color: active ? brand.ink : '#4a4540', fontWeight: active ? 600 : 400, transition: 'color .15s' }}>
                 {opt.label}
                 {count !== undefined && (
-                  <Box component="span" sx={{ color: '#999', ml: 0.75, fontSize: '0.75rem' }}>
+                  <Box component="span" sx={{ color: MUTED, ml: 0.6, fontSize: '0.74rem', fontWeight: 400 }}>
                     ({count.toLocaleString()})
                   </Box>
                 )}
@@ -195,158 +254,87 @@ function SidebarContent({
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Box sx={{ px: 2, pt: 2.5, pb: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1a1a1a', letterSpacing: 0.5 }}>
-            FILTER FABRICS
-          </Typography>
-          {activeCount > 0 && (
-            <Button
-              size="small"
-              onClick={onClearAll}
-              sx={{ color: '#1a1a1a', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.7rem', minWidth: 'auto', p: 0, '&:hover': { bgcolor: 'transparent', color: '#8A7350' } }}
-            >
-              Clear all
-            </Button>
-          )}
-        </Box>
-
-        {/* Search */}
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Search name or SKU…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 16, color: '#aaa' }} />
-              </InputAdornment>
-            ),
-            endAdornment: search ? (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={() => setSearch('')} edge="end" sx={{ mr: -0.5 }}>
-                  <CloseIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </InputAdornment>
-            ) : null,
-          }}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 0,
-              fontSize: '0.85rem',
-              '&:hover fieldset': { borderColor: '#1a1a1a' },
-              '&.Mui-focused fieldset': { borderColor: '#1a1a1a' },
-            },
-          }}
-        />
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1.5 }}>
+        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: brand.ink }}>Filter by</Typography>
+        {activeCount > 0 && (
+          <Button size="small" onClick={onClearAll} sx={{ p: 0, minWidth: 0, fontSize: '0.7rem', color: brand.mocha, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
+            Clear all
+          </Button>
+        )}
       </Box>
-
-      <Divider />
-
-      {/* Scrollable filter sections */}
-      <Box sx={{ overflowY: 'auto', flex: 1 }}>
-        <SidebarSection title="Color" defaultOpen>
-          {renderFilterList('color', CHARLOTTE_FABRIC_COLORS, true)}
-        </SidebarSection>
-        <SidebarSection title="Pattern" defaultOpen>
-          {renderFilterList('pattern', CHARLOTTE_FABRIC_PATTERNS)}
-        </SidebarSection>
-        <SidebarSection title="Material" defaultOpen>
-          {renderFilterList('material', CHARLOTTE_FABRIC_MATERIALS)}
-        </SidebarSection>
-        
-        {dynamicOptions.application?.length > 0 && (
-          <SidebarSection title="Application" defaultOpen={false}>
-            {renderFilterList('application', dynamicOptions.application)}
-          </SidebarSection>
-        )}
-        
-        {dynamicOptions.market?.length > 0 && (
-          <SidebarSection title="Market" defaultOpen={false}>
-            {renderFilterList('market', dynamicOptions.market)}
-          </SidebarSection>
-        )}
-
-        {dynamicOptions.features?.length > 0 && (
-          <SidebarSection title="Features" defaultOpen={false}>
-            {renderFilterList('features', dynamicOptions.features)}
-          </SidebarSection>
-        )}
-
-        {dynamicOptions.performance?.length > 0 && (
-          <SidebarSection title="Performance" defaultOpen={false}>
-            {renderFilterList('performance', dynamicOptions.performance)}
-          </SidebarSection>
-        )}
-
-        {dynamicOptions.fiberContent?.length > 0 && (
-          <SidebarSection title="Fiber Content" defaultOpen={false}>
-            {renderFilterList('fiberContent', dynamicOptions.fiberContent)}
-          </SidebarSection>
-        )}
-
-        {dynamicOptions.durability?.length > 0 && (
-          <SidebarSection title="Rub Count" defaultOpen={false}>
-            {renderFilterList('durability', dynamicOptions.durability)}
-          </SidebarSection>
-        )}
-
-        {dynamicOptions.patternDirection?.length > 0 && (
-          <SidebarSection title="Pattern Direction" defaultOpen={false}>
-            {renderFilterList('patternDirection', dynamicOptions.patternDirection)}
-          </SidebarSection>
-        )}
+      <TextField
+        size="small"
+        fullWidth
+        placeholder="Search name or pattern #"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon sx={{ fontSize: 17, color: MUTED }} />
+            </InputAdornment>
+          ),
+          endAdornment: search ? (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => setSearch('')} edge="end" aria-label="Clear search">
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </InputAdornment>
+          ) : null,
+        }}
+        sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '0.86rem', '&.Mui-focused fieldset': { borderColor: brand.ink } } }}
+      />
+      <Box sx={{ borderTop: `1px solid ${LINE}` }}>
+        {sections.map((key) => (
+          <FilterSection
+            key={key}
+            title={SECTION_TITLES[key]}
+            open={openKey === key}
+            onToggle={() => setOpenKey((current) => (current === key ? null : key))}
+            selected={filters[key].map((value) => optionLabel(key, value))}
+          >
+            {renderOptions(key)}
+          </FilterSection>
+        ))}
       </Box>
     </Box>
   );
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
+const emptyFilters = (): Record<FilterKey, string[]> =>
+  Object.fromEntries(FILTER_KEYS.map((key) => [key, []])) as unknown as Record<FilterKey, string[]>;
+
 export default function FabricsShopClient() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const searchParams = useSearchParams();
 
-  const getArrayParam = (key: string) => {
-    const val = searchParams?.get(key);
-    return val ? val.split(',') : [];
-  };
-
-  const [filters, setFilters] = useState<Record<string, string[]>>({
-    color: getArrayParam('color'),
-    pattern: getArrayParam('pattern'),
-    material: getArrayParam('material'),
-    application: getArrayParam('application'),
-    market: getArrayParam('market'),
-    features: getArrayParam('features'),
-    performance: getArrayParam('performance'),
-    fiberContent: getArrayParam('fiberContent'),
-    durability: getArrayParam('durability'),
-    patternDirection: getArrayParam('patternDirection'),
+  const [filters, setFilters] = useState<Record<FilterKey, string[]>>(() => {
+    const initial = emptyFilters();
+    for (const key of FILTER_KEYS) {
+      const value = searchParams?.get(key);
+      if (value) initial[key] = value.split(',');
+    }
+    return initial;
   });
-
-  const toggleFilter = useCallback((category: string, value: string) => {
-    setFilters(prev => {
-      const current = prev[category] || [];
-      return {
-        ...prev,
-        [category]: current.includes(value) ? current.filter(v => v !== value) : [...current, value]
-      };
-    });
-  }, []);
-
-  const [sampleBook] = useState(searchParams?.get('sampleBook') ?? '');
+  const [sampleBook, setSampleBook] = useState(searchParams?.get('sampleBook') ?? '');
+  const [newOnly, setNewOnly] = useState(searchParams?.get('isNew') === 'true');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortKey>('featured');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-
   const [allFabrics, setAllFabrics] = useState<CharlotteFabricSnapshotItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleFilter = useCallback((category: FilterKey, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [category]: prev[category].includes(value) ? prev[category].filter((v) => v !== value) : [...prev[category], value],
+    }));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -354,121 +342,136 @@ export default function FabricsShopClient() {
     getCharlotteFabricsSnapshot()
       .then(setAllFabrics)
       .catch((err) => {
-        console.error('Error loading Charlotte Fabrics catalog:', err);
+        console.error('Error loading fabric catalog:', err);
         setError('Failed to load fabrics. Please try again.');
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // Dynamically extract options from allFabrics for the non-hardcoded categories
-  const dynamicOptions = useMemo(() => {
-    const extract = (key: keyof CharlotteFabricSnapshotItem, isArray = false) => {
+  // Options for every filter group: fixed lists for colour/pattern/material, the rest from the data.
+  const options = useMemo(() => {
+    const extract = (key: keyof CharlotteFabricSnapshotItem) => {
       const set = new Set<string>();
-      allFabrics.forEach(f => {
+      allFabrics.forEach((f) => {
         const val = f[key];
-        if (!val) return;
-        if (isArray) {
-          (val as string[]).forEach(v => set.add(v));
-        } else {
-          set.add(val as string);
-        }
+        if (Array.isArray(val)) val.forEach((v) => v && set.add(v));
+        else if (typeof val === 'string' && val) set.add(val);
       });
-      return Array.from(set).sort().map(v => ({ value: v, label: v }));
+      return Array.from(set).sort().map((v) => ({ value: v, label: v }));
     };
-
     return {
-      application: extract('applications', true),
-      market: extract('markets', true),
+      color: CHARLOTTE_FABRIC_COLORS,
+      pattern: CHARLOTTE_FABRIC_PATTERNS,
+      material: CHARLOTTE_FABRIC_MATERIALS,
+      application: extract('applications'),
+      market: extract('markets'),
       features: extract('features'),
       performance: extract('performance'),
       fiberContent: extract('fiberContent'),
       durability: extract('durability'),
       patternDirection: extract('patternDirection'),
-    };
+    } as Record<FilterKey, FabricFacetOption[]>;
   }, [allFabrics]);
 
-  // How many fabrics carry each Color/Pattern/Material value. Empty until the catalog loads, so
-  // the sidebar shows every option (no counts) while loading rather than flashing an empty list.
-  const facetCounts = useMemo(() => {
-    const counts: Record<string, Record<string, number>> = {};
-    if (allFabrics.length === 0) return counts;
-    const tally = (key: 'color' | 'pattern' | 'material') => {
-      const byValue: Record<string, number> = {};
-      allFabrics.forEach((f) => (f[key] || []).forEach((v) => { byValue[v] = (byValue[v] || 0) + 1; }));
-      counts[key] = byValue;
+  // How many fabrics carry each option (catalog-wide).
+  const counts = useMemo(() => {
+    const fieldFor: Record<FilterKey, keyof CharlotteFabricSnapshotItem> = {
+      color: 'color',
+      pattern: 'pattern',
+      material: 'material',
+      application: 'applications',
+      market: 'markets',
+      features: 'features',
+      performance: 'performance',
+      fiberContent: 'fiberContent',
+      durability: 'durability',
+      patternDirection: 'patternDirection',
     };
-    tally('color');
-    tally('pattern');
-    tally('material');
-    return counts;
+    const result = Object.fromEntries(FILTER_KEYS.map((key) => [key, {} as Record<string, number>])) as Record<FilterKey, Record<string, number>>;
+    for (const f of allFabrics) {
+      for (const key of FILTER_KEYS) {
+        const val = f[fieldFor[key]];
+        const values = Array.isArray(val) ? val : typeof val === 'string' && val ? [val] : [];
+        for (const v of values) result[key][v] = (result[key][v] || 0) + 1;
+      }
+    }
+    return result;
+  }, [allFabrics]);
+
+  // Colourway thumbnails for each card, from fabrics sharing a colourway group.
+  const colourwaysByGroup = useMemo(() => {
+    const groups = new Map<string, CardColourway[]>();
+    for (const f of allFabrics) {
+      if (!f.colorwayGroup || !f.imageUrl) continue;
+      const list = groups.get(f.colorwayGroup) || [];
+      list.push({ id: f.id, name: f.name, imageUrl: f.imageUrl });
+      groups.set(f.colorwayGroup, list);
+    }
+    return groups;
   }, [allFabrics]);
 
   const filtered = useMemo(() => {
-    const filtersObj: CharlotteFabricFilters = {
-      color: filters.color,
-      pattern: filters.pattern,
-      material: filters.material,
-      application: filters.application,
-      market: filters.market,
-      features: filters.features,
-      performance: filters.performance,
-      fiberContent: filters.fiberContent,
-      durability: filters.durability,
-      patternDirection: filters.patternDirection,
-      search,
-      sampleBook: sampleBook || undefined,
-    };
-    return filterFabrics(allFabrics, filtersObj);
-  }, [allFabrics, filters, search, sampleBook]);
+    const filtersObj: CharlotteFabricFilters = { ...filters, search, sampleBook: sampleBook || undefined };
+    const matched = filterFabrics(allFabrics, filtersObj);
+    return sortFabrics(newOnly ? matched.filter((f) => f.isNew) : matched, sort);
+  }, [allFabrics, filters, search, sampleBook, sort, newOnly]);
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filters, search]);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filters, search, sort, sampleBook, newOnly]);
 
+  const bookLabel = sampleBook ? cleanBookName(sampleBook) : '';
   const visibleFabrics = filtered.slice(0, visibleCount);
   const hasMore = filtered.length > visibleCount;
-  
-  // Calculate total active filter chips
-  const activeCount = Object.values(filters).reduce((acc, arr) => acc + arr.length, 0) + (search ? 1 : 0);
+  const activeCount =
+    FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) + (search ? 1 : 0) + (sampleBook ? 1 : 0) + (newOnly ? 1 : 0);
 
-  const clearAll = () => { 
-    setFilters({
-      color: [], pattern: [], material: [], application: [], market: [], features: [], performance: [], fiberContent: [], durability: [], patternDirection: []
-    }); 
-    setSearch(''); 
+  const clearAll = () => {
+    setFilters(emptyFilters());
+    setSearch('');
+    setSampleBook('');
+    setNewOnly(false);
   };
 
-  const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, dynamicOptions, facetCounts };
+  const sidebarProps = { filters, toggleFilter, search, setSearch, activeCount, onClearAll: clearAll, options, counts };
+  const chipSx = { bgcolor: brand.chalk, color: brand.ink, borderRadius: 0, fontSize: '0.76rem', border: `1px solid ${LINE}` };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff' }}>
-
-      {/* ── PAGE HEADER ─────────────────────────────────────────────── */}
-      <Box
-        sx={{
-          bgcolor: '#FAFAFA',
-          pt: { xs: 8, md: 10 },
-          pb: { xs: 6, md: 8 },
-          textAlign: 'center',
-          borderBottom: '1px solid #eaeaea',
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography variant="overline" sx={{ color: '#8A7350', letterSpacing: 2.5, fontWeight: 600, fontSize: '0.75rem', display: 'block', mb: 1 }}>
-            Premium Collection
+    <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
+      {/* ── Header ───────────────────────────────────────────── */}
+      <Box sx={{ bgcolor: brand.chalk, borderBottom: `1px solid ${LINE}` }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 3.5, md: 5 } }}>
+          <Typography sx={{ fontSize: '0.74rem', color: MUTED, mb: 1.5 }}>
+            <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.mocha } }}>Home</Box>
+            <Box component="span" sx={{ mx: 0.75 }}>›</Box>
+            <Box component="span" sx={{ color: brand.ink }}>Fabrics</Box>
+            {sampleBook && (
+              <>
+                <Box component="span" sx={{ mx: 0.75 }}>›</Box>
+                <Box component="span" sx={{ color: brand.ink }}>{bookLabel}</Box>
+              </>
+            )}
           </Typography>
-          <Typography variant="h3" component="h1" sx={{ color: '#1a1a1a', fontWeight: 300, fontSize: { xs: '2.5rem', md: '3.5rem' }, mb: 2 }}>
-            Shop{' '}<Box component="span" sx={{ fontWeight: 600 }}>Fabrics</Box>
+          <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.9rem' }, color: brand.ink }}>
+            {sampleBook ? (
+              <>
+                {bookLabel} <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>collection</Box>
+              </>
+            ) : (
+              <>
+                Designer <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>fabrics</Box>
+              </>
+            )}
           </Typography>
-          <Typography variant="body1" sx={{ color: '#666', maxWidth: 500, mx: 'auto', fontSize: '1.05rem', lineHeight: 1.6 }}>
-            Explore thousands of exquisite upholstery fabrics. Exceptional quality, per-yard pricing, and free samples available.
+          <Typography sx={{ color: brand.textSecondary, maxWidth: 620, mt: 1.25, lineHeight: 1.7 }}>
+            Upholstery and multipurpose fabric by the yard, priced in Canadian dollars. Order a free sample of any fabric before you buy.
           </Typography>
         </Container>
       </Box>
 
-      {/* ── BODY: SIDEBAR + GRID ─────────────────────────────────────── */}
-      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 8 } }}>
-        <Box sx={{ display: 'flex', gap: { md: 6 }, alignItems: 'flex-start' }}>
-
-          {/* ── DESKTOP SIDEBAR ─────────────────────────────────────── */}
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
+        <Box sx={{ display: 'flex', gap: { md: 5 }, alignItems: 'flex-start' }}>
+          {/* ── Desktop sidebar ──────────────────────────────── */}
           {!isMobile && (
             <Box
               component="aside"
@@ -476,191 +479,133 @@ export default function FabricsShopClient() {
                 width: SIDEBAR_WIDTH,
                 flexShrink: 0,
                 position: 'sticky',
-                top: 24,
-                maxHeight: 'calc(100vh - 48px)',
+                top: HEADER_OFFSET,
+                maxHeight: `calc(100vh - ${HEADER_OFFSET + 16}px)`,
                 overflowY: 'auto',
-                bgcolor: '#fff',
+                pr: 1,
                 '&::-webkit-scrollbar': { width: 4 },
-                '&::-webkit-scrollbar-thumb': { bgcolor: '#eaeaea', borderRadius: 4 },
+                '&::-webkit-scrollbar-thumb': { bgcolor: LINE, borderRadius: 4 },
               }}
             >
               <SidebarContent {...sidebarProps} />
             </Box>
           )}
 
-          {/* ── MAIN CONTENT ────────────────────────────────────────── */}
+          {/* ── Results ─────────────────────────────────────── */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-
-            {/* Results bar */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                mb: 4,
-                flexWrap: 'wrap',
-                gap: 2,
-              }}
-            >
-              {/* Mobile: filter button */}
+            {/* Toolbar */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', pb: 2, borderBottom: `1px solid ${LINE}` }}>
               {isMobile && (
-                <Button
-                  startIcon={<TuneIcon />}
-                  onClick={() => setMobileDrawerOpen(true)}
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    borderRadius: 0,
-                    borderColor: '#1a1a1a',
-                    color: '#1a1a1a',
-                    fontWeight: 500,
-                    textTransform: 'uppercase',
-                    fontSize: '0.8rem',
-                    letterSpacing: 1,
-                  }}
-                >
+                <Button startIcon={<TuneIcon />} onClick={() => setMobileDrawerOpen(true)} variant="outlined" size="small" sx={{ borderColor: brand.ink, color: brand.ink }}>
                   Filters{activeCount > 0 ? ` (${activeCount})` : ''}
                 </Button>
               )}
-
-              {/* Count */}
-              {!loading && !error && (
-                <Typography variant="body2" sx={{ color: '#666', fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {filtered.length.toLocaleString()} fabric{filtered.length !== 1 ? 's' : ''}
-                </Typography>
-              )}
-
-              {/* Active filter chips */}
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: 'auto' }}>
-                {search && (
-                  <Chip
-                    label={`"${search}"`}
-                    size="small"
-                    onDelete={() => setSearch('')}
-                    sx={{ bgcolor: '#f4f4f4', color: '#1a1a1a', fontSize: '0.75rem', fontWeight: 500, borderRadius: 1 }}
-                  />
-                )}
-                {Object.entries(filters).map(([key, values]) => (
-                  values.map(val => {
-                    // Try to find a human readable label if it's one of the hardcoded facets
-                    let label = val;
-                    if (key === 'color') label = CHARLOTTE_FABRIC_COLORS.find(c => c.value === val)?.label || val;
-                    if (key === 'pattern') label = CHARLOTTE_FABRIC_PATTERNS.find(c => c.value === val)?.label || val;
-                    if (key === 'material') label = CHARLOTTE_FABRIC_MATERIALS.find(c => c.value === val)?.label || val;
-                    
-                    return (
-                      <Chip
-                        key={`${key}-${val}`}
-                        label={label}
-                        size="small"
-                        onDelete={() => toggleFilter(key, val)}
-                        sx={{ bgcolor: '#f4f4f4', color: '#1a1a1a', fontSize: '0.75rem', fontWeight: 500, borderRadius: 1 }}
-                      />
-                    );
-                  })
-                ))}
+              <Typography sx={{ color: brand.textSecondary, fontSize: '0.9rem' }}>
+                {loading ? 'Loading fabrics…' : `${filtered.length.toLocaleString()} fabric${filtered.length === 1 ? '' : 's'}`}
+              </Typography>
+              <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography sx={{ fontSize: '0.8rem', color: MUTED, display: { xs: 'none', sm: 'block' } }}>Sort by</Typography>
+                <Select size="small" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} sx={{ fontSize: '0.86rem', minWidth: 170 }}>
+                  {(Object.keys(SORTS) as SortKey[]).map((key) => (
+                    <MenuItem key={key} value={key} sx={{ fontSize: '0.86rem' }}>{SORTS[key]}</MenuItem>
+                  ))}
+                </Select>
               </Box>
             </Box>
 
-            {/* Loading */}
-            {loading && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 16, gap: 2 }}>
-                <CircularProgress sx={{ color: '#1a1a1a' }} size={38} thickness={2} />
+            {/* Active filters */}
+            {activeCount > 0 && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', pt: 2 }}>
+                {newOnly && <Chip size="small" label="New arrivals" onDelete={() => setNewOnly(false)} sx={chipSx} />}
+                {sampleBook && <Chip size="small" label={`Collection: ${bookLabel}`} onDelete={() => setSampleBook('')} sx={chipSx} />}
+                {search && <Chip size="small" label={`"${search}"`} onDelete={() => setSearch('')} sx={chipSx} />}
+                {FILTER_KEYS.flatMap((key) =>
+                  filters[key].map((value) => (
+                    <Chip key={`${key}-${value}`} size="small" label={optionLabel(key, value)} onDelete={() => toggleFilter(key, value)} sx={chipSx} />
+                  ))
+                )}
+                <Button size="small" onClick={clearAll} sx={{ fontSize: '0.7rem', color: brand.mocha, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
+                  Clear all
+                </Button>
               </Box>
             )}
 
-            {/* Error */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 16 }}>
+                <CircularProgress sx={{ color: brand.ink }} size={36} thickness={2} />
+              </Box>
+            )}
+
             {error && !loading && (
               <Box sx={{ textAlign: 'center', py: 12 }}>
                 <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
-                <Button variant="outlined" onClick={() => window.location.reload()} sx={{ borderColor: '#1a1a1a', color: '#1a1a1a', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Retry
-                </Button>
+                <Button variant="outlined" onClick={() => window.location.reload()} sx={{ borderColor: brand.ink, color: brand.ink }}>Retry</Button>
               </Box>
             )}
 
-            {/* Empty */}
             {!loading && !error && visibleFabrics.length === 0 && (
               <Box sx={{ textAlign: 'center', py: 14 }}>
-                <Typography variant="h5" sx={{ color: '#1a1a1a', mb: 1, fontWeight: 300 }}>No fabrics found</Typography>
-                <Typography variant="body1" sx={{ color: '#666', mb: 4 }}>Try removing some filters to see more results.</Typography>
-                <Button onClick={clearAll} variant="outlined" sx={{ borderColor: '#1a1a1a', color: '#1a1a1a', borderRadius: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Clear all filters
-                </Button>
+                <Typography variant="h4" sx={{ mb: 1, color: brand.ink }}>No fabrics found</Typography>
+                <Typography sx={{ color: brand.textSecondary, mb: 3 }}>Try removing a filter to see more fabrics.</Typography>
+                <Button onClick={clearAll} variant="outlined" sx={{ borderColor: brand.ink, color: brand.ink }}>Clear all filters</Button>
               </Box>
             )}
 
-            {/* Grid */}
             {!loading && !error && visibleFabrics.length > 0 && (
               <>
-                <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                <Box
+                  sx={{
+                    mt: 3,
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+                    columnGap: { xs: 2, md: 3 },
+                    rowGap: { xs: 3.5, md: 5 },
+                  }}
+                >
                   {visibleFabrics.map((fabric) => (
-                    <Grid item xs={6} sm={4} md={4} lg={3} key={fabric.id}>
-                      <FabricCard fabric={fabric} />
-                    </Grid>
+                    <FabricCard
+                      key={fabric.id}
+                      fabric={fabric}
+                      colourways={fabric.colorwayGroup ? colourwaysByGroup.get(fabric.colorwayGroup) : undefined}
+                    />
                   ))}
-                </Grid>
+                </Box>
 
-                {hasMore && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+                <Box sx={{ textAlign: 'center', mt: 7 }}>
+                  <Typography sx={{ color: MUTED, fontSize: '0.8rem', mb: 1.5 }}>
+                    Showing {visibleFabrics.length.toLocaleString()} of {filtered.length.toLocaleString()}
+                  </Typography>
+                  {hasMore && (
                     <Button
                       variant="outlined"
-                      size="large"
                       onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      sx={{
-                        borderColor: '#1a1a1a',
-                        color: '#1a1a1a',
-                        borderRadius: 0,
-                        px: 6,
-                        py: 1.5,
-                        fontWeight: 500,
-                        textTransform: 'uppercase',
-                        letterSpacing: 1,
-                        fontSize: '0.85rem',
-                        '&:hover': { bgcolor: '#1a1a1a', color: '#fff' },
-                      }}
+                      sx={{ borderColor: brand.ink, color: brand.ink, px: 6, py: 1.4, '&:hover': { bgcolor: brand.ink, color: brand.chalk } }}
                     >
-                      Load More ({filtered.length - visibleCount} remaining)
+                      Load more fabrics
                     </Button>
-                  </Box>
-                )}
+                  )}
+                </Box>
               </>
             )}
           </Box>
         </Box>
       </Container>
 
-      {/* ── MOBILE FILTER DRAWER ────────────────────────────────────── */}
-      <Drawer
-        anchor="left"
-        open={mobileDrawerOpen}
-        onClose={() => setMobileDrawerOpen(false)}
-        PaperProps={{
-          sx: {
-            width: 320,
-            bgcolor: '#fff',
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2, pb: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, letterSpacing: 0.5 }}>FILTER FABRICS</Typography>
-          <IconButton onClick={() => setMobileDrawerOpen(false)} size="small">
+      {/* ── Mobile filter drawer ─────────────────────────────── */}
+      <Drawer anchor="left" open={mobileDrawerOpen} onClose={() => setMobileDrawerOpen(false)} PaperProps={{ sx: { width: 320, display: 'flex', flexDirection: 'column' } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+          <Typography sx={{ fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase' }}>Filters</Typography>
+          <IconButton onClick={() => setMobileDrawerOpen(false)} size="small" aria-label="Close filters">
             <CloseIcon />
           </IconButton>
         </Box>
         <Divider />
-        <Box sx={{ flex: 1, overflowY: 'auto' }}>
+        <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2 }}>
           <SidebarContent {...sidebarProps} />
         </Box>
-        <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => setMobileDrawerOpen(false)}
-            disableElevation
-            sx={{ bgcolor: '#1a1a1a', color: '#fff', fontWeight: 500, borderRadius: 0, py: 1.5, textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.85rem', '&:hover': { bgcolor: '#333' } }}
-          >
-            View {filtered.length.toLocaleString()} Fabrics
+        <Box sx={{ p: 2, borderTop: `1px solid ${LINE}` }}>
+          <Button fullWidth variant="contained" disableElevation onClick={() => setMobileDrawerOpen(false)} sx={{ bgcolor: brand.ink, color: brand.chalk, py: 1.4, '&:hover': { bgcolor: brand.mocha } }}>
+            View {filtered.length.toLocaleString()} fabrics
           </Button>
         </Box>
       </Drawer>

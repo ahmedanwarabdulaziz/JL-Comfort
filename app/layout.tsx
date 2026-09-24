@@ -5,6 +5,7 @@ import ServiceWorkerCleanup from './service-worker-cleanup';
 import { Work_Sans, Fraunces } from 'next/font/google';
 import Footer from '@/components/layout/Footer';
 import SiteHeader from '@/components/layout/SiteHeader';
+import AnnouncementBar from '@/components/layout/AnnouncementBar';
 import AIGuide from '@/components/ai/AIGuide';
 import ClarityInit from '@/components/analytics/ClarityInit';
 
@@ -25,6 +26,9 @@ const fraunces = Fraunces({
   display: 'swap',
   variable: '--font-display',
 });
+
+// The AI shopping assistant (Yousha) is built but not launched yet. Set to true to show it.
+const SHOW_AI_GUIDE = false;
 
 export const metadata: Metadata = {
   title: {
@@ -50,10 +54,11 @@ export default function RootLayout({
         <ServiceWorkerCleanup />
         <ClarityInit />
         <Providers>
+          <AnnouncementBar />
           <SiteHeader />
           <div style={{ flex: 1 }}>{children}</div>
           <Footer />
-          <AIGuide />
+          {SHOW_AI_GUIDE && <AIGuide />}
         </Providers>
       </body>
     </html>

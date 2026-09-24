@@ -12,7 +12,8 @@ import TagButton from '@/components/ui/TagButton';
 // Phase 1: Fabric-only launch.
 const shopLinks = [
   { label: 'Shop Fabrics', href: '/fabrics' },
-  { label: 'AI Fabric Visualizer', href: '/visualizer' },
+  { label: 'Sample Books', href: '/sample-books' },
+  // { label: 'AI Fabric Visualizer', href: '/visualizer' }, // not launched yet
 ];
 
 const resourceLinks = [
