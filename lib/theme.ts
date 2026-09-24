@@ -28,7 +28,7 @@ export const swatchClip = (size = 20) =>
   `polygon(${size}px 0, 100% 0, 100% 100%, 0 100%, 0 ${size}px)`;
 
 const displayFont = 'var(--font-display), Georgia, serif';
-const labelFont = 'var(--font-label), "Arial Narrow", sans-serif';
+const labelFont = 'var(--font-label), sans-serif'; // Work Sans (app/layout.tsx)
 
 export const theme = createTheme({
   palette: {
@@ -68,11 +68,12 @@ export const theme = createTheme({
       letterSpacing: '0.14em',
       lineHeight: 1.6,
     },
+    // Buttons use the Work Sans body face (inherited from <html>) in spaced capitals.
     button: {
-      fontFamily: labelFont,
+      fontFamily: 'inherit',
       textTransform: 'uppercase',
-      fontWeight: 700,
-      letterSpacing: '0.06em',
+      fontWeight: 600,
+      letterSpacing: '0.08em',
     },
   },
   shape: {

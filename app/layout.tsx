@@ -2,17 +2,18 @@ import type { Metadata } from 'next';
 import { Providers } from './providers';
 import './globals.css';
 import ServiceWorkerCleanup from './service-worker-cleanup';
-import { Work_Sans, Fraunces, Big_Shoulders_Display } from 'next/font/google';
+import { Work_Sans, Fraunces } from 'next/font/google';
 import Footer from '@/components/layout/Footer';
 import SiteHeader from '@/components/layout/SiteHeader';
 import AIGuide from '@/components/ai/AIGuide';
 import ClarityInit from '@/components/analytics/ClarityInit';
 
-// Body copy.
+// Body copy, buttons, and labels/eyebrows/nav (exposed as --font-label). Loaded as the variable
+// font so every weight used (400 through 900) renders true, not a synthesized bold.
 const workSans = Work_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
   display: 'swap',
+  variable: '--font-label',
 });
 
 // Editorial display face for headlines — set via CSS var so Typography h1-h6
@@ -23,14 +24,6 @@ const fraunces = Fraunces({
   style: ['normal', 'italic'],
   display: 'swap',
   variable: '--font-display',
-});
-
-// Condensed "runway signage" face for labels, eyebrows, nav, and buttons.
-const bigShoulders = Big_Shoulders_Display({
-  subsets: ['latin'],
-  weight: ['700', '900'],
-  display: 'swap',
-  variable: '--font-label',
 });
 
 export const metadata: Metadata = {
@@ -51,7 +44,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${workSans.className} ${fraunces.variable} ${bigShoulders.variable}`}
+      className={`${workSans.className} ${workSans.variable} ${fraunces.variable}`}
     >
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <ServiceWorkerCleanup />
