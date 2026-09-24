@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Badge,
   Drawer,
   Box,
   List,
@@ -19,12 +18,11 @@ import {
   Collapse,
 } from '@mui/material';
 import Link from 'next/link';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { useCart } from '@/lib/context/CartContext';
 import SampleIconButton from '@/components/samples/SampleIconButton';
+import CartIconButton from '@/components/cart/CartIconButton';
 import { brand } from '@/lib/theme';
 import CornerTag from '@/components/ui/CornerTag';
 
@@ -205,8 +203,6 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 // ─── Main header ─────────────────────────────────────────────────────────────
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { items } = useCart();
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileFabricsOpen, setMobileFabricsOpen] = useState(false);
@@ -435,21 +431,13 @@ export default function SiteHeader() {
             <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
 
             <SampleIconButton sx={{ ml: 2 }} />
-            <IconButton component={Link} href="/checkout" aria-label="Cart" sx={{ ml: 0.5, color: brand.ink, '&:hover': { color: brand.mocha } }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <CartIconButton sx={{ ml: 0.5 }} />
           </Box>
 
           {/* Mobile controls */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
             <SampleIconButton sx={{ color: '#555' }} />
-            <IconButton component={Link} href="/checkout" aria-label="Cart" sx={{ color: '#555' }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <CartIconButton sx={{ color: '#555' }} />
             <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#555' }}>
               <MenuIcon />
             </IconButton>

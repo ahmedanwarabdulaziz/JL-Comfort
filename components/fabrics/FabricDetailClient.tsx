@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Badge,
   Box,
   Button,
   ButtonGroup,
@@ -22,13 +21,13 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import { useCart } from '@/lib/context/CartContext';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { getShippingRate } from '@/lib/data/shippingRates';
 import { ShippingRate } from '@/lib/types/checkout';
 import { brand } from '@/lib/theme';
 import FabricPropertyIcons from './FabricPropertyIcons';
+import { originOf } from '@/components/layout/HeaderIconWithNotice';
 
 export interface ColorwaySibling {
   id: string;
@@ -109,7 +108,7 @@ const splitName = (name: string, sku: string) => {
 const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?\s*\w+\s*$/i, '').trim();
 
 export default function FabricDetailClient({ fabric }: { fabric: FabricDetailData }) {
-  const { addToCart, items } = useCart();
+  const { addToCart } = useCart();
   const { items: sampleItems, addSample, isFull, settings: sampleSettings, setListOpen } = useSampleCart();
   const [yards, setYards] = useState(1);
   const [added, setAdded] = useState(false);
@@ -126,7 +125,6 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
   const inStock = fabric.availability === 'InStock';
   const hasPrice = fabric.pricePerYard != null;
   const alreadySampled = sampleItems.some((i) => i.fabricId === fabric.id);
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const { pattern, colourway } = splitName(fabric.name, fabric.sku);
   const collections = (fabric.sampleBooks || []).map((book) => ({ raw: book, label: cleanBookName(book) })).filter((b) => b.label);
   const gallery = [
@@ -134,8 +132,9 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     ...fabric.colorwaySiblings.map((sibling) => ({ id: sibling.id, name: sibling.name, imageUrl: sibling.imageUrl })),
   ].filter((image) => image.imageUrl);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!hasPrice) return;
+    const origin = originOf(event.currentTarget);
     addToCart({
       productType: 'fabric',
       fabricId: fabric.id,
@@ -145,7 +144,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
       quantity: yards,
       unitPrice: fabric.pricePerYard!,
       totalPrice: fabric.pricePerYard! * yards,
-    });
+    }, origin);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -412,28 +411,6 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
         {activeImage && <img src={activeImage} alt={fabric.name} style={{ width: '100%', maxHeight: '88vh', objectFit: 'contain', display: 'block' }} />}
       </Dialog>
 
-      <IconButton
-        component={Link}
-        href="/checkout"
-        aria-label="Open cart"
-        title="Open cart"
-        sx={{
-          position: 'fixed',
-          right: 24,
-          bottom: { xs: 104, md: 108 },
-          zIndex: 1200,
-          width: 54,
-          height: 54,
-          color: '#fff',
-          bgcolor: brand.ink,
-          boxShadow: '0 8px 24px rgba(37,35,33,0.22)',
-          '&:hover': { bgcolor: brand.mocha },
-        }}
-      >
-        <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-          <ShoppingCartOutlinedIcon />
-        </Badge>
-      </IconButton>
     </Box>
   );
 }
