@@ -47,12 +47,13 @@ import CartDrawer from '@/components/cart/CartDrawer';
 import { Category } from '@/lib/types/category';
 import { FoamType, FoamDimension, DimensionType } from '@/lib/types/foam';
 import { getFoamTypes } from '@/lib/data/foam';
-import { getDimensionRules, calculateRoundedValue } from '@/lib/data/dimension-rules';
+import { getDimensionRules } from '@/lib/data/dimension-rules';
 import { DimensionRule } from '@/lib/types/dimension-rules';
 import { getFibreWraps } from '@/lib/data/fibre-wrap';
 import { FibreWrap } from '@/lib/types/fibre-wrap';
 import { getFoamGrades } from '@/lib/data/foam-grades';
 import { FoamGrade } from '@/lib/types/foam-grade';
+import { computeFoamPrice } from '@/lib/pricing/foam';
 
 interface FoamPageClientProps {
   categories: Category[];
@@ -296,40 +297,26 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
       return null;
     }
 
-    // Apply rounding rules
-    const thicknessRule = getRuleForDimension('thickness');
-    const depthRule = getRuleForDimension('depth');
-    const widthRule = getRuleForDimension('width');
-
-    const roundedThickness = calculateRoundedValue(maxThickness, thicknessRule);
-    const roundedDepth = calculateRoundedValue(maxDepth, depthRule);
-    const roundedWidth = calculateRoundedValue(maxWidth, widthRule);
-
-    // Calculate: (Thickness × Depth × Width) / 144
-    const volume = (roundedThickness * roundedDepth * roundedWidth) / 144;
-    
-    // Calculate total price: volume × grade price (if grade is selected)
     const selectedGrade = foamGrades.find((g) => g.id === selectedGradeId);
-    const totalPrice = selectedGrade ? volume * selectedGrade.price : null;
-    
-    // Calculate wrap price: wrap value × volume
-    // If wrap is enabled: calculate price (or 0 if no wrap selected)
-    // If wrap is disabled: show 0
-    let wrapPrice: number | null = null;
-    if (wrapEnabled) {
-      const selectedWrap = selectedWrapId ? fibreWraps.find((w) => w.id === selectedWrapId) : null;
-      wrapPrice = selectedWrap ? selectedWrap.value * volume : 0;
-    } else {
-      wrapPrice = 0;
-    }
-    
+    const selectedWrap = wrapEnabled && selectedWrapId ? fibreWraps.find((w) => w.id === selectedWrapId) : null;
+    const price = computeFoamPrice({
+      rawThickness: maxThickness,
+      rawDepth: maxDepth,
+      rawWidth: maxWidth,
+      gradePricePerCubicFoot: selectedGrade?.price ?? 0,
+      wrapValuePerCubicFoot: selectedWrap ? selectedWrap.value : null,
+      rules: dimensionRules,
+    });
+
     return {
-      volume,
-      totalPrice,
-      wrapPrice,
-      thickness: roundedThickness,
-      depth: roundedDepth,
-      width: roundedWidth,
+      volume: price.volume,
+      // null until a grade is picked, so the summary can prompt for one
+      totalPrice: selectedGrade ? price.foamPrice : null,
+      wrapPrice: price.wrapPrice,
+      thickness: price.thickness,
+      depth: price.depth,
+      width: price.width,
+      rawThickness: maxThickness,
       rawDepth: maxDepth,
       rawWidth: maxWidth,
     };
@@ -357,6 +344,7 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
         thickness: result.thickness,
         depth: result.depth,
         width: result.width,
+        rawThickness: result.rawThickness,
         rawDepth: result.rawDepth,
         rawWidth: result.rawWidth,
       },
@@ -913,7 +901,7 @@ export default function FoamPageClient({ categories }: FoamPageClientProps) {
                           
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
                             <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>TOTAL</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>${orderTotal.toFixed(2)}</Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>${orderTotal.toFixed(2)} CAD</Typography>
                           </Box>
 
                           <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'rgba(255,255,255,0.5)', mb: 1.5 }}>

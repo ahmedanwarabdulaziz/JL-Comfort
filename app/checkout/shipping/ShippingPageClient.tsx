@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
+  CircularProgress,
   Button,
   Container,
   Divider,
@@ -19,13 +20,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Link from 'next/link';
 import { useCart } from '@/lib/context/CartContext';
+import { CHECKOUT_REGIONS } from '@/lib/checkout/regions';
+import { CheckoutQuote } from '@/lib/types/checkout';
 
-const PROVINCES = [
-  ['AB', 'Alberta'], ['BC', 'British Columbia'], ['MB', 'Manitoba'],
-  ['NB', 'New Brunswick'], ['NL', 'Newfoundland and Labrador'], ['NS', 'Nova Scotia'],
-  ['NT', 'Northwest Territories'], ['NU', 'Nunavut'], ['ON', 'Ontario'],
-  ['PE', 'Prince Edward Island'], ['QC', 'Quebec'], ['SK', 'Saskatchewan'], ['YT', 'Yukon'],
-] as const;
+const PROVINCES = CHECKOUT_REGIONS.CA;
+const formatCents = (cents: number) => '$' + (cents / 100).toFixed(2);
 
 type ShippingForm = {
   email: string;
@@ -43,10 +42,49 @@ const initialForm: ShippingForm = {
 };
 
 export default function ShippingPageClient() {
-  const { items, cartTotal } = useCart();
+  const { items, cartTotal, syncPrices } = useCart();
   const [form, setForm] = useState<ShippingForm>(initialForm);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState('');
+  const [isQuoting, setIsQuoting] = useState(false);
+  const [pricesUpdated, setPricesUpdated] = useState(false);
+
+  // Re-quote shipping + tax whenever the destination province or the cart changes.
+  useEffect(() => {
+    if (!form.province || items.length === 0) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setIsQuoting(true);
+    setQuoteError('');
+    fetch('/api/checkout/quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, country: 'CA', region: form.province }),
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || data.error) throw new Error(data.error || 'Unable to calculate shipping.');
+        if (cancelled) return;
+        setQuote(data);
+        if (data.itemPrices && syncPrices(data.itemPrices)) setPricesUpdated(true);
+      })
+      .catch((quoteFailure) => {
+        if (cancelled) return;
+        setQuote(null);
+        setQuoteError(quoteFailure instanceof Error ? quoteFailure.message : 'Unable to calculate shipping.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsQuoting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncPrices changes identity every render
+  }, [form.province, items]);
 
   const updateField = (field: keyof ShippingForm) => (event: React.ChangeEvent<HTMLInputElement | { value: unknown }>) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -86,8 +124,9 @@ export default function ShippingPageClient() {
       <Container maxWidth="lg">
         <Button component={Link} href="/checkout" startIcon={<ArrowBackIcon />} sx={{ mb: 3, color: '#615b55' }}>Back to cart</Button>
         <Typography component="h1" sx={{ fontSize: { xs: '2rem', md: '2.6rem' }, fontWeight: 400, color: '#252321', mb: 1 }}>Shipping &amp; Tax</Typography>
-        <Typography sx={{ color: '#77716b', mb: 4 }}>Enter your Canadian delivery address to calculate applicable taxes and prepare your shipment.</Typography>
+        <Typography sx={{ color: '#77716b', mb: 4 }}>Enter your Canadian delivery address to see shipping and applicable taxes before you pay.</Typography>
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {pricesUpdated && <Alert severity="info" sx={{ mb: 3 }} onClose={() => setPricesUpdated(false)}>Some prices in your cart have changed since you added them. Your order summary shows the current prices.</Alert>}
 
         <Box component="form" onSubmit={handleSubmit}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.4fr) minmax(300px, .8fr)' }, gap: 4, alignItems: 'start' }}>
@@ -112,7 +151,7 @@ export default function ShippingPageClient() {
               </Box>
               <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f1eb', color: '#625b54', display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
                 <LockOutlinedIcon sx={{ fontSize: 19, mt: 0.1, color: '#8d6c4b' }} />
-                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Your address is used to calculate Canadian tax and shipping. Payment details are entered securely on Stripe.</Typography>
+                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Your address is used to calculate shipping and Canadian tax. Payment details are entered securely on Stripe.</Typography>
               </Box>
             </Paper>
 
@@ -129,12 +168,37 @@ export default function ShippingPageClient() {
                 </Box>
               ))}
               <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography color="text.secondary">Subtotal</Typography><Typography>{'$' + cartTotal.toFixed(2)} USD</Typography></Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography color="text.secondary">Shipping</Typography><Typography color="text.secondary">Shown at payment</Typography></Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}><Typography color="text.secondary">Canadian tax</Typography><Typography color="text.secondary">Calculated by address</Typography></Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography color="text.secondary">Subtotal</Typography><Typography>{'$' + cartTotal.toFixed(2)} CAD</Typography></Box>
+              {!form.province ? (
+                <Typography sx={{ color: '#77716b', fontSize: '0.82rem', mb: 2 }}>Choose your province or territory to see shipping and tax.</Typography>
+              ) : isQuoting && !quote ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 1.5 }}><CircularProgress size={22} /></Box>
+              ) : quoteError ? (
+                <Alert severity="warning" sx={{ mb: 2 }}>{quoteError}</Alert>
+              ) : quote ? (
+                <Box sx={{ opacity: isQuoting ? 0.5 : 1, transition: 'opacity .2s' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography color="text.secondary">Shipping</Typography>
+                    <Typography>{quote.shippingCents === 0 ? 'Free' : formatCents(quote.shippingCents)}</Typography>
+                  </Box>
+                  {quote.taxes.map((tax) => (
+                    <Box key={tax.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography color="text.secondary">{tax.label}</Typography>
+                      <Typography>{formatCents(tax.amountCents)}</Typography>
+                    </Box>
+                  ))}
+                  <Divider sx={{ my: 1.5 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography sx={{ color: '#252321', fontWeight: 600 }}>Total</Typography>
+                    <Typography sx={{ color: '#252321', fontWeight: 600 }}>{formatCents(quote.totalCents)} CAD</Typography>
+                  </Box>
+                  <Typography sx={{ color: '#77716b', fontSize: '0.75rem', lineHeight: 1.6, mb: 2.5 }}>
+                    Standard delivery, typically {quote.deliveryMinDays}–{quote.deliveryMaxDays} business days after your order ships.
+                  </Typography>
+                </Box>
+              ) : null}
               <Divider sx={{ mb: 2 }} />
-              <Typography sx={{ color: '#77716b', fontSize: '0.75rem', lineHeight: 1.6, mb: 2.5 }}>The final shipping charge and GST/HST or applicable provincial tax will be shown in secure Stripe Checkout before payment.</Typography>
-              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
+              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
             </Paper>
           </Box>
         </Box>

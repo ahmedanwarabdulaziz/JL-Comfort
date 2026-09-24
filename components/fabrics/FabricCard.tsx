@@ -179,7 +179,7 @@ export default function FabricCard({ fabric }: { fabric: CharlotteFabricSnapshot
           variant="caption"
           sx={{ display: 'block', color: '#b8935f', fontWeight: 700, fontSize: '0.78rem', mb: 0.25 }}
         >
-          {fabric.pricePerYard != null ? `$${fabric.pricePerYard.toFixed(2)} / yd` : 'Price on request'}
+          {fabric.pricePerYard != null ? `$${fabric.pricePerYard.toFixed(2)} CAD / yd` : 'Price on request'}
         </Typography>
 
         {/* Material / fiber */}

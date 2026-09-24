@@ -197,7 +197,7 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
                               {style.name}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                              From ${style.basePrice.toFixed(2)}
+                              From ${style.basePrice.toFixed(2)} CAD
                             </Typography>
                           </CardContent>
                         </Card>
@@ -513,7 +513,7 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
 
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>TOTAL</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>${orderTotal.toFixed(2)}</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#e3c29a' }}>${orderTotal.toFixed(2)} CAD</Typography>
                       </Box>
 
                       {!allGroupsSelected && selectedStyle.variables.length > 0 && (

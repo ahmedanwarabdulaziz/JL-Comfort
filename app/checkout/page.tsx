@@ -204,7 +204,7 @@ export default function CheckoutPage() {
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography color="text.secondary">Subtotal</Typography>
-              <Typography>${cartTotal.toFixed(2)}</Typography>
+              <Typography>${cartTotal.toFixed(2)} CAD</Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography color="text.secondary">Shipping</Typography>
@@ -220,7 +220,7 @@ export default function CheckoutPage() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Typography variant="h6" fontWeight="bold">Total</Typography>
               <Typography variant="h6" fontWeight="bold" color="primary.main">
-                ${cartTotal.toFixed(2)}
+                ${cartTotal.toFixed(2)} CAD
               </Typography>
             </Box>
 

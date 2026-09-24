@@ -34,6 +34,7 @@ export interface CartItem {
     thickness: number;
     depth: number;
     width: number;
+    rawThickness?: number; // absent on carts saved before server-side repricing
     rawDepth: number;
     rawWidth: number;
   };
@@ -67,6 +68,7 @@ interface CartContextType {
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  syncPrices: (prices: { itemId: string; unitPriceCents: number }[]) => boolean;
   cartTotal: number;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
@@ -129,6 +131,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
   };
 
+  // Applies server-verified unit prices (from /api/checkout/quote). Returns true if anything changed,
+  // e.g. an admin repriced an item after it was added, so the page can tell the customer.
+  const syncPrices = (prices: { itemId: string; unitPriceCents: number }[]) => {
+    const byId = new Map(prices.map((p) => [p.itemId, p.unitPriceCents / 100]));
+    const changed = items.some((item) => byId.has(item.id) && Math.round(item.unitPrice * 100) !== Math.round(byId.get(item.id)! * 100));
+    if (changed) {
+      setItems((prev) =>
+        prev.map((item) => {
+          const unitPrice = byId.get(item.id);
+          return unitPrice === undefined ? item : { ...item, unitPrice, totalPrice: unitPrice * item.quantity };
+        })
+      );
+    }
+    return changed;
+  };
+
   const cartTotal = items.reduce((total, item) => total + item.totalPrice, 0);
 
   return (
@@ -139,6 +157,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeFromCart,
         updateQuantity,
         clearCart,
+        syncPrices,
         cartTotal,
         isCartOpen,
         setIsCartOpen,
