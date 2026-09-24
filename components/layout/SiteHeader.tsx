@@ -276,10 +276,6 @@ export default function SiteHeader() {
             <Box component="span" sx={{ color: brand.mocha }}>JL</Box> COMFORT
           </Typography>
 
-          <CornerTag tone="dark" sx={{ display: { xs: 'none', md: 'inline-block' } }}>
-            SS26 Drop
-          </CornerTag>
-
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
 
