@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Product } from '@/lib/types/product';
 import { brand, swatchClip } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
+import SampleBookCover from '@/components/fabrics/SampleBookCover';
 import CornerTag from '@/components/ui/CornerTag';
 
 interface HomePageClientProps {
@@ -65,6 +66,34 @@ const scroll = keyframes`
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 `;
+
+// Homepage sample book covers (drawn by SampleBookCover).
+const HOME_BOOKS = [
+  {
+    label: 'The Linen Edit',
+    series: 'Natural fibres',
+    sub: 'Breathable, natural textures',
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20440-01_Large-v1.jpg',
+  },
+  {
+    label: 'Performance',
+    series: 'Easy care',
+    sub: 'Beautiful yet indestructible',
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20940-10_Large-v1.jpg',
+  },
+  {
+    label: 'Woven Geometry',
+    series: 'Patterns',
+    sub: 'Striking patterns & motifs',
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10002-01_Large-v1.jpg',
+  },
+  {
+    label: 'Velvet Reserve',
+    series: 'Plush textures',
+    sub: 'The pinnacle of plush',
+    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-08_Large-v1.jpg',
+  },
+];
 
 export default function HomePageClient({ products }: HomePageClientProps) {
   return (
@@ -442,60 +471,21 @@ export default function HomePageClient({ products }: HomePageClientProps) {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <Grid container spacing={2}>
-                {[
-                  {
-                    label: 'The Linen Edit',
-                    sub: 'Breathable, natural textures',
-                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20440-01_Large-v1.jpg',
-                  },
-                  {
-                    label: 'Performance',
-                    sub: 'Beautiful yet indestructible',
-                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20940-10_Large-v1.jpg',
-                  },
-                  {
-                    label: 'Woven Geometry',
-                    sub: 'Striking patterns & motifs',
-                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10002-01_Large-v1.jpg',
-                  },
-                  {
-                    label: 'Velvet Reserve',
-                    sub: 'The pinnacle of plush',
-                    photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-08_Large-v1.jpg',
-                  },
-                ].map((book) => (
+              <Grid container spacing={2.5}>
+                {HOME_BOOKS.map((book, i) => (
                   <Grid item xs={6} key={book.label}>
                     <Box
                       component={Link}
                       href="/sample-books"
-                      sx={{
-                        color: brand.chalk,
-                        textDecoration: 'none',
-                        p: 3.5,
-                        aspectRatio: '4/5',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        clipPath: swatchClip(18),
-                        backgroundImage: `linear-gradient(180deg, rgba(20,14,10,0.2) 0%, rgba(20,14,10,0.2) 40%, rgba(20,14,10,0.95) 100%), url(${book.photo})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        transition: 'transform 0.35s ease',
-                        '&:hover': { transform: 'translateY(-5px)' },
-                      }}
+                      sx={{ display: 'block', textDecoration: 'none', transition: 'transform 0.35s ease', '&:hover': { transform: 'translateY(-5px)' } }}
                     >
-                      <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, fontSize: '0.7rem', opacity: 0.75, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                        BOOK
-                      </Typography>
-                      <Box>
-                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', fontWeight: 600, fontSize: '1.1rem', mb: 0.5, textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
-                          {book.label}
-                        </Typography>
-                        <Typography sx={{ fontFamily: 'var(--font-label), sans-serif', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.85, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                          {book.sub}
-                        </Typography>
-                      </Box>
+                      <SampleBookCover
+                        title={book.label}
+                        series={book.series}
+                        footnote={book.sub}
+                        photo={book.photo}
+                        edgePhotos={[...HOME_BOOKS.slice(i + 1), ...HOME_BOOKS.slice(0, i)].map((b) => b.photo)}
+                      />
                     </Box>
                   </Grid>
                 ))}
