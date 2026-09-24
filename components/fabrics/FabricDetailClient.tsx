@@ -150,9 +150,10 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const handleRequestSample = () => {
+  const handleRequestSample = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (alreadySampled) return setListOpen(true);
-    addSample({ fabricId: fabric.id, name: fabric.name, sku: fabric.sku, imageUrl: fabric.imageUrl });
+    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
+    addSample({ fabricId: fabric.id, name: fabric.name, sku: fabric.sku, imageUrl: fabric.imageUrl }, { x, y, width, height });
     setSampleAdded(true);
     setTimeout(() => setSampleAdded(false), 2000);
   };
