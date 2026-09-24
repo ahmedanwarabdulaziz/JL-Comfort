@@ -28,6 +28,7 @@ export interface PricedLine extends ShippingLine {
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,120}$/i; // charlotte_fabrics.legacy_id, e.g. "d2215-sky"
 const VINYL_PATTERN = /vinyl/i;
 const MAX_QUANTITY = 999;
 const MAX_DIMENSION_INCHES = 1000;
@@ -57,24 +58,31 @@ const toDimension = (value: unknown): number => {
 
 const formatInches = (inches: number) => `${Number(inches.toFixed(3))}"`;
 
-// One query for every Charlotte fabric in the cart (standalone yardage and cushion fabrics), priced
-// with the same resolveEffectivePrice() the fabric page uses to show the price.
+// One lookup for every Charlotte fabric in the cart (standalone yardage and cushion fabrics), priced
+// with the same resolveEffectivePrice() the fabric page uses to show the price. Carts refer to a
+// fabric either by its uuid (fabric page) or by its legacy_id slug (the catalog snapshot the bench
+// cushion fabric picker reads), so both are accepted and the result is keyed by whichever was sent.
+const FABRIC_COLUMNS = 'id, legacy_id, name, sku, status, manual_retail_price, retail_price, price_tag_id, material, construction_type, fiber_content';
+
 const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> => {
   if (ids.length === 0) return new Map();
-  if (ids.some((id) => !UUID_PATTERN.test(id))) throw invalid();
+  if (ids.some((id) => !UUID_PATTERN.test(id) && !SLUG_PATTERN.test(id))) throw invalid();
   if (!supabase) throw new CheckoutError('Checkout is unavailable right now.', 503);
 
-  const [{ data, error }, priceTags] = await Promise.all([
-    supabase
-      .from('charlotte_fabrics')
-      .select('id, name, sku, status, manual_retail_price, retail_price, price_tag_id, material, construction_type, fiber_content')
-      .in('id', Array.from(new Set(ids))),
+  const unique = Array.from(new Set(ids));
+  const uuids = unique.filter((id) => UUID_PATTERN.test(id));
+  const slugs = unique.filter((id) => !UUID_PATTERN.test(id));
+  const [byUuid, bySlug, priceTags] = await Promise.all([
+    uuids.length ? supabase.from('charlotte_fabrics').select(FABRIC_COLUMNS).in('id', uuids) : Promise.resolve({ data: [], error: null }),
+    slugs.length ? supabase.from('charlotte_fabrics').select(FABRIC_COLUMNS).in('legacy_id', slugs) : Promise.resolve({ data: [], error: null }),
     getFabricPriceTags(),
   ]);
+  const error = byUuid.error || bySlug.error;
   if (error) {
     console.error('Error loading fabrics for checkout:', error);
     throw new CheckoutError('Checkout is unavailable right now.', 503);
   }
+  const data = [...(byUuid.data || []), ...(bySlug.data || [])];
 
   const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
   const fabrics = new Map<string, PricedFabric>();
@@ -89,7 +97,7 @@ const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> =>
       priceTagsById
     );
     if (pricePerYard == null) continue;
-    fabrics.set(row.id, {
+    const priced: PricedFabric = {
       id: row.id,
       name: row.name,
       sku: row.sku,
@@ -97,7 +105,9 @@ const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> =>
       isVinyl: [...(row.material || []), ...(row.construction_type || []), row.fiber_content || ''].some((value: string) =>
         VINYL_PATTERN.test(value)
       ),
-    });
+    };
+    fabrics.set(row.id, priced);
+    if (row.legacy_id) fabrics.set(row.legacy_id, priced);
   }
   return fabrics;
 };
