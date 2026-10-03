@@ -207,7 +207,10 @@ export async function POST(req: Request) {
     if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error('Stripe checkout error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Stripe checkout error:', error, error?.detail);
+    // A connection error's own message is generic; the underlying cause (e.g. an invalid header or a
+    // DNS/TLS failure) is on .detail and is what tells us what's actually wrong.
+    const cause = error?.type === 'StripeConnectionError' && error.detail ? ` (${error.detail.code || ''} ${error.detail.message || ''})`.replace(/\(\s+/, '(') : '';
+    return NextResponse.json({ error: `${error.message}${cause}` }, { status: 500 });
   }
 }
