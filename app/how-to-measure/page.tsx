@@ -3,6 +3,7 @@ import { Box, Container, Typography, Grid, Paper, Chip } from '@mui/material';
 
 export const metadata: Metadata = {
   title: 'How to Measure',
+  alternates: { canonical: '/how-to-measure' },
   description: 'Step-by-step guide to measuring thickness, depth, and width for a custom foam order.',
 };
 

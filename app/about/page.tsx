@@ -8,6 +8,7 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 
 export const metadata: Metadata = {
   title: 'About Us',
+  alternates: { canonical: '/about' },
   description: 'JL Comfort cuts custom foam to your exact dimensions using premium NeoGel High-Density foam.',
 };
 

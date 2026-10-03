@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FabricItem } from '@/lib/types/fabric';
+import { AI_FEATURES_ENABLED, aiFeaturesOffResponse } from '@/lib/features';
 
 const BASE = 'https://generativelanguage.googleapis.com';
 
@@ -119,6 +120,8 @@ const MODALITY_CONFIGS: Array<string[] | null> = [
 ];
 
 export async function POST(request: NextRequest) {
+  if (!AI_FEATURES_ENABLED) return aiFeaturesOffResponse();
+
   try {
     const body = await request.json();
     const {

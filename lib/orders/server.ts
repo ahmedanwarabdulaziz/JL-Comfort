@@ -11,11 +11,16 @@ import {
 import { CheckoutError } from '@/lib/checkout/errors';
 import { PricedLine } from '@/lib/checkout/serverPricing';
 import { CheckoutQuote } from '@/lib/types/checkout';
+import { AppliedDiscount } from '@/lib/types/discount';
+import { recordRedemption } from '@/lib/discounts/server';
 import {
   CARRIERS,
   EmailSettings,
   Order,
+  OrderAdSignals,
+  OrderAttribution,
   OrderStatus,
+  OrderTouch,
   rowToOrder,
 } from '@/lib/types/order';
 
@@ -44,6 +49,7 @@ export interface ShippingAddress {
 export async function createPendingOrder(
   lines: PricedLine[],
   quote: CheckoutQuote,
+  discount: AppliedDiscount | null,
   address: ShippingAddress
 ): Promise<{ id: string; orderNumber: string }> {
   const { data: order, error } = await db()
@@ -53,6 +59,10 @@ export async function createPendingOrder(
       shipping_cents: quote.shippingCents,
       tax_cents: quote.taxCents,
       total_cents: quote.totalCents,
+      discount_id: discount?.discountId || null,
+      discount_code_id: discount?.codeId || null,
+      discount_label: discount ? (discount.freeShipping ? `${discount.label} (free shipping)` : discount.label) : null,
+      discount_cents: quote.discountCents,
       taxes: quote.taxes.map((tax) => ({ label: tax.label, amountCents: tax.amountCents })),
       customer_email: address.email,
       customer_name: address.name,
@@ -96,6 +106,57 @@ export async function createPendingOrder(
   }
 
   return { id: order.id, orderNumber: order.order_number };
+}
+
+// ---- Marketing source ----
+// Everything below arrives from the browser, so it is treated as untrusted: only known keys are
+// kept, values must be short strings, and nothing here affects pricing or fulfilment.
+
+const TOUCH_KEYS: (keyof OrderTouch)[] = [
+  'source', 'medium', 'campaign', 'term', 'content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'msclkid', 'referrer', 'landingPage', 'at',
+];
+const cleanString = (value: unknown, max = 300) => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined);
+
+function cleanTouch(value: unknown): OrderTouch | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const touch: OrderTouch = {};
+  for (const key of TOUCH_KEYS) {
+    const clean = cleanString((value as Record<string, unknown>)[key]);
+    if (clean) touch[key] = clean;
+  }
+  return Object.keys(touch).length > 0 ? touch : undefined;
+}
+
+export function cleanAttribution(value: unknown): OrderAttribution | null {
+  if (!value || typeof value !== 'object') return null;
+  const firstTouch = cleanTouch((value as any).firstTouch);
+  const lastTouch = cleanTouch((value as any).lastTouch);
+  return firstTouch || lastTouch ? { firstTouch, lastTouch } : null;
+}
+
+export function cleanAdSignals(value: unknown, request: { ip?: string; userAgent?: string }): OrderAdSignals {
+  const raw = (value && typeof value === 'object' ? value : {}) as Record<string, any>;
+  const consent = { analytics: raw.consent?.analytics === true, advertising: raw.consent?.advertising === true };
+  const signals: OrderAdSignals = { consent };
+  if (consent.analytics) {
+    signals.gaClientId = cleanString(raw.gaClientId, 100);
+    signals.gaSessionId = cleanString(raw.gaSessionId, 40);
+  }
+  if (consent.advertising) {
+    signals.fbp = cleanString(raw.fbp, 200);
+    signals.fbc = cleanString(raw.fbc, 300);
+    // Meta matches a purchase to an ad click partly by IP and browser; kept only with ad consent.
+    signals.clientIp = cleanString(request.ip, 64);
+    signals.userAgent = cleanString(request.userAgent, 400);
+  }
+  return signals;
+}
+
+// Saved separately from the order insert and never fatal: checkout must not fail over reporting data
+// (for example before the attribution migration has been applied to the database).
+export async function saveOrderMarketing(orderId: string, attribution: OrderAttribution | null, adSignals: OrderAdSignals) {
+  const { error } = await db().from('orders').update({ attribution, ad_signals: adSignals }).eq('id', orderId);
+  if (error) console.error('Could not save order attribution (is migration 20261001120000 applied?):', error.message);
 }
 
 export async function attachCheckoutSession(orderId: string, sessionId: string) {
@@ -147,7 +208,12 @@ export async function markOrderPaid(
     .in('status', ['pending_payment', 'expired'])
     .select('id');
   if (error) throw error;
-  return (data || []).length > 0;
+  const firstTime = (data || []).length > 0;
+  if (firstTime) {
+    // Count the discount use now that the order is paid (unique per order, so retries are harmless).
+    await recordRedemption(orderId).catch((redemptionError) => console.error('Recording discount use failed:', redemptionError));
+  }
+  return firstTime;
 }
 
 export async function markOrderExpired(orderId: string) {
@@ -164,11 +230,13 @@ const deliver = (
   to: string,
   content: EmailContent,
   eventType: string,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  toName?: string
 ) =>
   deliverEmail({
     settings,
     to,
+    toName,
     content,
     eventType,
     idempotencyKey,
@@ -183,7 +251,7 @@ export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSet
     await logOrderEvent(order.id, 'email_failed', 'Purchase order NOT sent: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';
   }
-  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey);
+  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey, settings.supplierName);
   if (!sent) return `NOT SENT: email to ${settings.supplierEmail} failed (see order history)`;
   if (order.status === 'paid') {
     await setOrderStatus(order.id, 'sent_to_supplier', { supplier_emailed_at: new Date().toISOString() });
@@ -194,7 +262,7 @@ export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSet
 }
 
 export async function sendCustomerConfirmation(order: Order, settings: EmailSettings, idempotencyKey?: string) {
-  return deliver(order, settings, order.customerEmail, customerConfirmation(order, settings), 'customer_confirmation', idempotencyKey);
+  return deliver(order, settings, order.customerEmail, customerConfirmation(order, settings), 'customer_confirmation', idempotencyKey, order.customerName);
 }
 
 /** Everything that happens once a payment is confirmed. Never throws: failures are logged on the order. */
@@ -264,11 +332,11 @@ export async function markOrderShipped(orderId: string, carrierId: string, track
 
   const settings = await getEmailSettings();
   const updated = (await getOrder(orderId))!;
-  return deliver(updated, settings, updated.customerEmail, customerShipped(updated, carrierName, settings), 'customer_shipped');
+  return deliver(updated, settings, updated.customerEmail, customerShipped(updated, carrierName, settings), 'customer_shipped', undefined, updated.customerName);
 }
 
 export async function resendShippedEmail(order: Order) {
   if (!order.trackingNumber) throw new CheckoutError('This order has no tracking number yet.');
   const settings = await getEmailSettings();
-  return deliver(order, settings, order.customerEmail, customerShipped(order, order.carrier || 'Carrier', settings), 'customer_shipped');
+  return deliver(order, settings, order.customerEmail, customerShipped(order, order.carrier || 'Carrier', settings), 'customer_shipped', undefined, order.customerName);
 }

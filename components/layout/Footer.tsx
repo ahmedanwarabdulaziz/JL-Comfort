@@ -8,11 +8,17 @@ import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { brand } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
+import CookieSettingsLink from '@/components/consent/CookieSettingsLink';
+import { BUSINESS, BUSINESS_DETAILS_PENDING } from '@/lib/site';
 
 // Phase 1: Fabric-only launch.
 const shopLinks = [
   { label: 'Shop Fabrics', href: '/fabrics' },
-  { label: 'AI Fabric Visualizer', href: '/visualizer' },
+  { label: 'Performance Fabric', href: '/fabrics/performance' },
+  { label: 'Pet-Friendly Fabric', href: '/fabrics/pet-friendly' },
+  { label: 'Velvet', href: '/fabrics/velvet' },
+  { label: 'Outdoor & Marine', href: '/fabrics/outdoor' },
+  { label: 'Sample Books', href: '/sample-books' },
 ];
 
 const resourceLinks = [
@@ -22,6 +28,11 @@ const resourceLinks = [
 const companyLinks = [
   { label: 'About Us', href: '/about' },
   { label: 'Shipping & Returns', href: '/shipping-returns' },
+];
+
+const legalLinks = [
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
 ];
 
 export default function Footer() {
@@ -51,7 +62,7 @@ export default function Footer() {
                 Ready to find your perfect fabric?
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Browse our collection and visualize it on your furniture in seconds.
+                Browse thousands of fabrics and order free samples before you buy.
               </Typography>
             </Box>
             <TagButton tone="dark" component={Link} href="/fabrics">
@@ -83,7 +94,7 @@ export default function Footer() {
                 <span style={{ color: '#F3D17E' }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                Premium upholstery fabrics, visualized with AI. Your furniture, your style.
+                Premium upholstery fabric, custom foam and bench cushions. Your furniture, your style.
               </Typography>
             </Grid>
 
@@ -140,15 +151,15 @@ export default function Footer() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <PhoneIcon sx={{ fontSize: 18, color: '#F3D17E' }} />
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>[Phone Number]</Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.phone}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EmailIcon sx={{ fontSize: 18, color: '#F3D17E' }} />
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>[email@jlcomfort.com]</Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.email}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                   <LocationOnIcon sx={{ fontSize: 18, color: '#F3D17E', mt: 0.2 }} />
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>[Business Address]</Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.address}</Typography>
                 </Box>
               </Box>
             </Grid>
@@ -157,8 +168,25 @@ export default function Footer() {
           <Divider sx={{ my: 4, borderColor: 'rgba(255,255,255,0.1)' }} />
 
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', display: 'block', textAlign: 'center' }}>
-            © {new Date().getFullYear()} JL Comfort. All rights reserved. All prices are in Canadian dollars (CAD). Contact details on this site are placeholders pending setup.
+            © {new Date().getFullYear()} JL Comfort. All rights reserved. All prices are in Canadian dollars (CAD).
+            {BUSINESS_DETAILS_PENDING && ' Contact details on this site are placeholders pending setup.'}
           </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', columnGap: 3, rowGap: 1, mt: 1.5 }}>
+            {legalLinks.map((link) => (
+              <MuiLink
+                key={link.href}
+                component={Link}
+                href={link.href}
+                underline="hover"
+                sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', '&:hover': { color: '#F3D17E' } }}
+              >
+                {link.label}
+              </MuiLink>
+            ))}
+            <CookieSettingsLink
+              sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none', '&:hover': { color: '#F3D17E', textDecoration: 'underline' } }}
+            />
+          </Box>
         </Container>
       </Box>
     </Box>

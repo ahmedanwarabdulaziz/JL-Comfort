@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Badge,
   Drawer,
   Box,
   List,
@@ -19,47 +18,53 @@ import {
   Collapse,
 } from '@mui/material';
 import Link from 'next/link';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { useCart } from '@/lib/context/CartContext';
+import SampleIconButton from '@/components/samples/SampleIconButton';
+import CartIconButton from '@/components/cart/CartIconButton';
 import { brand } from '@/lib/theme';
 import CornerTag from '@/components/ui/CornerTag';
 
 // Color dot map for the mega-menu
-const MEGA_COLORS: { label: string; value: string; dot: string }[] = [
-  { label: 'Red & Burgundy',  value: 'red-burgundy',  dot: '#8B1A2B' },
-  { label: 'Orange & Rust',   value: 'orange-rust',   dot: '#C2612A' },
-  { label: 'Gold & Yellow',   value: 'gold-yellow',   dot: '#D4A017' },
-  { label: 'Green',           value: 'green',         dot: '#3A7A47' },
-  { label: 'Aqua & Teal',     value: 'aqua-teal',     dot: '#2A8A8A' },
-  { label: 'Blue',            value: 'blue',          dot: '#2A5FA8' },
-  { label: 'Purple',          value: 'purple',        dot: '#6A3A9A' },
-  { label: 'Coral & Peach',   value: 'coral-peach',   dot: '#E07060' },
-  { label: 'Pink',            value: 'pink',          dot: '#D4608A' },
-  { label: 'Neutral',         value: 'beige-taupe',   dot: '#B8A898' },
-  { label: 'Brown',           value: 'brown',         dot: '#6B4226' },
-  { label: 'Black',           value: 'black',         dot: '#1A1A1A' },
-  { label: 'Grey & Silver',   value: 'grey-silver',   dot: '#8A8A8A' },
-  { label: 'White & Ivory',   value: 'white-ivory',   dot: '#F0EDE5' },
+// Each colour, pattern and trending link opens its collection page (lib/collections/definitions.ts).
+const MEGA_COLORS: { label: string; value: string; slug: string; dot: string }[] = [
+  { label: 'Red & Burgundy',  value: 'red-burgundy', slug: 'red',  dot: '#8B1A2B' },
+  { label: 'Orange & Rust',   value: 'orange-rust', slug: 'orange',   dot: '#C2612A' },
+  { label: 'Gold & Yellow',   value: 'gold-yellow', slug: 'yellow',   dot: '#D4A017' },
+  { label: 'Green',           value: 'green', slug: 'green',         dot: '#3A7A47' },
+  { label: 'Aqua & Teal',     value: 'aqua-teal', slug: 'teal',     dot: '#2A8A8A' },
+  { label: 'Blue',            value: 'blue', slug: 'blue',          dot: '#2A5FA8' },
+  { label: 'Purple',          value: 'purple', slug: 'purple',        dot: '#6A3A9A' },
+  { label: 'Coral & Peach',   value: 'coral-peach', slug: 'coral',   dot: '#E07060' },
+  { label: 'Pink',            value: 'pink', slug: 'pink',          dot: '#D4608A' },
+  { label: 'Neutral',         value: 'beige-taupe', slug: 'beige',   dot: '#B8A898' },
+  { label: 'Brown',           value: 'brown', slug: 'brown',         dot: '#6B4226' },
+  { label: 'Black',           value: 'black', slug: 'black',         dot: '#1A1A1A' },
+  { label: 'Grey & Silver',   value: 'grey-silver', slug: 'grey',   dot: '#8A8A8A' },
+  { label: 'White & Ivory',   value: 'white-ivory', slug: 'white',   dot: '#F0EDE5' },
 ];
 
 const MEGA_TRENDING = [
   { label: 'New Arrivals',        href: '/fabrics?isNew=true' },
-  { label: 'Performance / Crypton', href: '/fabrics?material=crypton' },
-  { label: 'Velvet',             href: '/fabrics?material=velvet' },
-  { label: 'Linen',              href: '/fabrics?material=linen' },
-  { label: 'Chenille',           href: '/fabrics?material=chenille' },
+  { label: 'Performance Fabric',  href: '/fabrics/performance' },
+  { label: 'Pet-Friendly',        href: '/fabrics/pet-friendly' },
+  { label: 'Crypton',             href: '/fabrics/crypton' },
+  { label: 'Velvet',              href: '/fabrics/velvet' },
+  { label: 'Linen',               href: '/fabrics/linen' },
+  { label: 'Bouclé',              href: '/fabrics/boucle' },
+  { label: 'Outdoor & Marine',    href: '/fabrics/outdoor' },
 ];
 
 const MEGA_PATTERNS = [
-  { label: 'Plain & Solid',          value: 'plain-solid' },
-  { label: 'Abstract & Geometric',   value: 'abstract-geometric' },
-  { label: 'Floral',                 value: 'floral' },
-  { label: 'Stripe',                 value: 'stripe' },
-  { label: 'Check & Houndstooth',    value: 'check-houndstooth' },
-  { label: 'Velvet',                 value: null, href: '/fabrics?material=velvet' },
+  { label: 'Solids',                 href: '/fabrics/solid' },
+  { label: 'Geometric',              href: '/fabrics/geometric' },
+  { label: 'Floral',                 href: '/fabrics/floral' },
+  { label: 'Stripes',                href: '/fabrics/striped' },
+  { label: 'Plaid',                  href: '/fabrics/plaid' },
+  { label: 'Check & Houndstooth',    href: '/fabrics/houndstooth' },
+  { label: 'Botanical',              href: '/fabrics/botanical' },
+  { label: 'Damask',                 href: '/fabrics/damask' },
 ];
 
 // Phase 1: Fabric-only launch.
@@ -143,7 +148,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
               <Box
                 key={item.label}
                 component={Link}
-                href={item.href ?? `/fabrics?pattern=${item.value}`}
+                href={item.href}
                 onClick={onClose}
                 sx={linkSx}
               >
@@ -162,7 +167,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
                 <Box
                   key={c.value}
                   component={Link}
-                  href={`/fabrics?color=${c.value}`}
+                  href={`/fabrics/${c.slug}`}
                   onClick={onClose}
                   sx={{
                     display: 'flex',
@@ -204,8 +209,6 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
 // ─── Main header ─────────────────────────────────────────────────────────────
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { items } = useCart();
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileFabricsOpen, setMobileFabricsOpen] = useState(false);
@@ -275,10 +278,6 @@ export default function SiteHeader() {
           >
             <Box component="span" sx={{ color: brand.mocha }}>JL</Box> COMFORT
           </Typography>
-
-          <CornerTag tone="dark" sx={{ display: { xs: 'none', md: 'inline-block' } }}>
-            SS26 Drop
-          </CornerTag>
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
@@ -376,7 +375,7 @@ export default function SiteHeader() {
                         <Box
                           key={item.label}
                           component={Link}
-                          href={item.href ?? `/fabrics?pattern=${item.value}`}
+                          href={item.href}
                           onClick={() => setMegaOpen(false)}
                           sx={{ display: 'block', color: '#666', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.mocha } }}
                         >
@@ -395,7 +394,7 @@ export default function SiteHeader() {
                           <Box
                             key={c.value}
                             component={Link}
-                            href={`/fabrics?color=${c.value}`}
+                            href={`/fabrics/${c.slug}`}
                             onClick={() => setMegaOpen(false)}
                             sx={{
                               display: 'flex',
@@ -437,20 +436,14 @@ export default function SiteHeader() {
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
             <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
 
-            <IconButton component={Link} href="/checkout" sx={{ ml: 2, color: brand.ink, '&:hover': { color: brand.mocha } }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <SampleIconButton sx={{ ml: 2 }} />
+            <CartIconButton sx={{ ml: 0.5 }} />
           </Box>
 
           {/* Mobile controls */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
-            <IconButton component={Link} href="/checkout" sx={{ color: '#555' }}>
-              <Badge badgeContent={itemCount} color="error" invisible={itemCount === 0}>
-                <ShoppingCartOutlinedIcon />
-              </Badge>
-            </IconButton>
+            <SampleIconButton sx={{ color: '#555' }} />
+            <CartIconButton sx={{ color: '#555' }} />
             <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#555' }}>
               <MenuIcon />
             </IconButton>
@@ -486,7 +479,7 @@ export default function SiteHeader() {
                   By Color
                 </Typography>
                 {MEGA_COLORS.slice(0, 8).map((c) => (
-                  <ListItemButton key={c.value} component={Link} href={`/fabrics?color=${c.value}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
+                  <ListItemButton key={c.value} component={Link} href={`/fabrics/${c.slug}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot, mr: 1.5, border: '1px solid rgba(255,255,255,0.15)', flexShrink: 0 }} />
                     <ListItemText primary={c.label} primaryTypographyProps={{ fontSize: '0.83rem' }} />
                   </ListItemButton>

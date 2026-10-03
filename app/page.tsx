@@ -1,12 +1,21 @@
-import { getProducts } from '@/lib/data/products';
+import { getHomeCatalog } from '@/lib/data/homeCatalog';
+import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
-// getProducts() always bypasses the fetch cache (see noStoreFetch in lib/supabase/client.ts),
-// which trips Next's static prerenderer. This page must be rendered per-request.
+// Title and description come from the root layout's defaults.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
+
+// Rendered per request; the catalog summary itself is cached for 30 minutes (lib/data/homeCatalog.ts),
+// so a visit doesn't page through the fabric table.
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const catalog = await getHomeCatalog().catch((error) => {
+    console.error('Homepage catalog summary failed:', error);
+    return { collections: [], materials: [], groups: [] };
+  });
 
-  return <HomePageClient products={products} />;
+  return <HomePageClient catalog={catalog} />;
 }

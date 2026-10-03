@@ -6,6 +6,28 @@ import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useCart } from '@/lib/context/CartContext';
 import Link from 'next/link';
+import { trackPurchase } from '@/lib/analytics/track';
+import { readConsent } from '@/lib/consent';
+
+// Reloading or revisiting the success page must not count the sale a second time in the ad platforms.
+function reportPurchaseOnce(
+  sessionId: string,
+  data: { orderNumber?: string; totalCents: number; taxCents?: number | null; sha256Email?: string | null }
+) {
+  const key = `jl_purchase_tracked_${sessionId}`;
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+  } catch {
+    // Storage blocked: still report once for this page view.
+  }
+  trackPurchase({
+    transactionId: data.orderNumber || sessionId,
+    value: data.totalCents / 100,
+    tax: data.taxCents != null ? data.taxCents / 100 : undefined,
+    sha256Email: readConsent()?.advertising && data.sha256Email ? data.sha256Email : undefined,
+  });
+}
 
 function SuccessContent() {
   const router = useRouter();
@@ -30,7 +52,10 @@ function SuccessContent() {
       body: JSON.stringify({ sessionId }),
     })
       .then((response) => response.json())
-      .then((data) => setOrderNumber(data.orderNumber || null))
+      .then((data) => {
+        setOrderNumber(data.orderNumber || null);
+        if (data.paid && typeof data.totalCents === 'number') reportPurchaseOnce(sessionId, data);
+      })
       .catch(() => {});
   }, [sessionId]);
 

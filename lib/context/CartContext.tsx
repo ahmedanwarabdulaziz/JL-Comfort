@@ -1,6 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { AddOrigin } from '@/components/layout/HeaderIconWithNotice';
+import { cartItemToAnalytics, trackAddToCart, trackRemoveFromCart, trackViewCart } from '@/lib/analytics/track';
+
+export interface LastAddedCartItem {
+  item: CartItem;
+  imageUrl?: string;
+  origin: AddOrigin;
+  at: number;
+}
 
 export interface CushionCartOption {
   groupName: string;
@@ -64,7 +73,10 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (item: Omit<CartItem, 'id'>) => void;
+  // With an origin (the clicked button's position) the header cart icon highlights itself; without
+  // one the page's slide-out cart opens instead (foam and bench cushion pages).
+  addToCart: (item: Omit<CartItem, 'id'>, origin?: AddOrigin | null) => void;
+  lastAdded: LastAddedCartItem | null;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -79,6 +91,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [lastAdded, setLastAdded] = useState<LastAddedCartItem | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Load cart from localStorage on mount
@@ -101,15 +114,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items, isMounted]);
 
-  const addToCart = (newItem: Omit<CartItem, 'id'>) => {
+  const addToCart = (newItem: Omit<CartItem, 'id'>, origin: AddOrigin | null = null) => {
     const id = Math.random().toString(36).substring(2, 9);
     setItems((prev) => [...prev, { ...newItem, id }]);
-    setIsCartOpen(true);
+    trackAddToCart(cartItemToAnalytics(newItem));
+    if (origin) {
+      const image = newItem.fabricImageUrl || newItem.fabric?.imageUrl;
+      setLastAdded({ item: { ...newItem, id }, imageUrl: image, origin, at: Date.now() });
+    } else {
+      setIsCartOpen(true);
+    }
   };
 
   const removeFromCart = (id: string) => {
+    const removed = items.find((item) => item.id === id);
+    if (removed) trackRemoveFromCart(cartItemToAnalytics(removed));
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
+
+  // Opening the slide-out cart counts as viewing the cart.
+  useEffect(() => {
+    if (isCartOpen && items.length > 0) trackViewCart(items.map(cartItemToAnalytics));
+    // Only on opening, not on every quantity change while it's open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCartOpen]);
 
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity < 1) return;
@@ -154,6 +182,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         items,
         addToCart,
+        lastAdded,
         removeFromCart,
         updateQuantity,
         clearCart,

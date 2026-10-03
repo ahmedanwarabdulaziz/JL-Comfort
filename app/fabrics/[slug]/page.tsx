@@ -5,6 +5,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/components/fabrics/FabricDetailClient';
+import JsonLd from '@/components/seo/JsonLd';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { describeFabric } from '@/lib/seo/fabric';
+import { collectionsForFabric, fabricKeywords, FabricTags, getCollection } from '@/lib/collections/definitions';
+import FabricCollectionLinks from '@/components/collections/FabricCollectionLinks';
+import { collectionMetadata, renderCollection } from '@/lib/collections/page';
 
 // ISR — matches the R2 catalog snapshot's own cache window (lib/data/charlotteFabricCatalog.ts),
 // so a fabric page is never wildly stale relative to the rest of the site's fabric data.
@@ -89,13 +95,44 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
   };
 });
 
+const tagsOf = (fabric: FabricDetailData): FabricTags => ({
+  material: fabric.material,
+  pattern: fabric.pattern,
+  color: fabric.color,
+  properties: fabric.properties,
+  markets: fabric.markets,
+  applications: fabric.applications,
+  cleanability: fabric.cleanability,
+  durability: fabric.durability,
+});
+
+// /fabrics/<slug> is either a collection landing page (/fabrics/velvet) or a single fabric
+// (/fabrics/d2215-sky). Collection slugs are letters only and fabric slugs always contain their
+// pattern number, so the two can never collide.
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const collection = getCollection(params.slug);
+  if (collection) return collectionMetadata(collection, 1);
   try {
     const fabric = await loadFabricDetail(params.slug);
-    if (!fabric) return { title: 'Fabric Not Found' };
+    if (!fabric) return { title: 'Fabric Not Found', robots: { index: false } };
+    // "D2215 Sky – Grey Textured Upholstery Fabric": the code alone is not what people search for.
+    const keywords = fabricKeywords(tagsOf(fabric));
+    const title = `${fabric.name} – ${keywords ? `${keywords} ` : ''}Upholstery Fabric`;
+    const description = describeFabric({ ...fabric, keywords });
+    const url = `/fabrics/${params.slug}`;
     return {
-      title: `${fabric.name} — Fabric by the Yard`,
-      description: `${fabric.name}${fabric.brand ? ` by ${fabric.brand}` : ''}. ${fabric.fiberContent || ''} Shop fabric by the yard at JL Comfort.`.trim(),
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        type: 'website',
+        siteName: SITE_NAME,
+        locale: 'en_CA',
+        title,
+        description,
+        url,
+        images: fabric.imageUrl ? [{ url: fabric.imageUrl, alt: fabric.name }] : undefined,
+      },
     };
   } catch {
     // Don't let a data-load error break metadata generation — the page component below surfaces
@@ -104,12 +141,79 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
+// schema.org Product, so Google can show price and stock in search results and Merchant Center
+// can match this page to the product feed. The id matches what the ad pixels report.
+function productJsonLd(fabric: FabricDetailData, slug: string) {
+  const url = `${SITE_URL}/fabrics/${slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: fabric.name,
+    sku: fabric.sku || fabric.id,
+    url,
+    image: fabric.imageUrl ? [fabric.imageUrl] : undefined,
+    description: describeFabric({ ...fabric, keywords: fabricKeywords(tagsOf(fabric)) }),
+    brand: { '@type': 'Brand', name: SITE_NAME },
+    material: fabric.fiberContent,
+    offers:
+      fabric.pricePerYard != null
+        ? {
+            '@type': 'Offer',
+            url,
+            priceCurrency: 'CAD',
+            price: fabric.pricePerYard.toFixed(2),
+            availability: `https://schema.org/${fabric.availability === 'InStock' ? 'InStock' : 'OutOfStock'}`,
+            itemCondition: 'https://schema.org/NewCondition',
+            // Cut to order, so no change-of-mind returns (defects are still covered; see /terms).
+            hasMerchantReturnPolicy: {
+              '@type': 'MerchantReturnPolicy',
+              applicableCountry: 'CA',
+              returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+            },
+            seller: { '@id': `${SITE_URL}/#organization` },
+            priceSpecification: {
+              '@type': 'UnitPriceSpecification',
+              price: fabric.pricePerYard.toFixed(2),
+              priceCurrency: 'CAD',
+              unitCode: 'YRD',
+              unitText: 'yard',
+            },
+          }
+        : undefined,
+  };
+}
+
 export default async function FabricDetailPage({ params }: { params: { slug: string } }) {
+  const collection = getCollection(params.slug);
+  if (collection) return renderCollection(collection, 1);
+
   // A thrown error here (server misconfiguration) propagates to Next's error boundary as a real
   // 500 — intentionally not caught, so it stays visible in the logs instead of masquerading as a
   // 404. Only a genuinely missing/inactive fabric reaches notFound() below.
   const fabric = await loadFabricDetail(params.slug);
   if (!fabric) notFound();
+  const collections = collectionsForFabric(tagsOf(fabric));
+  const primaryCollection = collections.find((c) => c.group === 'type');
 
-  return <FabricDetailClient fabric={fabric} />;
+  return (
+    <>
+      <JsonLd data={productJsonLd(fabric, params.slug)} />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Fabrics', item: `${SITE_URL}/fabrics` },
+            ...(primaryCollection
+              ? [{ '@type': 'ListItem', position: 3, name: primaryCollection.label, item: `${SITE_URL}/fabrics/${primaryCollection.slug}` }]
+              : []),
+            { '@type': 'ListItem', position: primaryCollection ? 4 : 3, name: fabric.name, item: `${SITE_URL}/fabrics/${params.slug}` },
+          ],
+        }}
+      />
+      <FabricDetailClient fabric={fabric} />
+      <FabricCollectionLinks links={collections.map((c) => ({ slug: c.slug, label: c.label }))} />
+    </>
+  );
 }

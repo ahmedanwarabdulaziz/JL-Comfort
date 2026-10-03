@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
+import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
@@ -32,9 +33,18 @@ export async function POST(req: Request) {
     });
     if (firstConfirmation) {
       await sendNewOrderEmails(orderId, process.env.SITE_URL || new URL(req.url).origin);
+      await reportPurchaseServerSide(orderId);
     }
 
-    return NextResponse.json({ orderNumber: session.metadata?.order_number || null, paid: true });
+    // Totals come from Stripe, not the browser, so the ad platforms get the amount actually charged.
+    return NextResponse.json({
+      orderNumber: session.metadata?.order_number || null,
+      paid: true,
+      totalCents: session.amount_total ?? null,
+      taxCents: session.total_details?.amount_tax ?? null,
+      // Hashed, for Google Ads enhanced conversions; the page sends it only with advertising consent.
+      sha256Email: session.customer_details?.email || session.customer_email ? hashEmail((session.customer_details?.email || session.customer_email)!) : null,
+    });
   } catch (error: any) {
     console.error('Order confirmation failed:', error);
     return NextResponse.json({ error: 'Unable to confirm the order' }, { status: 500 });

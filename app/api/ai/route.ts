@@ -20,6 +20,7 @@ import {
 import { AIChatMessage, AIGuideResponse, FabricAIFilters, AIFabricResult } from '@/lib/types/ai';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { AI_FEATURES_ENABLED, aiFeaturesOffResponse } from '@/lib/features';
 
 const VALID_COLORS = new Set(CHARLOTTE_FABRIC_COLORS.map((c) => c.value));
 const VALID_PATTERNS = new Set(CHARLOTTE_FABRIC_PATTERNS.map((p) => p.value));
@@ -255,6 +256,8 @@ async function handleGuided(
 }
 
 export async function POST(request: NextRequest) {
+  if (!AI_FEATURES_ENABLED) return aiFeaturesOffResponse();
+
   try {
     const body = await request.json();
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined;

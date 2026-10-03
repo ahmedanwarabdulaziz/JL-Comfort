@@ -6,6 +6,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 
 export const metadata: Metadata = {
   title: 'Shipping & Returns',
+  alternates: { canonical: '/shipping-returns' },
   description: 'Turnaround time, shipping, and return policy for custom-cut NeoGel foam orders.',
 };
 

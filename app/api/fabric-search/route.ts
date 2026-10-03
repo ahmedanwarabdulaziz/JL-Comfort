@@ -4,6 +4,7 @@ import { FabricItem } from '@/lib/types/fabric';
 import { CharlotteFabric } from '@/lib/types/charlotteFabric';
 import { JL_COMFORT_FABRICS } from '@/lib/data/fabricDatabase';
 import { getCharlotteFabricsSnapshot } from '@/lib/data/charlotteFabricCatalog';
+import { AI_FEATURES_ENABLED, aiFeaturesOffResponse } from '@/lib/features';
 
 // Style/color preference keywords mapped to the synced catalog's color facet values
 // (lib/data/charlotteFabricFacets.ts). Used to filter the pre-synced snapshot instead of
@@ -131,6 +132,8 @@ Choose based on: furniture style compatibility, color harmony, fabric durability
 }
 
 export async function POST(request: NextRequest) {
+  if (!AI_FEATURES_ENABLED) return aiFeaturesOffResponse();
+
   try {
     const body = await request.json();
     const {

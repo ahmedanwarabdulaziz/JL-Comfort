@@ -1,3 +1,4 @@
+import { BUSINESS } from '@/lib/site';
 export type OrderStatus =
   | 'pending_payment'
   | 'paid'
@@ -50,6 +51,8 @@ export interface Order {
   shippingCents: number;
   taxCents: number;
   totalCents: number;
+  discountLabel: string | null;
+  discountCents: number;
   taxes: { label: string; amountCents: number }[];
   customerEmail: string;
   customerName: string;
@@ -73,8 +76,43 @@ export interface Order {
   deliveredAt: Date | null;
   closedAt: Date | null;
   createdAt: Date;
+  attribution: OrderAttribution | null;
+  adSignals: OrderAdSignals | null;
   items: OrderItem[];
   events: OrderEvent[];
+}
+
+// Mirrors lib/analytics/attribution.ts (Touch / Attribution), as stored on the order.
+export interface OrderTouch {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  term?: string;
+  content?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  fbclid?: string;
+  msclkid?: string;
+  referrer?: string;
+  landingPage?: string;
+  at?: string;
+}
+
+export interface OrderAttribution {
+  firstTouch?: OrderTouch;
+  lastTouch?: OrderTouch;
+}
+
+// Used by the server to report the purchase to GA4 and Meta; visible to admins, never to shoppers.
+export interface OrderAdSignals {
+  consent: { analytics: boolean; advertising: boolean };
+  gaClientId?: string;
+  gaSessionId?: string;
+  fbp?: string;
+  fbc?: string;
+  clientIp?: string;
+  userAgent?: string;
 }
 
 export interface EmailSettings {
@@ -100,6 +138,8 @@ export const rowToOrder = (row: any): Order => ({
   shippingCents: row.shipping_cents,
   taxCents: row.tax_cents,
   totalCents: row.total_cents,
+  discountLabel: row.discount_label ?? null,
+  discountCents: row.discount_cents ?? 0,
   taxes: row.taxes || [],
   customerEmail: row.customer_email,
   customerName: row.customer_name,
@@ -123,6 +163,8 @@ export const rowToOrder = (row: any): Order => ({
   deliveredAt: date(row.delivered_at),
   closedAt: date(row.closed_at),
   createdAt: new Date(row.created_at),
+  attribution: row.attribution ?? null,
+  adSignals: row.ad_signals ?? null,
   items: (row.order_items || [])
     .slice()
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -147,8 +189,10 @@ export const rowToOrder = (row: any): Order => ({
 export const rowToEmailSettings = (row: any): EmailSettings => ({
   fromName: row?.from_name || 'JL Comfort',
   fromEmail: row?.from_email || 'orders@jlcomfort.com',
-  replyTo: row?.reply_to || null,
-  internalEmail: row?.internal_email || null,
+  // Until set in Admin -> Email Settings, customer replies and new-order/sample alerts go to the
+  // business's main inbox (the from address itself is send-only).
+  replyTo: row?.reply_to || BUSINESS.email,
+  internalEmail: row?.internal_email || BUSINESS.email,
   supplierName: row?.supplier_name || 'Charlotte Fabrics',
   supplierEmail: row?.supplier_email || null,
   supplierSampleEmail: row?.supplier_sample_email || null,
