@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -20,6 +20,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Link from 'next/link';
 import { useCart } from '@/lib/context/CartContext';
+import { cartItemToAnalytics, trackAddPaymentInfo, trackAddShippingInfo, trackBeginCheckout } from '@/lib/analytics/track';
+import { collectAdSignals, readAttribution } from '@/lib/analytics/attribution';
 import { CHECKOUT_REGIONS } from '@/lib/checkout/regions';
 import { CheckoutQuote } from '@/lib/types/checkout';
 
@@ -53,6 +55,15 @@ export default function ShippingPageClient() {
   const [codeInput, setCodeInput] = useState('');
   const [discountCode, setDiscountCode] = useState(''); // the code sent with the quote/checkout
 
+  // Arriving here is the start of checkout. The cart loads from storage after mount, so wait for it.
+  const checkoutTracked = useRef(false);
+  const shippingTracked = useRef('');
+  useEffect(() => {
+    if (checkoutTracked.current || items.length === 0) return;
+    checkoutTracked.current = true;
+    trackBeginCheckout(items.map(cartItemToAnalytics));
+  }, [items]);
+
   // Re-quote shipping + tax whenever the destination province or the cart changes.
   useEffect(() => {
     if (!form.province || items.length === 0) {
@@ -72,6 +83,10 @@ export default function ShippingPageClient() {
         if (!response.ok || data.error) throw new Error(data.error || 'Unable to calculate shipping.');
         if (cancelled) return;
         setQuote(data);
+        if (shippingTracked.current !== form.province) {
+          shippingTracked.current = form.province;
+          trackAddShippingInfo(items.map(cartItemToAnalytics), `Standard (${form.province})`);
+        }
         if (data.itemPrices && syncPrices(data.itemPrices)) setPricesUpdated(true);
       })
       .catch((quoteFailure) => {
@@ -107,11 +122,18 @@ export default function ShippingPageClient() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, shippingAddress: { ...form, country: 'CA' }, discountCode: discountCode || undefined }),
+        body: JSON.stringify({
+          items,
+          shippingAddress: { ...form, country: 'CA' },
+          discountCode: discountCode || undefined,
+          attribution: readAttribution(),
+          adSignals: collectAdSignals(),
+        }),
       });
       const session = await response.json();
       if (!response.ok || session.error) throw new Error(session.error || 'Unable to start checkout.');
       if (!session.url) throw new Error('Stripe checkout URL was not returned.');
+      trackAddPaymentInfo(items.map(cartItemToAnalytics));
       window.location.href = session.url;
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : 'Unable to start checkout.');
@@ -253,6 +275,10 @@ export default function ShippingPageClient() {
               ) : null}
               <Divider sx={{ mb: 2 }} />
               <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote || codeRejected} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
+              <Typography sx={{ mt: 1.5, fontSize: '0.75rem', lineHeight: 1.5, color: '#625b54', textAlign: 'center' }}>
+                By continuing, you agree to our <Link href="/terms" style={{ color: '#8d6c4b' }}>Terms of Service</Link> and acknowledge our{' '}
+                <Link href="/privacy" style={{ color: '#8d6c4b' }}>Privacy Policy</Link>. Orders are made to your specifications and can&rsquo;t be returned for a change of mind.
+              </Typography>
             </Paper>
           </Box>
         </Box>

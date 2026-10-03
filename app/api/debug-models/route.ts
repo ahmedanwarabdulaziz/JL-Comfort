@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { AI_FEATURES_ENABLED, aiFeaturesOffResponse } from '@/lib/features';
 
 /**
  * Debug endpoint — lists all models available for the configured API key
@@ -6,6 +7,8 @@ import { NextResponse } from 'next/server';
  * Visit: GET /api/debug-models
  */
 export async function GET() {
+  if (!AI_FEATURES_ENABLED) return aiFeaturesOffResponse();
+
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 });
   }

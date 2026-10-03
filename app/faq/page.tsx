@@ -5,6 +5,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export const metadata: Metadata = {
   title: 'FAQ',
+  alternates: { canonical: '/faq' },
   description: 'Answers to common questions about measuring, foam grades, fibre wrap, shipping, and returns for custom-cut foam.',
 };
 

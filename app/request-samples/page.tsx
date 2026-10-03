@@ -17,6 +17,7 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
+import { trackSampleRequest } from '@/lib/analytics/track';
 
 export default function RequestSamplesPage() {
   const { items, removeSample, clearSamples, settings } = useSampleCart();
@@ -60,6 +61,7 @@ export default function RequestSamplesPage() {
         return;
       }
       setRequestNumber(data.requestNumber || null);
+      trackSampleRequest(items.length);
       clearSamples();
       setSubmitted(true);
     } catch (err) {
@@ -194,6 +196,10 @@ export default function RequestSamplesPage() {
               >
                 {submitting ? 'Submitting...' : 'Submit Sample Request'}
               </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.5 }}>
+                We use your details only to send your samples and follow up on this request. See our{' '}
+                <Link href="/privacy">Privacy Policy</Link> and <Link href="/terms">Terms of Service</Link>.
+              </Typography>
             </Stack>
           </Paper>
         </Grid>

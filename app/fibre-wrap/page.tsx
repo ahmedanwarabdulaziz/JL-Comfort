@@ -4,6 +4,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 export const metadata: Metadata = {
   title: 'Fibre Wrap Guide',
+  alternates: { canonical: '/fibre-wrap' },
   description: 'What Dacron fibre wrap is, its benefits, and when to add it to your custom foam order.',
 };
 

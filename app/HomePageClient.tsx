@@ -7,6 +7,7 @@ import { brand } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
 import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
 import type { HomeCatalog } from '@/lib/data/homeCatalog';
+import FabricImage from '@/components/ui/FabricImage';
 
 const LINE = '#e5e0d9';
 
@@ -46,7 +47,7 @@ const FEATURES: {
     italic: 'built for real life.',
     body: 'Stain-resistant, cleanable performance fabrics for homes with kids, pets and busy dining rooms, without giving up on texture.',
     photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20940-10_Large-v1.jpg',
-    primary: { label: 'Shop performance', href: '/fabrics?material=crypton' },
+    primary: { label: 'Shop performance', href: '/fabrics/performance' },
     secondary: { label: 'Order samples', href: '/sample-books' },
   },
   {
@@ -68,6 +69,18 @@ const FEATURES: {
     primary: { label: 'Try the visualizer', href: '/visualizer' },
     hidden: true,
   },
+];
+
+// Links to the use-and-performance collection pages (lib/collections/definitions.ts).
+const SHOP_BY_NEED = [
+  { label: 'Performance & stain-resistant', href: '/fabrics/performance' },
+  { label: 'Pet-friendly', href: '/fabrics/pet-friendly' },
+  { label: 'Outdoor & marine', href: '/fabrics/outdoor' },
+  { label: 'Heavy-duty', href: '/fabrics/heavy-duty' },
+  { label: 'Commercial', href: '/fabrics/commercial' },
+  { label: 'Bleach-cleanable', href: '/fabrics/bleach-cleanable' },
+  { label: 'Eco-friendly', href: '/fabrics/eco-friendly' },
+  { label: 'Drapery', href: '/fabrics/drapery' },
 ];
 
 function SectionHeading({ eyebrow, title, italic, link }: { eyebrow: string; title: string; italic: string; link?: { label: string; href: string } }) {
@@ -99,13 +112,15 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
           minHeight: { xs: 460, md: 560 },
           display: 'flex',
           alignItems: 'center',
-          backgroundImage: `linear-gradient(90deg, rgba(33,23,18,0.88) 0%, rgba(33,23,18,0.62) 45%, rgba(33,23,18,0.15) 100%), url(${HERO_PHOTO})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          overflow: 'hidden',
+          bgcolor: brand.ink,
           color: brand.chalk,
         }}
       >
-        <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
+        {/* The hero photo is the page's largest paint, so it loads first and optimised. */}
+        <FabricImage src={HERO_PHOTO} alt="" sizes="100vw" priority />
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(33,23,18,0.88) 0%, rgba(33,23,18,0.62) 45%, rgba(33,23,18,0.15) 100%)' }} />
+        <Container maxWidth="lg" sx={{ position: 'relative', py: { xs: 8, md: 10 } }}>
           <Typography sx={{ color: brand.butter, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 2 }}>
             Designer fabric · Custom upholstery
           </Typography>
@@ -197,12 +212,11 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                 <Box
                   key={m.value}
                   component={Link}
-                  href={`/fabrics?material=${m.value}`}
+                  href={`/fabrics/${m.slug}`}
                   sx={{ position: 'relative', display: 'block', aspectRatio: '1 / 1', overflow: 'hidden', bgcolor: '#ddd6cc', textDecoration: 'none', '&:hover img': { transform: 'scale(1.06)' } }}
                 >
                   {m.photo && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.photo} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .5s ease' }} />
+                    <FabricImage src={m.photo} alt="" sizes="(max-width: 900px) 50vw, 25vw" style={{ transition: 'transform .5s ease' }} />
                   )}
                   <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: { xs: 1.5, md: 2 }, background: 'linear-gradient(180deg, rgba(33,23,18,0) 0%, rgba(33,23,18,0.82) 100%)', color: brand.chalk }}>
                     <Typography sx={{ fontFamily: 'var(--font-display), serif', fontSize: { xs: '1.15rem', md: '1.35rem' }, fontWeight: 600, lineHeight: 1.1 }}>{m.label}</Typography>
@@ -212,6 +226,30 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   </Box>
                 </Box>
               ))}
+            </Box>
+
+            {/* Shop by need: the use-and-performance collection pages. */}
+            <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mt: { xs: 6, md: 7 }, mb: 2 }}>
+              Shop by need
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {SHOP_BY_NEED.map((item) => (
+                <Box
+                  key={item.href}
+                  component={Link}
+                  href={item.href}
+                  sx={{ px: 2, py: 1, bgcolor: '#fff', border: `1px solid ${LINE}`, color: brand.ink, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { borderColor: brand.mocha, color: brand.mocha } }}
+                >
+                  {item.label}
+                </Box>
+              ))}
+              <Box
+                component={Link}
+                href="/fabrics#categories"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 2, py: 1, color: brand.ink, fontWeight: 600, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { color: brand.mocha } }}
+              >
+                All categories <ArrowForwardIcon sx={{ fontSize: 16 }} />
+              </Box>
             </Box>
           </Container>
         </Box>
@@ -225,9 +263,8 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
               key={f.eyebrow}
               sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 7 }, alignItems: 'center' }}
             >
-              <Box sx={{ order: { md: i % 2 === 0 ? 0 : 1 }, aspectRatio: '5 / 4', overflow: 'hidden', bgcolor: brand.chalk }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.photo} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <Box sx={{ position: 'relative', order: { md: i % 2 === 0 ? 0 : 1 }, aspectRatio: '5 / 4', overflow: 'hidden', bgcolor: brand.chalk }}>
+                <FabricImage src={f.photo} alt="" sizes="(max-width: 900px) 100vw, 50vw" />
               </Box>
               <Box>
                 <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.25 }}>{f.eyebrow}</Typography>

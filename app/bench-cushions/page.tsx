@@ -3,7 +3,8 @@ import { getBenchCushionStyles } from '@/lib/data/benchCushions';
 import BenchCushionsPageClient from './BenchCushionsPageClient';
 
 export const metadata: Metadata = {
-  title: 'Order Bench Cushions',
+  title: 'Custom Bench Cushions Made to Measure',
+  alternates: { canonical: '/bench-cushions' },
   description:
     'Design your custom bench cushion in two steps: choose a style, enter your dimensions, and pick your edge, fill, and trim options.',
 };

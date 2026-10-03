@@ -13,7 +13,8 @@ export interface HomeCollection {
 }
 
 export interface HomeMaterial {
-  value: string; // material facet slug, used in /fabrics?material=
+  value: string; // material facet slug
+  slug: string; // its collection page, /fabrics/<slug> (lib/collections/definitions.ts)
   label: string;
   photo: string | null;
   count: number;
@@ -34,15 +35,15 @@ export interface HomeCatalog {
 
 // Materials shown on the homepage, in order. Hand-picked photos (checked by eye for visible texture)
 // win over the automatic pick.
-const FEATURED_MATERIALS: { value: string; label: string; photo?: string }[] = [
-  { value: 'velvet', label: 'Velvet', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-05_Large-v1.jpg' },
-  { value: 'linen', label: 'Linen', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20420-01_Large-v1.jpg' },
-  { value: 'boucle', label: 'Bouclé', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB800-450_Large-v1.jpg' },
-  { value: 'chenille', label: 'Chenille', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB700-421_Large-v3.jpg' },
-  { value: 'crypton', label: 'Performance' },
-  { value: 'tweed-textures', label: 'Tweed & textures' },
-  { value: 'woven-patterns', label: 'Woven patterns' },
-  { value: 'prints', label: 'Prints' },
+const FEATURED_MATERIALS: { value: string; slug: string; label: string; photo?: string }[] = [
+  { value: 'velvet', slug: 'velvet', label: 'Velvet', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/10150-05_Large-v1.jpg' },
+  { value: 'linen', slug: 'linen', label: 'Linen', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/20420-01_Large-v1.jpg' },
+  { value: 'boucle', slug: 'boucle', label: 'Bouclé', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB800-450_Large-v1.jpg' },
+  { value: 'chenille', slug: 'chenille', label: 'Chenille', photo: 'https://www.charlottefabrics.com/wp-content/uploads/2023/12/CB700-421_Large-v3.jpg' },
+  { value: 'crypton', slug: 'crypton', label: 'Crypton performance' },
+  { value: 'tweed-textures', slug: 'tweed', label: 'Tweed & textures' },
+  { value: 'woven-patterns', slug: 'woven', label: 'Woven patterns' },
+  { value: 'prints', slug: 'printed', label: 'Prints' },
 ];
 
 const COLLECTION_COUNT = 8;
@@ -134,7 +135,7 @@ async function loadHomeCatalog(): Promise<HomeCatalog> {
 
   const materials = FEATURED_MATERIALS.map((m) => {
     const matching = usable.filter((r) => (r.material || []).includes(m.value));
-    return { value: m.value, label: m.label, photo: m.photo || matching[0]?.image_url || null, count: matching.length };
+    return { value: m.value, slug: m.slug, label: m.label, photo: m.photo || matching[0]?.image_url || null, count: matching.length };
   }).filter((m) => m.count > 0);
 
   const groups = await loadHomeGroups(client);
@@ -142,4 +143,4 @@ async function loadHomeCatalog(): Promise<HomeCatalog> {
   return { collections, materials, groups };
 }
 
-export const getHomeCatalog = unstable_cache(loadHomeCatalog, ['home-catalog-v1'], { revalidate: 1800 });
+export const getHomeCatalog = unstable_cache(loadHomeCatalog, ['home-catalog-v2'], { revalidate: 1800 });

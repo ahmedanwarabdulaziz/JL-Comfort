@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { markOrderExpired, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
+import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       if (firstDelivery) {
         const origin = process.env.SITE_URL || new URL(req.url).origin;
         await sendNewOrderEmails(orderId, origin);
+        await reportPurchaseServerSide(orderId);
       }
     } else if (event.type === 'checkout.session.expired') {
       await markOrderExpired(orderId);

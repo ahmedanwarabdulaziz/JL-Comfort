@@ -3,7 +3,14 @@ import Stripe from 'stripe';
 import { CheckoutError, quoteCart } from '@/lib/checkout/quote';
 import { isCheckoutRegion } from '@/lib/checkout/regions';
 import { TaxRate } from '@/lib/types/checkout';
-import { attachCheckoutSession, createPendingOrder, markOrderExpired } from '@/lib/orders/server';
+import {
+  attachCheckoutSession,
+  cleanAdSignals,
+  cleanAttribution,
+  createPendingOrder,
+  markOrderExpired,
+  saveOrderMarketing,
+} from '@/lib/orders/server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
@@ -47,7 +54,7 @@ async function resolveStripeTaxRates(taxRates: TaxRate[]): Promise<Map<string, s
 
 export async function POST(req: Request) {
   try {
-    const { items, origin: clientOrigin, shippingAddress, discountCode } = await req.json();
+    const { items, origin: clientOrigin, shippingAddress, discountCode, attribution, adSignals } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -129,6 +136,15 @@ export async function POST(req: Request) {
       postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
       country,
     });
+
+    await saveOrderMarketing(
+      order.id,
+      cleanAttribution(attribution),
+      cleanAdSignals(adSignals, {
+        ip: req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0] || undefined,
+        userAgent: req.headers.get('user-agent') || undefined,
+      })
+    );
 
     // The delivery address is collected once on /checkout/shipping (it decides shipping and tax), so
     // Stripe doesn't ask for it again -- it's attached to the payment as the shipping address.

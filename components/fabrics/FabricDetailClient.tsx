@@ -28,6 +28,8 @@ import { ShippingRate } from '@/lib/types/checkout';
 import { brand } from '@/lib/theme';
 import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
+import { trackViewItem } from '@/lib/analytics/track';
+import FabricImage from '@/components/ui/FabricImage';
 
 export interface ColorwaySibling {
   id: string;
@@ -112,6 +114,11 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
   const { items: sampleItems, addSample, isFull, settings: sampleSettings, setListOpen } = useSampleCart();
   const [yards, setYards] = useState(1);
   const [added, setAdded] = useState(false);
+
+  // Lets the ad platforms build "viewed this fabric" audiences and dynamic retargeting.
+  useEffect(() => {
+    trackViewItem({ id: fabric.sku || fabric.id, name: fabric.name, category: 'Fabric', price: fabric.pricePerYard ?? 0, quantity: 1 });
+  }, [fabric.id, fabric.sku, fabric.name, fabric.pricePerYard]);
   const [sampleAdded, setSampleAdded] = useState(false);
   const [activeImage, setActiveImage] = useState(fabric.imageUrl);
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -192,8 +199,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
               sx={{ position: 'relative', display: 'block', width: '100%', p: 0, border: 0, cursor: activeImage ? 'zoom-in' : 'default', bgcolor: '#f5f3f0', aspectRatio: '1 / 1', overflow: 'hidden', '&:hover .zoom-hint': { opacity: 1 } }}
             >
               {activeImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={activeImage} alt={fabric.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <FabricImage src={activeImage} alt={fabric.name} sizes="(max-width: 900px) 100vw, 50vw" priority />
               ) : (
                 <Typography sx={{ color: MUTED }}>Image unavailable</Typography>
               )}
@@ -208,9 +214,8 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
             {gallery.length > 1 && (
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
                 {gallery.map((image) => (
-                  <Box key={image.id} component="button" type="button" onClick={() => setActiveImage(image.imageUrl)} aria-label={'View ' + image.name} sx={{ width: { xs: 60, md: 72 }, height: { xs: 60, md: 72 }, p: 0, border: '1px solid', borderColor: activeImage === image.imageUrl ? brand.mocha : LINE, bgcolor: '#f5f3f0', cursor: 'pointer', overflow: 'hidden', opacity: activeImage === image.imageUrl ? 1 : 0.72, transition: 'all .2s ease', '&:hover': { opacity: 1, borderColor: brand.mocha } }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Box key={image.id} component="button" type="button" onClick={() => setActiveImage(image.imageUrl)} aria-label={'View ' + image.name} sx={{ position: 'relative', width: { xs: 60, md: 72 }, height: { xs: 60, md: 72 }, p: 0, border: '1px solid', borderColor: activeImage === image.imageUrl ? brand.mocha : LINE, bgcolor: '#f5f3f0', cursor: 'pointer', overflow: 'hidden', opacity: activeImage === image.imageUrl ? 1 : 0.72, transition: 'all .2s ease', '&:hover': { opacity: 1, borderColor: brand.mocha } }}>
+                    <FabricImage src={image.imageUrl} alt="" sizes="72px" />
                   </Box>
                 ))}
               </Stack>
@@ -318,9 +323,8 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
                   {fabric.colorwaySiblings.map((sibling) => (
                     <Box key={sibling.id} component={Link} href={'/fabrics/' + sibling.id} sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.mocha } }}>
-                      <Box className="cw" sx={{ aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: `1px solid ${LINE}`, transition: 'border-color .2s' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {sibling.imageUrl && <img src={sibling.imageUrl} alt={sibling.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: `1px solid ${LINE}`, transition: 'border-color .2s' }}>
+                        {sibling.imageUrl && <FabricImage src={sibling.imageUrl} alt={sibling.name} sizes="96px" />}
                       </Box>
                       <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: brand.textSecondary }}>{splitName(sibling.name, '').colourway}</Typography>
                     </Box>

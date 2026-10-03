@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_SAMPLE_SETTINGS, SampleRequestItem, SampleSettings } from '@/lib/types/sampleRequest';
 import { getSampleSettings } from '@/lib/data/sampleRequests';
+import { trackAddSample } from '@/lib/analytics/track';
 
 /** Where the "add sample" click happened, so the header can animate the swatch flying to its icon. */
 export interface SampleOrigin {
@@ -65,6 +66,7 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (items.some((i) => i.fabricId === item.fabricId) || items.length >= settings.maxPerRequest) return;
     setItems((prev) => [...prev, item]);
     setLastAdded({ item, origin, at: Date.now() });
+    trackAddSample(item.sku || item.fabricId, item.name);
   };
 
   const removeSample = (fabricId: string) => {

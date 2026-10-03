@@ -17,7 +17,10 @@ import {
   CARRIERS,
   EmailSettings,
   Order,
+  OrderAdSignals,
+  OrderAttribution,
   OrderStatus,
+  OrderTouch,
   rowToOrder,
 } from '@/lib/types/order';
 
@@ -103,6 +106,57 @@ export async function createPendingOrder(
   }
 
   return { id: order.id, orderNumber: order.order_number };
+}
+
+// ---- Marketing source ----
+// Everything below arrives from the browser, so it is treated as untrusted: only known keys are
+// kept, values must be short strings, and nothing here affects pricing or fulfilment.
+
+const TOUCH_KEYS: (keyof OrderTouch)[] = [
+  'source', 'medium', 'campaign', 'term', 'content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'msclkid', 'referrer', 'landingPage', 'at',
+];
+const cleanString = (value: unknown, max = 300) => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined);
+
+function cleanTouch(value: unknown): OrderTouch | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const touch: OrderTouch = {};
+  for (const key of TOUCH_KEYS) {
+    const clean = cleanString((value as Record<string, unknown>)[key]);
+    if (clean) touch[key] = clean;
+  }
+  return Object.keys(touch).length > 0 ? touch : undefined;
+}
+
+export function cleanAttribution(value: unknown): OrderAttribution | null {
+  if (!value || typeof value !== 'object') return null;
+  const firstTouch = cleanTouch((value as any).firstTouch);
+  const lastTouch = cleanTouch((value as any).lastTouch);
+  return firstTouch || lastTouch ? { firstTouch, lastTouch } : null;
+}
+
+export function cleanAdSignals(value: unknown, request: { ip?: string; userAgent?: string }): OrderAdSignals {
+  const raw = (value && typeof value === 'object' ? value : {}) as Record<string, any>;
+  const consent = { analytics: raw.consent?.analytics === true, advertising: raw.consent?.advertising === true };
+  const signals: OrderAdSignals = { consent };
+  if (consent.analytics) {
+    signals.gaClientId = cleanString(raw.gaClientId, 100);
+    signals.gaSessionId = cleanString(raw.gaSessionId, 40);
+  }
+  if (consent.advertising) {
+    signals.fbp = cleanString(raw.fbp, 200);
+    signals.fbc = cleanString(raw.fbc, 300);
+    // Meta matches a purchase to an ad click partly by IP and browser; kept only with ad consent.
+    signals.clientIp = cleanString(request.ip, 64);
+    signals.userAgent = cleanString(request.userAgent, 400);
+  }
+  return signals;
+}
+
+// Saved separately from the order insert and never fatal: checkout must not fail over reporting data
+// (for example before the attribution migration has been applied to the database).
+export async function saveOrderMarketing(orderId: string, attribution: OrderAttribution | null, adSignals: OrderAdSignals) {
+  const { error } = await db().from('orders').update({ attribution, ad_signals: adSignals }).eq('id', orderId);
+  if (error) console.error('Could not save order attribution (is migration 20261001120000 applied?):', error.message);
 }
 
 export async function attachCheckoutSession(orderId: string, sessionId: string) {

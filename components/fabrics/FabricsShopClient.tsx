@@ -36,6 +36,7 @@ import {
 } from '@/lib/data/charlotteFabricFacets';
 import { brand } from '@/lib/theme';
 import FabricCard, { CardColourway } from './FabricCard';
+import { AnalyticsItem, trackFilter, trackSearch, trackSelectItem, trackViewItemList } from '@/lib/analytics/track';
 import { cleanBookName } from './SampleBookCover';
 
 const PAGE_SIZE = 32;
@@ -332,6 +333,7 @@ export default function FabricsShopClient() {
   const [error, setError] = useState<string | null>(null);
 
   const toggleFilter = useCallback((category: FilterKey, value: string) => {
+    trackFilter(category, value);
     setFilters((prev) => ({
       ...prev,
       [category]: prev[category].includes(value) ? prev[category].filter((v) => v !== value) : [...prev[category], value],
@@ -421,6 +423,31 @@ export default function FabricsShopClient() {
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [filters, search, sort, sampleBook, groupId, newOnly]);
+
+  // Analytics: a search is reported once the shopper stops typing, so "velvet" isn't sent as
+  // "v", "ve", "vel"...; the list view is reported whenever the set of fabrics shown settles.
+  useEffect(() => {
+    const term = search.trim();
+    if (loading || term.length < 2) return;
+    const timer = setTimeout(() => trackSearch(term, filtered.length), 1200);
+    return () => clearTimeout(timer);
+  }, [search, loading, filtered.length]);
+
+  const listName = groupId ? `Group: ${groupName || groupId}` : sampleBook ? `Sample book: ${sampleBook}` : search.trim() ? 'Search results' : 'All fabrics';
+  const toAnalyticsItem = (fabric: CharlotteFabricSnapshotItem): AnalyticsItem => ({
+    id: fabric.sku || fabric.id,
+    name: fabric.name,
+    category: 'Fabric',
+    price: fabric.pricePerYard ?? 0,
+    quantity: 1,
+  });
+  useEffect(() => {
+    if (loading || filtered.length === 0) return;
+    const timer = setTimeout(() => trackViewItemList(listName, filtered.slice(0, 20).map(toAnalyticsItem)), 1500);
+    return () => clearTimeout(timer);
+    // toAnalyticsItem is a pure mapping; re-running on its identity would re-report every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, loading, listName]);
 
   const bookLabel = sampleBook ? cleanBookName(sampleBook) : '';
   // A curated group link carries its own name; a sample book falls back to its cleaned name.
@@ -577,6 +604,7 @@ export default function FabricsShopClient() {
                       key={fabric.id}
                       fabric={fabric}
                       colourways={fabric.colorwayGroup ? colourwaysByGroup.get(fabric.colorwayGroup) : undefined}
+                      onSelect={() => trackSelectItem(listName, toAnalyticsItem(fabric))}
                     />
                   ))}
                 </Box>

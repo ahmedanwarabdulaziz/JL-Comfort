@@ -34,7 +34,43 @@ import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import { getOrderWithHistory, getOrders, runOrderAction } from '@/lib/data/orders';
-import { CARRIERS, ORDER_STATUS_LABELS, Order, OrderStatus } from '@/lib/types/order';
+import { CARRIERS, ORDER_STATUS_LABELS, Order, OrderStatus, OrderTouch } from '@/lib/types/order';
+
+// "google / cpc · spring-sale" -- how a marketing touch reads in the order's Source panel.
+function describeTouch(touch?: OrderTouch): string {
+  if (!touch) return 'Unknown';
+  const channel = [touch.source || 'unknown', touch.medium].filter(Boolean).join(' / ');
+  const clickId = touch.gclid || touch.gbraid || touch.wbraid ? 'Google Ads click' : touch.fbclid ? 'Meta ad click' : touch.msclkid ? 'Microsoft Ads click' : '';
+  return [channel, touch.campaign && `campaign “${touch.campaign}”`, touch.term && `keyword “${touch.term}”`, clickId].filter(Boolean).join(' · ');
+}
+
+function OrderSource({ order }: { order: Order }) {
+  const { attribution, adSignals } = order;
+  const first = attribution?.firstTouch;
+  const last = attribution?.lastTouch;
+  const sameVisit = !first || !last || (first.source === last.source && first.landingPage === last.landingPage && first.campaign === last.campaign);
+  return (
+    <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+      <Typography variant="overline" color="text.secondary">Source</Typography>
+      {!attribution ? (
+        <Typography variant="body2" color="text.secondary">Not recorded for this order.</Typography>
+      ) : (
+        <>
+          <Typography variant="body2"><strong>{sameVisit ? 'Came from' : 'Last came from'}:</strong> {describeTouch(last || first)}</Typography>
+          {!sameVisit && first && <Typography variant="body2"><strong>First found us via:</strong> {describeTouch(first)}</Typography>}
+          {(last || first)?.landingPage && (
+            <Typography variant="body2" color="text.secondary">Landing page: {(last || first)!.landingPage}</Typography>
+          )}
+        </>
+      )}
+      {adSignals && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          Cookie consent at checkout: analytics {adSignals.consent.analytics ? 'yes' : 'no'}, advertising {adSignals.consent.advertising ? 'yes' : 'no'}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 const FILTERS: Record<string, { label: string; statuses?: OrderStatus[] }> = {
   open: { label: 'Open', statuses: ['paid', 'sent_to_supplier', 'shipped', 'problem'] },
@@ -221,6 +257,8 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
                 </Typography>
               </Box>
             </Box>
+
+            <OrderSource order={order} />
 
             <TableContainer component={Paper} variant="outlined" sx={{ mb: 1 }}>
               <Table size="small">

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AddOrigin } from '@/components/layout/HeaderIconWithNotice';
+import { cartItemToAnalytics, trackAddToCart, trackRemoveFromCart, trackViewCart } from '@/lib/analytics/track';
 
 export interface LastAddedCartItem {
   item: CartItem;
@@ -116,6 +117,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToCart = (newItem: Omit<CartItem, 'id'>, origin: AddOrigin | null = null) => {
     const id = Math.random().toString(36).substring(2, 9);
     setItems((prev) => [...prev, { ...newItem, id }]);
+    trackAddToCart(cartItemToAnalytics(newItem));
     if (origin) {
       const image = newItem.fabricImageUrl || newItem.fabric?.imageUrl;
       setLastAdded({ item: { ...newItem, id }, imageUrl: image, origin, at: Date.now() });
@@ -125,8 +127,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeFromCart = (id: string) => {
+    const removed = items.find((item) => item.id === id);
+    if (removed) trackRemoveFromCart(cartItemToAnalytics(removed));
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
+
+  // Opening the slide-out cart counts as viewing the cart.
+  useEffect(() => {
+    if (isCartOpen && items.length > 0) trackViewCart(items.map(cartItemToAnalytics));
+    // Only on opening, not on every quantity change while it's open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCartOpen]);
 
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity < 1) return;

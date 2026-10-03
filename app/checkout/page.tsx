@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Container,
@@ -18,6 +18,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useCart } from '@/lib/context/CartContext';
+import { cartItemToAnalytics, trackViewCart } from '@/lib/analytics/track';
 import { loadStripe } from '@stripe/stripe-js';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -27,6 +28,14 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 export default function CheckoutPage() {
   const { items, removeFromCart, updateQuantity, cartTotal } = useCart();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  // The cart loads from storage after mount, so report the view once it has items.
+  const cartViewTracked = useRef(false);
+  useEffect(() => {
+    if (cartViewTracked.current || items.length === 0) return;
+    cartViewTracked.current = true;
+    trackViewCart(items.map(cartItemToAnalytics));
+  }, [items]);
 
   const handleStripeCheckout = async () => {
     setIsCheckingOut(true);

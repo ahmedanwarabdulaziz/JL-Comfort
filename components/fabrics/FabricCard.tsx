@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Box, Typography } from '@mui/material';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { brand } from '@/lib/theme';
+import FabricImage from '@/components/ui/FabricImage';
 
 export interface CardColourway {
   id: string;
@@ -23,7 +24,15 @@ const splitName = (name: string) => {
  * Shop grid card in the dealer style: square fabric image, pattern number, colourway name, price per
  * yard, and a row of colourway thumbnails (other colours of the same pattern).
  */
-export default function FabricCard({ fabric, colourways }: { fabric: CharlotteFabricSnapshotItem; colourways?: CardColourway[] }) {
+export default function FabricCard({
+  fabric,
+  colourways,
+  onSelect,
+}: {
+  fabric: Pick<CharlotteFabricSnapshotItem, 'id' | 'name' | 'imageUrl' | 'isNew' | 'pricePerYard'>;
+  colourways?: CardColourway[];
+  onSelect?: () => void; // analytics: the shopper opened this fabric from a list
+}) {
   const { pattern, colourway } = splitName(fabric.name);
   const others = (colourways || []).filter((c) => c.id !== fabric.id);
   const swatches = others.slice(0, MAX_SWATCHES);
@@ -33,17 +42,17 @@ export default function FabricCard({ fabric, colourways }: { fabric: CharlotteFa
       <Box
         component={Link}
         href={`/fabrics/${fabric.id}`}
+        onClick={onSelect}
         sx={{ display: 'block', textDecoration: 'none', color: 'inherit', '&:hover .fabric-img': { transform: 'scale(1.05)' }, '&:hover .fabric-view': { opacity: 1 } }}
       >
         <Box sx={{ position: 'relative', aspectRatio: '1 / 1', overflow: 'hidden', bgcolor: '#f5f3f0', border: '1px solid #ece7e0' }}>
           {fabric.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <FabricImage
               className="fabric-img"
               src={fabric.imageUrl}
               alt={fabric.name}
-              loading="lazy"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
+              sizes="(max-width: 600px) 50vw, (max-width: 900px) 33vw, (max-width: 1536px) 25vw, 17vw"
+              style={{ transition: 'transform 0.4s ease' }}
             />
           ) : (
             <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -91,10 +100,9 @@ export default function FabricCard({ fabric, colourways }: { fabric: CharlotteFa
               href={`/fabrics/${c.id}`}
               title={splitName(c.name).colourway}
               aria-label={`${splitName(c.name).colourway} colourway`}
-              sx={{ width: 26, height: 26, flexShrink: 0, border: '1px solid #e0dad2', overflow: 'hidden', '&:hover': { borderColor: brand.mocha } }}
+              sx={{ position: 'relative', width: 26, height: 26, flexShrink: 0, border: '1px solid #e0dad2', overflow: 'hidden', '&:hover': { borderColor: brand.mocha } }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.imageUrl} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <FabricImage src={c.imageUrl} alt="" sizes="26px" />
             </Box>
           ))}
           {others.length > MAX_SWATCHES && (
