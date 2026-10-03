@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { markOrderExpired, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to_pass_build', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
 });
 
@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to
 // request came from Stripe; register the endpoint in the Stripe dashboard for these events:
 //   checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.expired
 export async function POST(req: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!secret) {
     console.error('STRIPE_WEBHOOK_SECRET is not set; rejecting webhook.');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });

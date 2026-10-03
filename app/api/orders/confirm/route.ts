@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_to_pass_build', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
 });
 
