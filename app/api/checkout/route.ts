@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { stripe } from '@/lib/stripe/server';
 import { CheckoutError, quoteCart } from '@/lib/checkout/quote';
 import { isCheckoutRegion } from '@/lib/checkout/regions';
 import { TaxRate } from '@/lib/types/checkout';
@@ -12,9 +13,6 @@ import {
   saveOrderMarketing,
 } from '@/lib/orders/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || 'sk_test_dummy_key_to_pass_build', {
-  apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
-});
 
 // Every price in the store (fabric, foam, cushions, shipping) is entered in Canadian dollars.
 const CURRENCY = 'cad';

@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { stripe } from '@/lib/stripe/server';
 import { markOrderExpired, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || 'sk_test_dummy_key_to_pass_build', {
-  apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
-});
 
 // Stripe calls this after checkout. It is the only thing that marks an order paid -- the /success
 // redirect can be skipped (closed tab, lost connection), this can't. The signature check proves the
