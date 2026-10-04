@@ -18,6 +18,7 @@ const toForm = (s: EmailSettings): Form => ({
   supplierName: s.supplierName,
   supplierEmail: s.supplierEmail || '',
   supplierSampleEmail: s.supplierSampleEmail || '',
+  supplierCopyEmail: s.supplierCopyEmail || '',
   supplierAccountNumber: s.supplierAccountNumber || '',
   supplierNotes: s.supplierNotes || '',
 });
@@ -29,7 +30,7 @@ const validate = (f: Form): string | null => {
   if (!VERIFIED_SENDING_DOMAINS.includes(domain)) {
     return `The "from" address must end in @${VERIFIED_SENDING_DOMAINS.join(' or @')} (the domain verified in Resend).`;
   }
-  for (const [label, value] of [['Reply-to', f.replyTo], ['Order copy', f.internalEmail], ['Supplier order', f.supplierEmail], ['Supplier sample', f.supplierSampleEmail]] as const) {
+  for (const [label, value] of [['Reply-to', f.replyTo], ['Order copy', f.internalEmail], ['Supplier order', f.supplierEmail], ['Supplier sample', f.supplierSampleEmail], ['Supplier copy', f.supplierCopyEmail]] as const) {
     if (value.trim() && !EMAIL_PATTERN.test(value.trim())) return `${label} address is not a valid email.`;
   }
   return null;
@@ -81,6 +82,7 @@ export default function EmailSettingsForm() {
         supplierName: form.supplierName.trim() || 'Charlotte Fabrics',
         supplierEmail: clean(form.supplierEmail),
         supplierSampleEmail: clean(form.supplierSampleEmail),
+        supplierCopyEmail: clean(form.supplierCopyEmail),
         supplierAccountNumber: clean(form.supplierAccountNumber),
         supplierNotes: clean(form.supplierNotes),
       });
@@ -123,6 +125,7 @@ export default function EmailSettingsForm() {
           {field('supplierEmail', 'Supplier order email', 'Purchase orders are sent here automatically')}
           {field('supplierSampleEmail', 'Supplier sample request email', 'Leave blank to send sample requests to the order email')}
           {field('supplierAccountNumber', 'Your account number with the supplier', 'Printed on every PO. Optional')}
+          {field('supplierCopyEmail', 'Send a copy of supplier emails to', 'Gets the exact purchase order and sample request the supplier gets (hidden BCC). Leave blank for no copy')}
         </Box>
         <Box sx={{ mt: 2 }}>{field('supplierNotes', 'Notes printed on every purchase order', 'e.g. blind ship instructions', true)}</Box>
       </Paper>

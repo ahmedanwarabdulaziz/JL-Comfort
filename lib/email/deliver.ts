@@ -23,13 +23,14 @@ export async function deliverEmail(options: {
   settings: EmailSettings;
   to: string;
   toName?: string; // shown as the recipient's display name; without it some clients show the bare address
+  bcc?: string | null; // a hidden copy of exactly this email
   content: EmailContent;
   eventType: string;
   log: (type: string, message: string) => Promise<void>;
   context: string; // e.g. "Order JL-1002", for server logs
   idempotencyKey?: string;
 }): Promise<boolean> {
-  const { settings, to, toName, content, eventType, log, context, idempotencyKey } = options;
+  const { settings, to, toName, bcc, content, eventType, log, context, idempotencyKey } = options;
   try {
     if (!isEmailConfigured()) throw new Error('RESEND_API_KEY is not set');
     if (!isVerifiedSender(settings.fromEmail)) {
@@ -38,6 +39,7 @@ export async function deliverEmail(options: {
     const { id } = await sendEmail({
       from: formatAddress(settings.fromName, settings.fromEmail),
       to: [formatAddress(toName, to)],
+      bcc: bcc ? [bcc] : undefined,
       // Reply-To carries the same display name as From -- otherwise mail clients show the bare
       // reply-to address (e.g. when the customer hits Reply) instead of "JL Comfort".
       replyTo: settings.replyTo ? formatAddress(settings.fromName, settings.replyTo) : undefined,
@@ -47,7 +49,7 @@ export async function deliverEmail(options: {
       idempotencyKey,
     });
     // The Resend id matches the email in the Resend dashboard (Emails), which shows delivered/bounced.
-    await log(eventType, `Emailed ${to}: "${content.subject}" (Resend id ${id})`);
+    await log(eventType, `Emailed ${to}${bcc ? ` (copy to ${bcc})` : ''}: "${content.subject}" (Resend id ${id})`);
     return true;
   } catch (error: any) {
     console.error(`${context}: ${eventType} email failed`, error);
