@@ -231,12 +231,14 @@ const deliver = (
   content: EmailContent,
   eventType: string,
   idempotencyKey?: string,
-  toName?: string
+  toName?: string,
+  bcc?: string | null
 ) =>
   deliverEmail({
     settings,
     to,
     toName,
+    bcc,
     content,
     eventType,
     idempotencyKey,
@@ -251,7 +253,7 @@ export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSet
     await logOrderEvent(order.id, 'email_failed', 'Purchase order NOT sent: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';
   }
-  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey, settings.supplierName);
+  const sent = await deliver(order, settings, settings.supplierEmail, supplierPurchaseOrder(order, settings), 'supplier_po', idempotencyKey, settings.supplierName, settings.supplierCopyEmail);
   if (!sent) return `NOT SENT: email to ${settings.supplierEmail} failed (see order history)`;
   if (order.status === 'paid') {
     await setOrderStatus(order.id, 'sent_to_supplier', { supplier_emailed_at: new Date().toISOString() });

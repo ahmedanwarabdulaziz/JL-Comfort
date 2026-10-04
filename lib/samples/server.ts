@@ -163,12 +163,14 @@ const deliver = (
   content: EmailContent,
   eventType: string,
   idempotencyKey?: string,
-  toName?: string
+  toName?: string,
+  bcc?: string | null
 ) =>
   deliverEmail({
     settings,
     to,
     toName,
+    bcc,
     content,
     eventType,
     idempotencyKey,
@@ -182,7 +184,7 @@ export async function sendSupplierSampleRequest(request: SampleRequest, settings
     await logSampleEvent(request.id, 'email_failed', 'Sample request NOT sent to the supplier: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';
   }
-  const sent = await deliver(request, settings, to, supplierSampleRequest(request, settings), 'supplier_sample_request', idempotencyKey, settings.supplierName);
+  const sent = await deliver(request, settings, to, supplierSampleRequest(request, settings), 'supplier_sample_request', idempotencyKey, settings.supplierName, settings.supplierCopyEmail);
   if (!sent) return `NOT SENT: email to ${to} failed (see request history)`;
   const patch: Record<string, unknown> = { supplier_emailed_at: new Date().toISOString() };
   if (request.status === 'pending') patch.status = 'sent_to_supplier';

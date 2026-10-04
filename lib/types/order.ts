@@ -123,6 +123,7 @@ export interface EmailSettings {
   supplierName: string;
   supplierEmail: string | null;
   supplierSampleEmail: string | null; // sample requests; null = use supplierEmail
+  supplierCopyEmail: string | null; // gets a hidden copy of every purchase order and sample request sent to the supplier
   supplierAccountNumber: string | null;
   supplierNotes: string | null;
 }
@@ -196,6 +197,7 @@ export const rowToEmailSettings = (row: any): EmailSettings => ({
   supplierName: row?.supplier_name || 'Charlotte Fabrics',
   supplierEmail: row?.supplier_email || null,
   supplierSampleEmail: row?.supplier_sample_email || null,
+  supplierCopyEmail: row?.supplier_copy_email || null,
   supplierAccountNumber: row?.supplier_account_number || null,
   supplierNotes: row?.supplier_notes || null,
 });

@@ -4,6 +4,7 @@
 export interface OutgoingEmail {
   from: string; // "Name <address>"
   to: string[];
+  bcc?: string[]; // hidden copies, e.g. our own inbox on supplier emails
   replyTo?: string;
   subject: string;
   html: string;
@@ -40,6 +41,7 @@ export async function sendEmail(email: OutgoingEmail): Promise<{ id: string }> {
     body: JSON.stringify({
       from: email.from,
       to: email.to,
+      bcc: email.bcc?.length ? email.bcc : undefined,
       reply_to: email.replyTo || undefined,
       subject: email.subject,
       html: email.html,
