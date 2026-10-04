@@ -19,6 +19,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot } from '@/lib/data/charlotteFabricCatalog';
 import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
+import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
 
 interface SampleBook {
   name: string;
@@ -334,6 +335,7 @@ function BookCard({ book }: { book: SampleBook }) {
           footnote={`${book.fabricCount} fabric${book.fabricCount !== 1 ? 's' : ''}`}
           photo={book.previewImages[0]}
           edgePhotos={book.previewImages.slice(1)}
+          coverPhoto={sampleBookCoverUrl(title)}
         />
       </Box>
       <Typography className="book-name" sx={{ textAlign: 'center', mt: 1.5, fontWeight: 600, fontSize: '0.92rem', color: '#252321', transition: 'color 0.2s' }}>
