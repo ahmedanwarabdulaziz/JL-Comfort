@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { stripe } from '@/lib/stripe/server';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || 'sk_test_dummy_key_to_pass_build', {
-  apiVersion: '2026-05-27.dahlia' as any, // Bypass strict TS check
-});
 
 // Called by the /success page as a second path to confirm an order, next to the Stripe webhook:
 // it covers a delayed webhook and local development (where Stripe can't reach the webhook).
