@@ -120,7 +120,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     trackViewItem({ id: fabric.sku || fabric.id, name: fabric.name, category: 'Fabric', price: fabric.pricePerYard ?? 0, quantity: 1 });
   }, [fabric.id, fabric.sku, fabric.name, fabric.pricePerYard]);
   const [sampleAdded, setSampleAdded] = useState(false);
-  const [activeImage, setActiveImage] = useState(fabric.imageUrl);
+  const activeImage = fabric.imageUrl;
   const [zoomOpen, setZoomOpen] = useState(false);
   const [tab, setTab] = useState(0);
   const [shipping, setShipping] = useState<ShippingRate | null>(null);
@@ -134,10 +134,8 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
   const alreadySampled = sampleItems.some((i) => i.fabricId === fabric.id);
   const { pattern, colourway } = splitName(fabric.name, fabric.sku);
   const collections = (fabric.sampleBooks || []).map((book) => ({ raw: book, label: cleanBookName(book) })).filter((b) => b.label);
-  const gallery = [
-    { id: fabric.id, name: fabric.name, imageUrl: fabric.imageUrl },
-    ...fabric.colorwaySiblings.map((sibling) => ({ id: sibling.id, name: sibling.name, imageUrl: sibling.imageUrl })),
-  ].filter((image) => image.imageUrl);
+  // This fabric plus its other colourways; each tile opens that colourway's own page.
+  const colourways = [{ id: fabric.id, name: fabric.name, imageUrl: fabric.imageUrl }, ...fabric.colorwaySiblings];
 
   const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!hasPrice) return;
@@ -211,14 +209,31 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
             </Box>
             <Typography sx={{ color: MUTED, fontSize: '0.75rem', mt: 1, fontStyle: 'italic' }}>Colour and scale may not be an exact depiction.</Typography>
 
-            {gallery.length > 1 && (
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
-                {gallery.map((image) => (
-                  <Box key={image.id} component="button" type="button" onClick={() => setActiveImage(image.imageUrl)} aria-label={'View ' + image.name} sx={{ position: 'relative', width: { xs: 60, md: 72 }, height: { xs: 60, md: 72 }, p: 0, border: '1px solid', borderColor: activeImage === image.imageUrl ? brand.mocha : LINE, bgcolor: '#f5f3f0', cursor: 'pointer', overflow: 'hidden', opacity: activeImage === image.imageUrl ? 1 : 0.72, transition: 'all .2s ease', '&:hover': { opacity: 1, borderColor: brand.mocha } }}>
-                    <FabricImage src={image.imageUrl} alt="" sizes="72px" />
-                  </Box>
-                ))}
-              </Stack>
+            {colourways.length > 1 && (
+              <Box sx={{ mt: 2.5 }}>
+                <Typography sx={{ ...labelSx, mb: 1.25 }}>Available colourways</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
+                  {colourways.map((colourwayFabric) => {
+                    const current = colourwayFabric.id === fabric.id;
+                    return (
+                      <Box
+                        key={colourwayFabric.id}
+                        component={current ? 'div' : Link}
+                        href={current ? undefined : '/fabrics/' + colourwayFabric.id}
+                        aria-current={current ? 'page' : undefined}
+                        sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.mocha } }}
+                      >
+                        <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.mocha}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
+                          {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" />}
+                        </Box>
+                        <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: current ? brand.ink : brand.textSecondary, fontWeight: current ? 600 : 400 }}>
+                          {current ? colourway : splitName(colourwayFabric.name, '').colourway}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
             )}
           </Box>
 
@@ -314,23 +329,6 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
               <Typography sx={{ color: MUTED, fontSize: '0.78rem', textAlign: 'right', mt: 0.75 }}>
                 {yards} yard{yards === 1 ? '' : 's'} · ${(fabric.pricePerYard! * yards).toFixed(2)} CAD
               </Typography>
-            )}
-
-            {/* Alternative colourways */}
-            {fabric.colorwaySiblings.length > 0 && (
-              <Box sx={{ mt: 3.5 }}>
-                <Typography sx={{ ...labelSx, mb: 1.25 }}>Alternative colourways</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
-                  {fabric.colorwaySiblings.map((sibling) => (
-                    <Box key={sibling.id} component={Link} href={'/fabrics/' + sibling.id} sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.mocha } }}>
-                      <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: `1px solid ${LINE}`, transition: 'border-color .2s' }}>
-                        {sibling.imageUrl && <FabricImage src={sibling.imageUrl} alt={sibling.name} sizes="96px" />}
-                      </Box>
-                      <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: brand.textSecondary }}>{splitName(sibling.name, '').colourway}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
             )}
 
             <Box sx={{ mt: 3.5 }}>

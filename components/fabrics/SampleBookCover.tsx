@@ -11,33 +11,40 @@ interface SampleBookCoverProps {
   footnote?: string; // small line under the title, e.g. "58 fabrics"
   photo?: string; // the cover fabric
   edgePhotos?: string[]; // other fabrics in the book, shown as the swatch edge along the bottom
+  coverPhoto?: string; // the supplier's photo of the real book; replaces the drawn cover when it loads
 }
 
 /**
  * A sample book drawn like the physical binder: branded header bar, white title label with a rule,
  * the cover fabric, and a strip of stacked swatch edges along the bottom. Text sizes use container
  * query units (cqw), so the same cover works as a small homepage tile or a large catalog card.
+ * When the supplier's own cover photo is given (same 300 x 331 shape), it's shown instead.
  */
-export default function SampleBookCover({ title, series, footnote, photo, edgePhotos = [] }: SampleBookCoverProps) {
+export default function SampleBookCover({ title, series, footnote, photo, edgePhotos = [], coverPhoto }: SampleBookCoverProps) {
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const ok = (src?: string): src is string => !!src && !failed[src];
   const fail = (src: string) => () => setFailed((prev) => ({ ...prev, [src]: true }));
   const edges = edgePhotos.filter(ok).slice(0, 6);
 
+  const frame = {
+    position: 'relative',
+    aspectRatio: '300 / 331',
+    bgcolor: '#fff',
+    border: '1px solid #d9d3cb',
+    boxShadow: '0 1px 2px rgba(33,23,18,0.18), 0 8px 18px rgba(33,23,18,0.10)',
+    overflow: 'hidden',
+  } as const;
+
+  if (ok(coverPhoto)) {
+    return (
+      <Box sx={frame}>
+        <FabricImage src={coverPhoto} alt={`${title} sample book`} sizes="(max-width: 600px) 50vw, (max-width: 1200px) 25vw, 300px" onError={fail(coverPhoto)} />
+      </Box>
+    );
+  }
+
   return (
-    <Box
-      sx={{
-        containerType: 'inline-size',
-        position: 'relative',
-        aspectRatio: '300 / 331',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: '#fff',
-        border: '1px solid #d9d3cb',
-        boxShadow: '0 1px 2px rgba(33,23,18,0.18), 0 8px 18px rgba(33,23,18,0.10)',
-        overflow: 'hidden',
-      }}
-    >
+    <Box sx={{ ...frame, containerType: 'inline-size', display: 'flex', flexDirection: 'column' }}>
       {/* Header bar */}
       <Box
         sx={{

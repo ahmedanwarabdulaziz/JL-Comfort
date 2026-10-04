@@ -88,6 +88,26 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Two cart lines are the same product when everything but the id, amount and price matches, e.g. the
+// same fabric, or a foam piece with the same size, grade and wrap. Ordering more of it tops up that line.
+const stable = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(stable)
+    : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable((value as Record<string, unknown>)[key])]))
+    : value;
+const sameProductKey = ({ id: _id, quantity: _quantity, unitPrice: _unitPrice, totalPrice: _totalPrice, ...product }: Omit<CartItem, 'id'> & { id?: string }) =>
+  JSON.stringify(stable(product));
+
+// Folds duplicate lines into one (carts saved before lines were merged on add).
+const mergeDuplicates = (items: CartItem[]) =>
+  items.reduce<CartItem[]>((merged, item) => {
+    const existing = merged.find((m) => sameProductKey(m) === sameProductKey(item));
+    if (!existing) return [...merged, item];
+    const quantity = existing.quantity + item.quantity;
+    return merged.map((m) => (m === existing ? { ...m, quantity, totalPrice: m.unitPrice * quantity } : m));
+  }, []);
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -100,7 +120,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedCart = localStorage.getItem('jl_comfort_cart');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        setItems(mergeDuplicates(JSON.parse(savedCart)));
       } catch (e) {
         console.error('Failed to parse cart from local storage', e);
       }
@@ -115,8 +135,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items, isMounted]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>, origin: AddOrigin | null = null) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setItems((prev) => [...prev, { ...newItem, id }]);
+    const existing = items.find((item) => sameProductKey(item) === sameProductKey(newItem));
+    const id = existing?.id ?? Math.random().toString(36).substring(2, 9);
+    setItems((prev) => {
+      const match = prev.find((item) => item.id === id);
+      if (!match) return [...prev, { ...newItem, id }];
+      const quantity = match.quantity + newItem.quantity;
+      return prev.map((item) => (item === match ? { ...item, unitPrice: newItem.unitPrice, quantity, totalPrice: newItem.unitPrice * quantity } : item));
+    });
     trackAddToCart(cartItemToAnalytics(newItem));
     if (origin) {
       const image = newItem.fabricImageUrl || newItem.fabric?.imageUrl;

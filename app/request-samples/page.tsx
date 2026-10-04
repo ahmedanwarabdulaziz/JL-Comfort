@@ -18,6 +18,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { trackSampleRequest } from '@/lib/analytics/track';
+import FabricImage from '@/components/ui/FabricImage';
 
 export default function RequestSamplesPage() {
   const { items, removeSample, clearSamples, settings } = useSampleCart();
@@ -137,11 +138,8 @@ export default function RequestSamplesPage() {
             <Stack spacing={2}>
               {items.map((item) => (
                 <Stack key={item.fabricId} direction="row" spacing={1.5} alignItems="center">
-                  <Box sx={{ width: 44, height: 44, borderRadius: 1, overflow: 'hidden', flexShrink: 0, border: '1px solid', borderColor: 'divider' }}>
-                    {item.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    )}
+                  <Box sx={{ position: 'relative', width: 64, height: 64, borderRadius: 1, overflow: 'hidden', flexShrink: 0, bgcolor: '#f5f3f0', border: '1px solid', borderColor: 'divider' }}>
+                    {item.imageUrl && <FabricImage src={item.imageUrl} alt={item.name} sizes="64px" />}
                   </Box>
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Typography variant="body2" fontWeight="bold" noWrap>

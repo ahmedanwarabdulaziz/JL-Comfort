@@ -22,6 +22,7 @@ import { cartItemToAnalytics, trackViewCart } from '@/lib/analytics/track';
 import { loadStripe } from '@stripe/stripe-js';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FabricImage from '@/components/ui/FabricImage';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -111,7 +112,15 @@ export default function CheckoutPage() {
             <List disablePadding>
               {items.map((item) => (
                 <React.Fragment key={item.id}>
-                  <ListItem disablePadding sx={{ py: 3, display: 'block' }}>
+                  <ListItem disablePadding sx={{ py: 3, display: 'flex', alignItems: 'flex-start', gap: 2.5 }}>
+                    {(item.fabricImageUrl || item.fabric?.imageUrl) && (
+                      <Box
+                        sx={{ position: 'relative', flexShrink: 0, width: { xs: 72, sm: 96 }, height: { xs: 72, sm: 96 }, borderRadius: 1, overflow: 'hidden', bgcolor: '#f5f3f0', border: '1px solid', borderColor: 'divider' }}
+                      >
+                        <FabricImage src={(item.fabricImageUrl || item.fabric?.imageUrl)!} alt={item.fabricName || item.fabric?.name || ''} sizes="96px" />
+                      </Box>
+                    )}
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="h6" fontWeight="bold">
                         {item.productType === 'benchCushion'
@@ -195,6 +204,7 @@ export default function CheckoutPage() {
                         </ButtonGroup>
                       </Grid>
                     </Grid>
+                    </Box>
                   </ListItem>
                   <Divider />
                 </React.Fragment>

@@ -6,6 +6,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { brand } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
 import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
+import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
 import type { HomeCatalog } from '@/lib/data/homeCatalog';
 import FabricImage from '@/components/ui/FabricImage';
 
@@ -158,6 +159,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                       footnote={`${book.count} fabrics`}
                       photo={book.photos[0]}
                       edgePhotos={book.photos.slice(1)}
+                      coverPhoto={sampleBookCoverUrl(cleanBookName(book.name))}
                     />
                   </Box>
                   <Typography className="name" sx={{ mt: 1.5, textAlign: 'center', fontWeight: 600, fontSize: '0.92rem', color: brand.ink, transition: 'color .2s' }}>
