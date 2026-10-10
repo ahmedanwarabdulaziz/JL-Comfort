@@ -47,7 +47,12 @@ function readEnv(name: string): string | undefined {
 export function envSummary(): string {
   const keys = Object.keys(process.env);
   const stripeNames = keys.filter((key) => /STRIPE/i.test(key)).map((key) => JSON.stringify(key));
-  return `fn ${process.env.AWS_LAMBDA_FUNCTION_NAME || 'n/a'}; ${keys.length} vars; stripe: ${stripeNames.join(', ') || 'none'}`;
+  const raw = (process.env as Record<string, unknown>).STRIPE_SECRET_KEY;
+  const shape =
+    typeof raw === 'string'
+      ? `len ${raw.length}, starts ${JSON.stringify(raw.slice(0, 8))}, cleaned ${cleanSecretKey(raw, 'STRIPE_SECRET_KEY') ? 'ok' : 'FAIL'}`
+      : typeof raw;
+  return `${keys.length} vars; STRIPE_SECRET_KEY ${shape}; stripe: ${stripeNames.join(', ') || 'none'}`;
 }
 
 // The store's own key -- live in production. Every shopper pays through this one.
