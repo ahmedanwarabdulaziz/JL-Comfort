@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe/server';
+import { stripeFor } from '@/lib/stripe/server';
+import { TEST_MODE_COOKIE, resolveCheckoutMode } from '@/lib/stripe/testMode';
 import { CheckoutError, quoteCart } from '@/lib/checkout/quote';
 import { isCheckoutRegion } from '@/lib/checkout/regions';
 import { TaxRate } from '@/lib/types/checkout';
@@ -20,19 +21,21 @@ const CURRENCY = 'cad';
 // Stripe TaxRate objects are immutable, so each distinct (region, tax, percentage) gets its own one,
 // tagged with a metadata key and reused. Editing a rate in the admin panel simply mints a new
 // TaxRate the next time it's used. Cached per server instance to skip the lookup on warm requests.
-const stripeTaxRateIds = new Map<string, string>();
+// Test and live mode are separate Stripe accounts as far as ids go, so each has its own cache.
+const stripeTaxRateIds = { live: new Map<string, string>(), test: new Map<string, string>() };
 const taxRateKey = (tax: TaxRate) => `${tax.country}-${tax.regionCode}-${tax.taxName}-${tax.rate}`;
 const STRIPE_TAX_TYPES = new Set(['gst', 'hst', 'pst', 'qst', 'rst', 'vat']);
 
-async function resolveStripeTaxRates(taxRates: TaxRate[]): Promise<Map<string, string>> {
-  const missing = taxRates.filter((tax) => !stripeTaxRateIds.has(taxRateKey(tax)));
+async function resolveStripeTaxRates(stripe: Stripe, testMode: boolean, taxRates: TaxRate[]): Promise<Map<string, string>> {
+  const ids = stripeTaxRateIds[testMode ? 'test' : 'live'];
+  const missing = taxRates.filter((tax) => !ids.has(taxRateKey(tax)));
   if (missing.length > 0) {
     for await (const existing of stripe.taxRates.list({ active: true, inclusive: false, limit: 100 })) {
-      if (existing.metadata?.jl_key) stripeTaxRateIds.set(existing.metadata.jl_key, existing.id);
+      if (existing.metadata?.jl_key) ids.set(existing.metadata.jl_key, existing.id);
     }
     for (const tax of missing) {
       const key = taxRateKey(tax);
-      if (stripeTaxRateIds.has(key)) continue;
+      if (ids.has(key)) continue;
       const taxType = tax.taxName.toLowerCase();
       const created = await stripe.taxRates.create({
         display_name: tax.taxName,
@@ -44,10 +47,10 @@ async function resolveStripeTaxRates(taxRates: TaxRate[]): Promise<Map<string, s
         tax_type: (STRIPE_TAX_TYPES.has(taxType) ? taxType : tax.country === 'US' ? 'sales_tax' : undefined) as any,
         metadata: { jl_key: key },
       });
-      stripeTaxRateIds.set(key, created.id);
+      ids.set(key, created.id);
     }
   }
-  return new Map(taxRates.map((tax) => [tax.id, stripeTaxRateIds.get(taxRateKey(tax))!]));
+  return new Map(taxRates.map((tax) => [tax.id, ids.get(taxRateKey(tax))!]));
 }
 
 export async function POST(req: Request) {
@@ -81,7 +84,19 @@ export async function POST(req: Request) {
     if (discountCode && quote.discountError) {
       return NextResponse.json({ error: quote.discountError }, { status: 400 });
     }
-    const stripeTaxRateIdsById = await resolveStripeTaxRates(taxRates);
+    const mode = await resolveCheckoutMode();
+    if (mode === 'admin_required') {
+      const response = NextResponse.json(
+        { error: 'Test payments were turned on in this browser, but you are no longer signed in as an admin, so test mode has been switched off. Press Continue to secure payment again to pay for real, or sign in to the admin panel to keep testing.' },
+        { status: 403 }
+      );
+      response.cookies.delete(TEST_MODE_COOKIE);
+      return response;
+    }
+    const testMode = mode === 'test';
+    const stripe = stripeFor(testMode);
+
+    const stripeTaxRateIdsById = await resolveStripeTaxRates(stripe, testMode, taxRates);
     const productTaxRates = taxRates.map((tax) => stripeTaxRateIdsById.get(tax.id)!);
     const shippingTaxRates = taxRates
       .filter((tax) => tax.appliesToShipping)
@@ -133,7 +148,7 @@ export async function POST(req: Request) {
       region,
       postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
       country,
-    });
+    }, testMode);
 
     await saveOrderMarketing(
       order.id,
@@ -192,6 +207,7 @@ export async function POST(req: Request) {
           order_id: order.id,
           order_number: order.orderNumber,
           shipping_region: `${country}-${region}`,
+          ...(testMode ? { test_order: 'true' } : {}),
         },
       });
     } catch (stripeError) {

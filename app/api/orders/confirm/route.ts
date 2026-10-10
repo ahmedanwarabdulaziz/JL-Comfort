@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe/server';
+import { isTestSessionId, stripeFor } from '@/lib/stripe/server';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
@@ -16,7 +16,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Admin test checkouts were created with the test key, and only it can look them up.
+    const testMode = isTestSessionId(sessionId);
+    const session = await stripeFor(testMode).checkout.sessions.retrieve(sessionId);
     const orderId = session.metadata?.order_id || session.client_reference_id;
     if (!orderId) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     if (session.payment_status !== 'paid') {
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
       paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null,
       taxCents: session.total_details?.amount_tax ?? null,
       totalCents: session.amount_total ?? null,
-    });
+    }, testMode);
     if (firstConfirmation) {
       await sendNewOrderEmails(orderId, process.env.SITE_URL || new URL(req.url).origin);
       await reportPurchaseServerSide(orderId);

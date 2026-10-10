@@ -141,6 +141,7 @@ export async function reportPurchaseServerSide(orderId: string) {
   try {
     const order = await getOrder(orderId);
     if (!order?.adSignals) return; // placed before tracking existed, or storage was blocked
+    if (order.isTest) return; // an admin test checkout is not a sale
     const results = await Promise.allSettled([sendToGa4(order), sendToMeta(order)]);
     const summary = results
       .map((result) => (result.status === 'fulfilled' ? result.value : `error: ${String(result.reason).slice(0, 120)}`))

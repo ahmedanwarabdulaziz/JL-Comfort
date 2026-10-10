@@ -19,12 +19,10 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useCart } from '@/lib/context/CartContext';
 import { cartItemToAnalytics, trackViewCart } from '@/lib/analytics/track';
-import { loadStripe } from '@stripe/stripe-js';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FabricImage from '@/components/ui/FabricImage';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 export default function CheckoutPage() {
   const { items, removeFromCart, updateQuantity, cartTotal } = useCart();
