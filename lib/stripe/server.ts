@@ -33,13 +33,30 @@ const clientFor = (key: string) => {
 };
 const build = () => (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7);
 
+// Looks a variable up by name at run time, also accepting a name saved with stray spaces. Dynamic on
+// purpose: on the host, one function received STRIPE_SECRET_KEY while checkout's didn't, and this
+// rules out the bundler resolving a literal process.env.NAME differently.
+function readEnv(name: string): string | undefined {
+  const env = process.env as Record<string, string | undefined>;
+  if (env[name]) return env[name];
+  const match = Object.keys(env).find((key) => key.trim() === name);
+  return match ? env[match] : undefined;
+}
+
+/** What this function received (names and counts, never values) -- added to key errors. */
+export function envSummary(): string {
+  const keys = Object.keys(process.env);
+  const stripeNames = keys.filter((key) => /STRIPE/i.test(key)).map((key) => JSON.stringify(key));
+  return `fn ${process.env.AWS_LAMBDA_FUNCTION_NAME || 'n/a'}; ${keys.length} vars; stripe: ${stripeNames.join(', ') || 'none'}`;
+}
+
 // The store's own key -- live in production. Every shopper pays through this one.
-const readStoreKey = () => cleanSecretKey(process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY');
+const readStoreKey = () => cleanSecretKey(readEnv('STRIPE_SECRET_KEY'), 'STRIPE_SECRET_KEY');
 
 // Optional second key for admin test checkouts (see lib/stripe/testMode.ts). Only a test-mode key is
 // accepted here, so a live key pasted into the wrong variable can't turn "test" orders into real charges.
 function readTestKey(): string | undefined {
-  const key = cleanSecretKey(process.env.STRIPE_TEST_SECRET_KEY, 'STRIPE_TEST_SECRET_KEY');
+  const key = cleanSecretKey(readEnv('STRIPE_TEST_SECRET_KEY'), 'STRIPE_TEST_SECRET_KEY');
   if (key && !/^(?:sk|rk)_test_/.test(key)) {
     console.error('STRIPE_TEST_SECRET_KEY is not a test-mode key (sk_test_...); admin test checkout is disabled.');
     return undefined;
@@ -59,10 +76,11 @@ export const isTestKeyConfigured = () => !!readTestKey();
 export function stripeFor(testMode: boolean): Stripe {
   const key = testMode ? readTestKey() : readStoreKey();
   if (!key) {
+    console.error(`Stripe key missing for ${testMode ? 'test' : 'store'} checkout [build ${build()}]: ${envSummary()}`);
     throw new Error(
       testMode
         ? `Test payments aren't set up (STRIPE_TEST_SECRET_KEY is missing or not a test key) [build ${build()}].`
-        : `Payments are not set up on this server yet (STRIPE_SECRET_KEY is missing) [build ${build()}]. Please try again shortly.`
+        : `Payments are not set up on this server yet (STRIPE_SECRET_KEY is missing) [build ${build()}; ${envSummary()}]. Please try again shortly.`
     );
   }
   return clientFor(key);

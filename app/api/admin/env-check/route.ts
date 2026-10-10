@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { envSummary } from '@/lib/stripe/server';
 
 // Admin-only (middleware.ts covers /api/admin/:path*). Shows which payment/email settings this
 // deployment actually received from the host -- names, whether each has a value and its length,
@@ -20,6 +21,7 @@ export async function GET() {
       environment: process.env.VERCEL_ENV || null,
       commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
       url: process.env.VERCEL_URL || null,
+      function: envSummary(),
     },
     expected: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET', 'RESEND_API_KEY', 'GA4_API_SECRET'].map(
       (name) => `${name}: ${(process.env[name] || '').trim() ? 'received' : 'MISSING'}`
