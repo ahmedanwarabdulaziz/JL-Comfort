@@ -54,7 +54,8 @@ function SuccessContent() {
       .then((response) => response.json())
       .then((data) => {
         setOrderNumber(data.orderNumber || null);
-        if (data.paid && typeof data.totalCents === 'number') reportPurchaseOnce(sessionId, data);
+        // An admin test checkout (cs_test_...) is not a sale, so the ad platforms don't hear about it.
+        if (data.paid && typeof data.totalCents === 'number' && !sessionId.startsWith('cs_test_')) reportPurchaseOnce(sessionId, data);
       })
       .catch(() => {});
   }, [sessionId]);

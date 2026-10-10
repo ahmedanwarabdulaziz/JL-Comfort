@@ -46,6 +46,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  isTest: boolean; // paid through the Stripe test account by an admin (lib/stripe/testMode.ts)
   currency: string;
   subtotalCents: number;
   shippingCents: number;
@@ -134,6 +135,7 @@ export const rowToOrder = (row: any): Order => ({
   id: row.id,
   orderNumber: row.order_number,
   status: row.status,
+  isTest: !!row.is_test,
   currency: row.currency,
   subtotalCents: row.subtotal_cents,
   shippingCents: row.shipping_cents,

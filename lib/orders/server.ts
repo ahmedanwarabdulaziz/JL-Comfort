@@ -50,11 +50,13 @@ export async function createPendingOrder(
   lines: PricedLine[],
   quote: CheckoutQuote,
   discount: AppliedDiscount | null,
-  address: ShippingAddress
+  address: ShippingAddress,
+  isTest = false
 ): Promise<{ id: string; orderNumber: string }> {
   const { data: order, error } = await db()
     .from('orders')
     .insert({
+      is_test: isTest,
       subtotal_cents: quote.subtotalCents,
       shipping_cents: quote.shippingCents,
       tax_cents: quote.taxCents,
@@ -186,10 +188,13 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, extra
 /**
  * Moves an order from pending_payment to paid. Returns false if it was already processed, which
  * makes the Stripe webhook safe to deliver more than once: only the first delivery sends emails.
+ * `testMode` is the Stripe mode the payment was made in; a test payment can only mark a test order
+ * paid, and a live payment only a real one.
  */
 export async function markOrderPaid(
   orderId: string,
-  payment: { sessionId: string; paymentIntentId: string | null; taxCents: number | null; totalCents: number | null }
+  payment: { sessionId: string; paymentIntentId: string | null; taxCents: number | null; totalCents: number | null },
+  testMode: boolean
 ): Promise<boolean> {
   const patch: Record<string, unknown> = {
     status: 'paid',
@@ -205,19 +210,23 @@ export async function markOrderPaid(
     .from('orders')
     .update(patch)
     .eq('id', orderId)
+    .eq('is_test', testMode)
     .in('status', ['pending_payment', 'expired'])
     .select('id');
   if (error) throw error;
   const firstTime = (data || []).length > 0;
-  if (firstTime) {
+  // A test checkout doesn't use up a discount code's limits.
+  if (firstTime && !testMode) {
     // Count the discount use now that the order is paid (unique per order, so retries are harmless).
     await recordRedemption(orderId).catch((redemptionError) => console.error('Recording discount use failed:', redemptionError));
   }
   return firstTime;
 }
 
-export async function markOrderExpired(orderId: string) {
-  await db().from('orders').update({ status: 'expired' }).eq('id', orderId).eq('status', 'pending_payment');
+export async function markOrderExpired(orderId: string, testMode?: boolean) {
+  let query = db().from('orders').update({ status: 'expired' }).eq('id', orderId).eq('status', 'pending_payment');
+  if (testMode !== undefined) query = query.eq('is_test', testMode);
+  await query;
 }
 
 // --- email ---------------------------------------------------------------------------------
@@ -249,6 +258,8 @@ const deliver = (
 /** Sends the supplier PO if the order has supplier-fulfilled items. Returns a one-line status. */
 export async function sendSupplierPurchaseOrder(order: Order, settings: EmailSettings, idempotencyKey?: string): Promise<string> {
   if (supplierItems(order).length === 0) return 'No supplier items (made in the workshop)';
+  // Never send the supplier a purchase order for something nobody paid for.
+  if (order.isTest) return 'NOT SENT: test order (purchase orders are never sent for test orders)';
   if (!settings.supplierEmail) {
     await logOrderEvent(order.id, 'email_failed', 'Purchase order NOT sent: no supplier email is set in Admin → Email Settings.');
     return 'NOT SENT: no supplier email set in admin';

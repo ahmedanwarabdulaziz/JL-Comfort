@@ -9,20 +9,33 @@ import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 // redirect can be skipped (closed tab, lost connection), this can't. The signature check proves the
 // request came from Stripe; register the endpoint in the Stripe dashboard for these events:
 //   checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.expired
+// Admin test checkouts (lib/stripe/testMode.ts) need the same endpoint registered again in the
+// Stripe dashboard's test mode; its signing secret goes in STRIPE_TEST_WEBHOOK_SECRET.
 export async function POST(req: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-  if (!secret) {
+  const secrets = [process.env.STRIPE_WEBHOOK_SECRET?.trim(), process.env.STRIPE_TEST_WEBHOOK_SECRET?.trim()].filter(Boolean) as string[];
+  if (secrets.length === 0) {
     console.error('STRIPE_WEBHOOK_SECRET is not set; rejecting webhook.');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
-  let event: Stripe.Event;
-  try {
-    const payload = await req.text();
-    event = stripe.webhooks.constructEvent(payload, req.headers.get('stripe-signature') || '', secret);
-  } catch (error: any) {
-    return NextResponse.json({ error: `Invalid signature: ${error.message}` }, { status: 400 });
+  const payload = await req.text();
+  const signature = req.headers.get('stripe-signature') || '';
+  let event: Stripe.Event | null = null;
+  let signatureError = '';
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, secret);
+      break;
+    } catch (error: any) {
+      signatureError = error.message;
+    }
   }
+  if (!event) {
+    return NextResponse.json({ error: `Invalid signature: ${signatureError}` }, { status: 400 });
+  }
+  // Stripe marks every event with the mode it happened in; markOrderPaid uses it so a test payment
+  // can never mark a real order paid.
+  const testMode = !event.livemode;
 
   const session = event.data.object as Stripe.Checkout.Session;
   const orderId = session.metadata?.order_id || session.client_reference_id;
@@ -40,14 +53,14 @@ export async function POST(req: Request) {
         paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null,
         taxCents: session.total_details?.amount_tax ?? null,
         totalCents: session.amount_total ?? null,
-      });
+      }, testMode);
       if (firstDelivery) {
         const origin = process.env.SITE_URL || new URL(req.url).origin;
         await sendNewOrderEmails(orderId, origin);
         await reportPurchaseServerSide(orderId);
       }
     } else if (event.type === 'checkout.session.expired') {
-      await markOrderExpired(orderId);
+      await markOrderExpired(orderId, testMode);
     }
   } catch (error) {
     // A 500 makes Stripe retry later; markOrderPaid's status guard keeps a retry from double-sending.

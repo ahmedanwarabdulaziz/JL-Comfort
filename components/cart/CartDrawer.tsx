@@ -19,10 +19,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useCart } from '@/lib/context/CartContext';
-import { loadStripe } from '@stripe/stripe-js';
-
-// Make sure to set your publishable key in .env.local
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 export default function CartDrawer() {
   const { items, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
@@ -48,16 +44,11 @@ export default function CartDrawer() {
         return;
       }
 
-      const stripe = await stripePromise;
-      if (stripe) {
-        const { error } = await (stripe as any).redirectToCheckout({
-          sessionId: session.id,
-        });
-
-        if (error) {
-          console.error('Stripe redirect error:', error);
-          setIsCheckingOut(false);
-        }
+      // Stripe's hosted page URL works for live and admin test sessions alike.
+      if (session.url) {
+        window.location.href = session.url;
+      } else {
+        setIsCheckingOut(false);
       }
     } catch (err) {
       console.error('Checkout error:', err);
