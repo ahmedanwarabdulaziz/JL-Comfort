@@ -35,6 +35,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
 import EmailIcon from '@mui/icons-material/Email';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -75,7 +76,7 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
       ? 'ai-chat-logs'
       : pathname?.includes('/sample-requests')
       ? 'sample-requests'
-      : pathname?.includes('/admin/orders')
+      : pathname?.includes('/admin/orders') || pathname?.includes('/admin/abandoned-checkouts')
       ? 'orders'
       : pathname?.includes('/admin/discounts')
       ? 'discounts'
@@ -136,6 +137,17 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <ShoppingBagIcon />
             </ListItemIcon>
             <ListItemText primary="Orders" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/abandoned-checkouts')}
+            onClick={() => router.push('/admin/abandoned-checkouts')}
+          >
+            <ListItemIcon>
+              <RemoveShoppingCartIcon />
+            </ListItemIcon>
+            <ListItemText primary="Abandoned checkouts" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

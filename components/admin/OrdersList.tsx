@@ -68,6 +68,9 @@ function OrderSource({ order }: { order: Order }) {
           Cookie consent at checkout: analytics {adSignals.consent.analytics ? 'yes' : 'no'}, advertising {adSignals.consent.advertising ? 'yes' : 'no'}
         </Typography>
       )}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        Marketing emails: {order.marketingOptIn ? 'opted in at this checkout' : 'not opted in at this checkout'}
+      </Typography>
     </Box>
   );
 }
