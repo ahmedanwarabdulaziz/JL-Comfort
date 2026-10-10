@@ -23,10 +23,16 @@ function cleanSecretKey(raw: string | undefined, name: string): string | undefin
 
 const API_VERSION = '2026-05-27.dahlia' as any; // Bypass strict TS check
 
-// The store's own key -- live in production. Every shopper pays through this one.
-export const stripe = new Stripe(cleanSecretKey(process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY') || 'sk_test_dummy_key_to_pass_build', {
+// The store's own key -- live in production. Every shopper pays through this one. The placeholder
+// only lets the build run without the key; stripeFor() refuses to use it, so a missing key shows up
+// as a clear error instead of Stripe's "Invalid API Key provided: sk_test_...uild".
+const liveKey = cleanSecretKey(process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY');
+export const stripe = new Stripe(liveKey || 'sk_test_dummy_key_to_pass_build', {
   apiVersion: API_VERSION,
 });
+
+/** Which kind of key STRIPE_SECRET_KEY holds on this server -- shown in the admin bar, never the key. */
+export const storeKeyMode: 'live' | 'test' | 'missing' = !liveKey ? 'missing' : /_live_/.test(liveKey) ? 'live' : 'test';
 
 // Optional second key for admin test checkouts (see lib/stripe/testMode.ts). Only a test-mode key is
 // accepted here, so a live key pasted into the wrong variable can't turn "test" orders into real charges.
@@ -38,7 +44,10 @@ export const stripeTest = testKey && /^(?:sk|rk)_test_/.test(testKey) ? new Stri
 
 /** The client for an order: the test account for admin test orders, otherwise the store's own. */
 export function stripeFor(testMode: boolean): Stripe {
-  if (!testMode) return stripe;
+  if (!testMode) {
+    if (!liveKey) throw new Error('Payments are not set up on this server yet (STRIPE_SECRET_KEY is missing). Please try again shortly.');
+    return stripe;
+  }
   if (!stripeTest) throw new Error('STRIPE_TEST_SECRET_KEY is not set.');
   return stripeTest;
 }

@@ -6,7 +6,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typogra
 // Admin top-bar button for test payments. It only affects this browser: checkouts made here while
 // signed in as an admin go to the Stripe test account. Shoppers always pay live.
 export default function StripeTestModeSwitch() {
-  const [state, setState] = useState<{ testMode: boolean; available: boolean } | null>(null);
+  const [state, setState] = useState<{ testMode: boolean; available: boolean; storeKey?: 'live' | 'test' | 'missing' } | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -49,8 +49,24 @@ export default function StripeTestModeSwitch() {
   };
 
   const on = state.testMode;
+  // The store's own key, as this deployment sees it: a missing or test key means shoppers can't pay for real.
+  const keyWarning =
+    state.storeKey === 'missing'
+      ? 'Live Stripe key missing'
+      : state.storeKey === 'test'
+      ? 'Store is on a TEST Stripe key'
+      : '';
   return (
     <>
+      {keyWarning && (
+        <Box
+          component="span"
+          title="STRIPE_SECRET_KEY on this deployment. Fix it in Vercel → Settings → Environment Variables, then redeploy Production."
+          sx={{ mr: 1.5, px: 1.25, py: 0.4, borderRadius: 999, bgcolor: '#d32f2f', color: '#fff', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}
+        >
+          ⚠ {keyWarning}
+        </Box>
+      )}
       <Button
         onClick={toggle}
         disabled={saving}
