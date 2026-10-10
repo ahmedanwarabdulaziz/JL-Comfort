@@ -13,6 +13,7 @@ import {
   markOrderExpired,
   saveOrderMarketing,
 } from '@/lib/orders/server';
+import { recordMarketingConsent } from '@/lib/marketing/server';
 
 
 // Every price in the store (fabric, foam, cushions, shipping) is entered in Canadian dollars.
@@ -55,7 +56,7 @@ async function resolveStripeTaxRates(stripe: Stripe, testMode: boolean, taxRates
 
 export async function POST(req: Request) {
   try {
-    const { items, origin: clientOrigin, shippingAddress, discountCode, attribution, adSignals } = await req.json();
+    const { items, origin: clientOrigin, shippingAddress, discountCode, marketingOptIn, attribution, adSignals } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -148,13 +149,19 @@ export async function POST(req: Request) {
       region,
       postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
       country,
-    }, testMode);
+    }, testMode, marketingOptIn === true);
+
+    const clientIp = req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0] || undefined;
+    // Recorded when checkout starts, not when it's paid: a cart reminder is for the ones who don't pay.
+    if (marketingOptIn === true && !testMode) {
+      await recordMarketingConsent(String(shippingAddress.email).trim(), 'checkout', clientIp);
+    }
 
     await saveOrderMarketing(
       order.id,
       cleanAttribution(attribution),
       cleanAdSignals(adSignals, {
-        ip: req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0] || undefined,
+        ip: clientIp,
         userAgent: req.headers.get('user-agent') || undefined,
       })
     );

@@ -47,6 +47,7 @@ export interface Order {
   orderNumber: string;
   status: OrderStatus;
   isTest: boolean; // paid through the Stripe test account by an admin (lib/stripe/testMode.ts)
+  marketingOptIn: boolean; // ticked "email me a reminder... and offers" at checkout
   currency: string;
   subtotalCents: number;
   shippingCents: number;
@@ -136,6 +137,7 @@ export const rowToOrder = (row: any): Order => ({
   orderNumber: row.order_number,
   status: row.status,
   isTest: !!row.is_test,
+  marketingOptIn: !!row.marketing_opt_in,
   currency: row.currency,
   subtotalCents: row.subtotal_cents,
   shippingCents: row.shipping_cents,

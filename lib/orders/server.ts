@@ -51,12 +51,14 @@ export async function createPendingOrder(
   quote: CheckoutQuote,
   discount: AppliedDiscount | null,
   address: ShippingAddress,
-  isTest = false
+  isTest = false,
+  marketingOptIn = false
 ): Promise<{ id: string; orderNumber: string }> {
   const { data: order, error } = await db()
     .from('orders')
     .insert({
       is_test: isTest,
+      marketing_opt_in: marketingOptIn,
       subtotal_cents: quote.subtotalCents,
       shipping_cents: quote.shippingCents,
       tax_cents: quote.taxCents,
