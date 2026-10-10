@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe/server';
+import { webhookVerifier } from '@/lib/stripe/server';
 import { markOrderExpired, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   let signatureError = '';
   for (const secret of secrets) {
     try {
-      event = stripe.webhooks.constructEvent(payload, signature, secret);
+      event = webhookVerifier.webhooks.constructEvent(payload, signature, secret);
       break;
     } catch (error: any) {
       signatureError = error.message;

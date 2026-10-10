@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { stripeTest } from '@/lib/stripe/server';
+import { isTestKeyConfigured } from '@/lib/stripe/server';
 
 // Admin-only test checkout. An admin turns it on from the admin panel, which sets this cookie in
 // their browser only; their checkouts then go to the Stripe test account and the order is marked as
@@ -8,7 +8,7 @@ import { stripeTest } from '@/lib/stripe/server';
 // the browser is signed in as an admin -- for every other shopper, payment is always live.
 export const TEST_MODE_COOKIE = 'jl_stripe_test_mode';
 
-export const isTestModeAvailable = () => !!stripeTest;
+export const isTestModeAvailable = () => isTestKeyConfigured();
 
 export async function isSignedInAdmin(): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
@@ -29,6 +29,6 @@ export async function isSignedInAdmin(): Promise<boolean> {
 export async function resolveCheckoutMode(): Promise<'live' | 'test' | 'admin_required'> {
   const cookieStore = await cookies();
   if (cookieStore.get(TEST_MODE_COOKIE)?.value !== '1') return 'live';
-  if (!stripeTest || !(await isSignedInAdmin())) return 'admin_required';
+  if (!isTestKeyConfigured() || !(await isSignedInAdmin())) return 'admin_required';
   return 'test';
 }
