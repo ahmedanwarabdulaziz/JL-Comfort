@@ -43,6 +43,7 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { supabase } from '@/lib/supabase/client';
 import ProductsList from './ProductsList';
+import StripeTestModeSwitch from './StripeTestModeSwitch';
 
 const DRAWER_WIDTH = 240;
 
@@ -424,6 +425,7 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Admin
           </Typography>
+          <StripeTestModeSwitch />
           <Button color="inherit" onClick={handleLogout}>
             Logout
           </Button>

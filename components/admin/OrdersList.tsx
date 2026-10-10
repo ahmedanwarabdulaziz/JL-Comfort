@@ -93,6 +93,9 @@ const STATUS_COLORS: Partial<Record<OrderStatus, 'default' | 'primary' | 'second
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const when = (d: Date | null) => (d ? d.toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 
+// Paid with a Stripe test card by an admin -- no money was taken and nothing should be shipped.
+export const TestChip = () => <Chip size="small" label="TEST" sx={{ bgcolor: '#ff9800', color: '#000', fontWeight: 700 }} />;
+
 export const StatusChip = ({ status }: { status: OrderStatus }) => (
   <Chip size="small" label={ORDER_STATUS_LABELS[status]} color={STATUS_COLORS[status] || 'default'} variant={status === 'closed' ? 'outlined' : 'filled'} />
 );
@@ -219,7 +222,7 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
   return (
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 6 }}>
-        {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />}
+        {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />} {order?.isTest && <TestChip />}
         {order && (order.supplierOrderNumber || order.supplierInvoiceNumber) && (
           <Typography component="span" variant="body2" color="text.secondary">
             Charlotte{' '}
@@ -479,7 +482,7 @@ export default function OrdersList() {
                   <TableCell>{order.shipCity}, {order.shipRegion}</TableCell>
                   <TableCell>{order.items.length} item{order.items.length === 1 ? '' : 's'}</TableCell>
                   <TableCell align="right">{money(order.totalCents)}</TableCell>
-                  <TableCell><StatusChip status={order.status} /></TableCell>
+                  <TableCell><StatusChip status={order.status} />{order.isTest && <Box component="span" sx={{ ml: 0.5 }}><TestChip /></Box>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
