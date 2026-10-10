@@ -6,9 +6,11 @@ import {
   Box,
   CircularProgress,
   Button,
+  Checkbox,
   Container,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -24,6 +26,7 @@ import { cartItemToAnalytics, trackAddPaymentInfo, trackAddShippingInfo, trackBe
 import { collectAdSignals, readAttribution } from '@/lib/analytics/attribution';
 import { CHECKOUT_REGIONS } from '@/lib/checkout/regions';
 import { CheckoutQuote } from '@/lib/types/checkout';
+import { MARKETING_CONSENT_TEXT } from '@/lib/marketing/consent';
 
 const PROVINCES = CHECKOUT_REGIONS.CA;
 const formatCents = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -54,6 +57,7 @@ export default function ShippingPageClient() {
   const [pricesUpdated, setPricesUpdated] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [discountCode, setDiscountCode] = useState(''); // the code sent with the quote/checkout
+  const [marketingOptIn, setMarketingOptIn] = useState(false); // CASL: never ticked by default
 
   // Arriving here is the start of checkout. The cart loads from storage after mount, so wait for it.
   const checkoutTracked = useRef(false);
@@ -126,6 +130,7 @@ export default function ShippingPageClient() {
           items,
           shippingAddress: { ...form, country: 'CA' },
           discountCode: discountCode || undefined,
+          marketingOptIn,
           attribution: readAttribution(),
           adSignals: collectAdSignals(),
         }),
@@ -164,7 +169,14 @@ export default function ShippingPageClient() {
             <Paper elevation={0} sx={{ p: { xs: 2.5, md: 4 }, border: '1px solid #e5e1dc', borderRadius: 1 }}>
               <Typography sx={{ color: '#252321', fontSize: '1.25rem', mb: 2.5 }}>Delivery information</Typography>
               <Box sx={{ display: 'grid', gap: 2 }}>
-                <TextField label="Email address" type="email" required fullWidth value={form.email} onChange={updateField('email')} autoComplete="email" />
+                <Box>
+                  <TextField label="Email address" type="email" required fullWidth value={form.email} onChange={updateField('email')} autoComplete="email" />
+                  <FormControlLabel
+                    sx={{ mt: 0.75, alignItems: 'flex-start', mr: 0 }}
+                    control={<Checkbox size="small" checked={marketingOptIn} onChange={(event) => setMarketingOptIn(event.target.checked)} sx={{ pt: 0.25, color: '#8d6c4b', '&.Mui-checked': { color: '#8d6c4b' } }} />}
+                    label={<Typography sx={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#625b54', pt: 0.4 }}>{MARKETING_CONSENT_TEXT}</Typography>}
+                  />
+                </Box>
                 <TextField label="Full name" required fullWidth value={form.name} onChange={updateField('name')} autoComplete="name" />
                 <TextField label="Phone number" fullWidth value={form.phone} onChange={updateField('phone')} autoComplete="tel" />
                 <TextField label="Address" required fullWidth value={form.line1} onChange={updateField('line1')} autoComplete="address-line1" />

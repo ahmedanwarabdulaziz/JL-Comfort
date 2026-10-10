@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { EmailSettings, Order, OrderStatus, rowToEmailSettings, rowToOrder } from '@/lib/types/order';
+import { CheckoutOrderRow } from '@/lib/analytics/abandonedCheckouts';
 
 // Admin-side reads/writes through the signed-in admin's session (RLS: admin_users only).
 // Anything that sends email goes through /api/admin/orders/[id] instead.
@@ -74,4 +75,48 @@ export const saveEmailSettings = async (settings: EmailSettings): Promise<EmailS
     .single();
   if (error) throw error;
   return rowToEmailSettings(data);
+};
+
+// ---- Abandoned checkouts page ----
+
+/** Every real (non-test) order since `since`, paid or not, slimmed down for checkout analysis. */
+export const getCheckoutOrderRows = async (since: Date): Promise<CheckoutOrderRow[]> => {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, order_number, status, created_at, customer_email, customer_name, customer_phone, ship_city, ship_region, total_cents, marketing_opt_in, order_items(name, sku, quantity, amount_cents, sort_order)')
+    .eq('is_test', false)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(3000);
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    orderNumber: row.order_number,
+    status: row.status,
+    createdAt: new Date(row.created_at),
+    email: row.customer_email || '',
+    name: row.customer_name || '',
+    phone: row.customer_phone,
+    city: row.ship_city || '',
+    region: row.ship_region || '',
+    totalCents: row.total_cents || 0,
+    marketingOptIn: !!row.marketing_opt_in,
+    items: (row.order_items || [])
+      .slice()
+      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((item: any) => ({ name: item.name, sku: item.sku, quantity: Number(item.quantity), amountCents: item.amount_cents })),
+  }));
+};
+
+/** Current marketing-email status per address ('subscribed' / 'unsubscribed'); absent = never opted in. */
+export const getSubscriberStatuses = async (emails: string[]): Promise<Map<string, string>> => {
+  const statuses = new Map<string, string>();
+  if (!supabase || emails.length === 0) return statuses;
+  for (let i = 0; i < emails.length; i += 200) {
+    const { data, error } = await supabase.from('email_subscribers').select('email, status').in('email', emails.slice(i, i + 200));
+    if (error) throw error;
+    (data || []).forEach((row: any) => statuses.set(row.email, row.status));
+  }
+  return statuses;
 };
