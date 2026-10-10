@@ -23,34 +23,53 @@ function cleanSecretKey(raw: string | undefined, name: string): string | undefin
 
 const API_VERSION = '2026-05-27.dahlia' as any; // Bypass strict TS check
 
-// The store's own key -- live in production. Every shopper pays through this one. The placeholder
-// only lets the build run without the key; stripeFor() refuses to use it, so a missing key shows up
-// as a clear error instead of Stripe's "Invalid API Key provided: sk_test_...uild".
-const liveKey = cleanSecretKey(process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY');
-export const stripe = new Stripe(liveKey || 'sk_test_dummy_key_to_pass_build', {
-  apiVersion: API_VERSION,
-});
+// Keys are read from the environment on every call rather than once when the server starts, so
+// what checkout sees always matches the deployment's current settings (and /api/admin/env-check).
+// One client per distinct key is reused.
+const clients = new Map<string, Stripe>();
+const clientFor = (key: string) => {
+  if (!clients.has(key)) clients.set(key, new Stripe(key, { apiVersion: API_VERSION }));
+  return clients.get(key)!;
+};
+const build = () => (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7);
 
-/** Which kind of key STRIPE_SECRET_KEY holds on this server -- shown in the admin bar, never the key. */
-export const storeKeyMode: 'live' | 'test' | 'missing' = !liveKey ? 'missing' : /_live_/.test(liveKey) ? 'live' : 'test';
+// The store's own key -- live in production. Every shopper pays through this one.
+const readStoreKey = () => cleanSecretKey(process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY');
 
 // Optional second key for admin test checkouts (see lib/stripe/testMode.ts). Only a test-mode key is
 // accepted here, so a live key pasted into the wrong variable can't turn "test" orders into real charges.
-const testKey = cleanSecretKey(process.env.STRIPE_TEST_SECRET_KEY, 'STRIPE_TEST_SECRET_KEY');
-if (testKey && !/^(?:sk|rk)_test_/.test(testKey)) {
-  console.error('STRIPE_TEST_SECRET_KEY is not a test-mode key (sk_test_...); admin test checkout is disabled.');
+function readTestKey(): string | undefined {
+  const key = cleanSecretKey(process.env.STRIPE_TEST_SECRET_KEY, 'STRIPE_TEST_SECRET_KEY');
+  if (key && !/^(?:sk|rk)_test_/.test(key)) {
+    console.error('STRIPE_TEST_SECRET_KEY is not a test-mode key (sk_test_...); admin test checkout is disabled.');
+    return undefined;
+  }
+  return key;
 }
-export const stripeTest = testKey && /^(?:sk|rk)_test_/.test(testKey) ? new Stripe(testKey, { apiVersion: API_VERSION }) : null;
+
+/** Which kind of key STRIPE_SECRET_KEY holds on this server -- shown in the admin bar, never the key. */
+export function getStoreKeyMode(): 'live' | 'test' | 'missing' {
+  const key = readStoreKey();
+  return !key ? 'missing' : /_live_/.test(key) ? 'live' : 'test';
+}
+
+export const isTestKeyConfigured = () => !!readTestKey();
 
 /** The client for an order: the test account for admin test orders, otherwise the store's own. */
 export function stripeFor(testMode: boolean): Stripe {
-  if (!testMode) {
-    if (!liveKey) throw new Error('Payments are not set up on this server yet (STRIPE_SECRET_KEY is missing). Please try again shortly.');
-    return stripe;
+  const key = testMode ? readTestKey() : readStoreKey();
+  if (!key) {
+    throw new Error(
+      testMode
+        ? `Test payments aren't set up (STRIPE_TEST_SECRET_KEY is missing or not a test key) [build ${build()}].`
+        : `Payments are not set up on this server yet (STRIPE_SECRET_KEY is missing) [build ${build()}]. Please try again shortly.`
+    );
   }
-  if (!stripeTest) throw new Error('STRIPE_TEST_SECRET_KEY is not set.');
-  return stripeTest;
+  return clientFor(key);
 }
+
+// Webhook signatures are checked with the signing secret alone; no API key is involved.
+export const webhookVerifier = new Stripe('sk_test_signature_check_only', { apiVersion: API_VERSION });
 
 // Checkout Session ids say which mode they were created in: cs_test_... or cs_live_...
 export const isTestSessionId = (sessionId: string) => sessionId.startsWith('cs_test_');
