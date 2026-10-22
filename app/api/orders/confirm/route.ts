@@ -4,6 +4,7 @@ import { isTestSessionId, stripeFor } from '@/lib/stripe/server';
 import { getOrder, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { SQUARE_REF_PREFIX, getSquarePayment } from '@/lib/square/server';
 import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
+import { reportError } from '@/lib/alerts/server';
 
 
 // Called by the /success page as a second path to confirm an order, next to the Stripe webhook:
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('Order confirmation failed:', error);
+    await reportError('confirm_failed', 'Order confirmation failed on the success page', error);
     return NextResponse.json({ error: 'Unable to confirm the order' }, { status: 500 });
   }
 }

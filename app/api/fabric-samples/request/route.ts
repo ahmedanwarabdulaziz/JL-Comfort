@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CheckoutError } from '@/lib/checkout/errors';
 import { createSampleRequest, getSampleRequest, sendNewSampleRequestEmails } from '@/lib/samples/server';
 import { SampleRequestInput } from '@/lib/types/sampleRequest';
+import { reportError } from '@/lib/alerts/server';
 
 // Public: stores a free sample request (limits from Admin → Sample Requests are enforced in
 // createSampleRequest), then emails the supplier, the customer and the internal copy.
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     if (error instanceof CheckoutError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('Error creating sample request:', error);
+    await reportError('sample_request_failed', 'A sample request could not be saved', error);
     return NextResponse.json({ error: 'Failed to submit sample request.' }, { status: 500 });
   }
 }

@@ -13,6 +13,7 @@ import { PricedLine } from '@/lib/checkout/serverPricing';
 import { CheckoutQuote } from '@/lib/types/checkout';
 import { AppliedDiscount } from '@/lib/types/discount';
 import { recordRedemption } from '@/lib/discounts/server';
+import { alertNewOrder } from '@/lib/alerts/server';
 import {
   CARRIERS,
   EmailSettings,
@@ -289,6 +290,7 @@ export async function sendNewOrderEmails(orderId: string, siteOrigin: string) {
     settings = await getEmailSettings();
   } catch (error: any) {
     await logOrderEvent(orderId, 'email_failed', `Could not load email settings: ${error.message || error}`);
+    await alertNewOrder(order, 'NOT SENT: could not load email settings');
     return;
   }
 
@@ -304,6 +306,7 @@ export async function sendNewOrderEmails(orderId: string, siteOrigin: string) {
       `${order.id}-internal`
     );
   }
+  await alertNewOrder(order, supplierStatus);
 }
 
 /** A supplier reference such as "#871459", normalized without the leading "#". */

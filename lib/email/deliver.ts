@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { formatAddress, isEmailConfigured, sendEmail } from '@/lib/email/resend';
 import { EmailContent } from '@/lib/email/layout';
 import { EmailSettings, VERIFIED_SENDING_DOMAINS, rowToEmailSettings } from '@/lib/types/order';
+import { recordAlert } from '@/lib/alerts/server';
 
 // Sending shared by orders and sample requests. Server-only.
 
@@ -54,6 +55,7 @@ export async function deliverEmail(options: {
   } catch (error: any) {
     console.error(`${context}: ${eventType} email failed`, error);
     await log('email_failed', `Could not email ${to} (${eventType}): ${error.message || error}`);
+    await recordAlert({ level: 'warning', type: 'email_failed', title: `${context}: email not sent`, detail: `To ${to} (${eventType}): ${error.message || error}` });
     return false;
   }
 }

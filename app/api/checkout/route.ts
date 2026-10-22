@@ -15,6 +15,7 @@ import {
 } from '@/lib/orders/server';
 import { recordMarketingConsent } from '@/lib/marketing/server';
 import { paymentProvider } from '@/lib/payments/provider';
+import { reportError } from '@/lib/alerts/server';
 import { SQUARE_REF_PREFIX, assertSquareConfigured, createSquarePaymentLink } from '@/lib/square/server';
 
 
@@ -280,6 +281,7 @@ export async function POST(req: Request) {
     // A connection error's own message is generic; the underlying cause (e.g. an invalid header or a
     // DNS/TLS failure) is on .detail and is what tells us what's actually wrong.
     const cause = error?.type === 'StripeConnectionError' && error.detail ? ` (${error.detail.code || ''} ${error.detail.message || ''})`.replace(/\(\s+/, '(') : '';
+    await reportError('checkout_failed', `Checkout failed (${paymentProvider() === 'square' ? 'Square' : 'Stripe'}): a customer could not pay`, `${error?.message || error}${cause}`);
     return NextResponse.json({ error: `${error.message}${cause}` }, { status: 500 });
   }
 }
