@@ -142,7 +142,13 @@ export async function POST(req: Request) {
           orderId: order.id,
           orderNumber: order.orderNumber,
           currency: CURRENCY,
-          lines,
+          // Square counts quantity as items, so 5 yards of one fabric would show as "5 items". Yardage
+          // goes over as one line at its full price; the description already says how many yards.
+          lines: lines.map((line) =>
+            line.kind === 'fabric' || line.kind === 'vinyl'
+              ? { ...line, unitPriceCents: line.amountCents, quantity: 1, description: `${line.description} @ $${(line.unitPriceCents / 100).toFixed(2)}/yd` }
+              : line
+          ),
           shipping: quote.shippingCents > 0
             ? { name: 'Shipping', description: `Standard delivery, ${shippingRate.deliveryMinDays}–${shippingRate.deliveryMaxDays} business days`, amountCents: quote.shippingCents }
             : null,
