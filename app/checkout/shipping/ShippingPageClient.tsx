@@ -58,6 +58,15 @@ export default function ShippingPageClient() {
   const [codeInput, setCodeInput] = useState('');
   const [discountCode, setDiscountCode] = useState(''); // the code sent with the quote/checkout
   const [marketingOptIn, setMarketingOptIn] = useState(false); // CASL: never ticked by default
+  // Admins only (null for shoppers): whether "Continue to secure payment" takes a test or real payment.
+  const [payment, setPayment] = useState<{ mode: 'test' | 'live' | 'admin_required' | null; provider: 'stripe' | 'square' } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/checkout/mode', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then(setPayment)
+      .catch(() => {});
+  }, []);
 
   // Arriving here is the start of checkout. The cart loads from storage after mount, so wait for it.
   const checkoutTracked = useRef(false);
@@ -161,6 +170,24 @@ export default function ShippingPageClient() {
         <Button component={Link} href="/checkout" startIcon={<ArrowBackIcon />} sx={{ mb: 3, color: '#615b55' }}>Back to cart</Button>
         <Typography component="h1" sx={{ fontSize: { xs: '2rem', md: '2.6rem' }, fontWeight: 400, color: '#252321', mb: 1 }}>Shipping &amp; Tax</Typography>
         <Typography sx={{ color: '#77716b', mb: 4 }}>Enter your Canadian delivery address to see shipping and applicable taxes before you pay.</Typography>
+        {payment?.mode === 'test' && (
+          <Alert severity="success" variant="filled" sx={{ mb: 3 }}>
+            <strong>TEST PAYMENT.</strong> Test payments are on in this browser, so no real money is charged.{' '}
+            {payment.provider === 'square'
+              ? 'On Square’s page, pay with card 4111 1111 1111 1111, any future date, CVV 111.'
+              : 'On the payment page, pay with card 4242 4242 4242 4242, any future date, any CVC.'}
+          </Alert>
+        )}
+        {payment?.mode === 'live' && (
+          <Alert severity="error" variant="filled" sx={{ mb: 3 }}>
+            <strong>REAL PAYMENT.</strong> Test payments are off in this browser, so a card entered next is really charged. To test, turn on Test payments in the admin panel top bar first.
+          </Alert>
+        )}
+        {payment?.mode === 'admin_required' && (
+          <Alert severity="warning" variant="filled" sx={{ mb: 3 }}>
+            <strong>Test payments are on, but you’re not signed in as an admin.</strong> Sign in to the admin panel in this browser to keep testing.
+          </Alert>
+        )}
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         {pricesUpdated && <Alert severity="info" sx={{ mb: 3 }} onClose={() => setPricesUpdated(false)}>Some prices in your cart have changed since you added them. Your order summary shows the current prices.</Alert>}
 
@@ -286,7 +313,7 @@ export default function ShippingPageClient() {
                 </Box>
               ) : null}
               <Divider sx={{ mb: 2 }} />
-              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote || codeRejected} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : 'Continue to secure payment'}</Button>
+              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting || isQuoting || !quote || codeRejected} sx={{ py: 1.5, borderRadius: 0, bgcolor: '#252321', '&:hover': { bgcolor: '#8d6c4b' } }}>{isSubmitting ? 'Preparing checkout...' : payment?.mode === 'test' ? 'Continue to test payment' : 'Continue to secure payment'}</Button>
               <Typography sx={{ mt: 1.5, fontSize: '0.75rem', lineHeight: 1.5, color: '#625b54', textAlign: 'center' }}>
                 By continuing, you agree to our <Link href="/terms" style={{ color: '#8d6c4b' }}>Terms of Service</Link> and acknowledge our{' '}
                 <Link href="/privacy" style={{ color: '#8d6c4b' }}>Privacy Policy</Link>. Orders are made to your specifications and can&rsquo;t be returned for a change of mind.
