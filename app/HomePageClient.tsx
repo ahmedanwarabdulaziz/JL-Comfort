@@ -88,14 +88,14 @@ function SectionHeading({ eyebrow, title, italic, link }: { eyebrow: string; tit
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mb: { xs: 3.5, md: 4.5 } }}>
       <Box>
-        <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1 }}>{eyebrow}</Typography>
+        <Typography sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1 }}>{eyebrow}</Typography>
         <Typography variant="h2" sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' }, color: brand.ink }}>
           {title}{' '}
-          <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{italic}</Box>
+          <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>{italic}</Box>
         </Typography>
       </Box>
       {link && (
-        <Box component={Link} href={link.href} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, textDecoration: 'none', fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', borderBottom: `1px solid ${brand.ink}`, pb: 0.25, '&:hover': { color: brand.mocha, borderColor: brand.mocha } }}>
+        <Box component={Link} href={link.href} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, textDecoration: 'none', fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', borderBottom: `1px solid ${brand.ink}`, pb: 0.25, '&:hover': { color: brand.accent, borderColor: brand.accent } }}>
           {link.label} <ArrowForwardIcon sx={{ fontSize: 16 }} />
         </Box>
       )}
@@ -120,14 +120,14 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
       >
         {/* The hero photo is the page's largest paint, so it loads first and optimised. */}
         <FabricImage src={HERO_PHOTO} alt="" sizes="100vw" priority />
-        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(33,23,18,0.88) 0%, rgba(33,23,18,0.62) 45%, rgba(33,23,18,0.15) 100%)' }} />
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(51,56,79,0.88) 0%, rgba(51,56,79,0.62) 45%, rgba(51,56,79,0.15) 100%)' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', py: { xs: 8, md: 10 } }}>
-          <Typography sx={{ color: brand.butter, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 2 }}>
+          <Typography sx={{ color: brand.accent, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 2 }}>
             Designer fabric · Custom upholstery
           </Typography>
           <Typography variant="h1" sx={{ fontSize: { xs: '2.6rem', sm: '3.4rem', md: '4.2rem' }, lineHeight: 1.02, maxWidth: '13ch', color: brand.chalk }}>
             Fabric by the yard,{' '}
-            <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.butter }}>shipped across Canada.</Box>
+            <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>shipped across Canada.</Box>
           </Typography>
           <Typography sx={{ maxWidth: 480, mt: 2.5, fontSize: '1.05rem', lineHeight: 1.7, color: 'rgba(246,242,235,0.85)' }}>
             Thousands of upholstery and multipurpose fabrics, priced in Canadian dollars, with a free sample of every one.
@@ -150,7 +150,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   key={book.name}
                   component={Link}
                   href={`/fabrics?sampleBook=${encodeURIComponent(book.name)}`}
-                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.mocha } }}
+                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.accent } }}
                 >
                   <Box className="cover">
                     <SampleBookCover
@@ -183,7 +183,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   key={group.id}
                   component={Link}
                   href={`/fabrics?groupId=${group.id}&groupName=${encodeURIComponent(group.name)}`}
-                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.mocha } }}
+                  sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.accent } }}
                 >
                   <Box className="cover">
                     <SampleBookCover
@@ -220,7 +220,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   {m.photo && (
                     <FabricImage src={m.photo} alt="" sizes="(max-width: 900px) 50vw, 25vw" style={{ transition: 'transform .5s ease' }} />
                   )}
-                  <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: { xs: 1.5, md: 2 }, background: 'linear-gradient(180deg, rgba(33,23,18,0) 0%, rgba(33,23,18,0.82) 100%)', color: brand.chalk }}>
+                  <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: { xs: 1.5, md: 2 }, background: 'linear-gradient(180deg, rgba(51,56,79,0) 0%, rgba(51,56,79,0.82) 100%)', color: brand.chalk }}>
                     <Typography sx={{ fontFamily: 'var(--font-display), serif', fontSize: { xs: '1.15rem', md: '1.35rem' }, fontWeight: 600, lineHeight: 1.1 }}>{m.label}</Typography>
                     <Typography sx={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, mt: 0.4 }}>
                       {m.count.toLocaleString()} fabrics
@@ -231,7 +231,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
             </Box>
 
             {/* Shop by need: the use-and-performance collection pages. */}
-            <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mt: { xs: 6, md: 7 }, mb: 2 }}>
+            <Typography sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mt: { xs: 6, md: 7 }, mb: 2 }}>
               Shop by need
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -240,7 +240,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   key={item.href}
                   component={Link}
                   href={item.href}
-                  sx={{ px: 2, py: 1, bgcolor: '#fff', border: `1px solid ${LINE}`, color: brand.ink, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { borderColor: brand.mocha, color: brand.mocha } }}
+                  sx={{ px: 2, py: 1, bgcolor: '#fff', border: `1px solid ${LINE}`, color: brand.ink, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { borderColor: brand.accent, color: brand.accent } }}
                 >
                   {item.label}
                 </Box>
@@ -248,7 +248,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
               <Box
                 component={Link}
                 href="/fabrics#categories"
-                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 2, py: 1, color: brand.ink, fontWeight: 600, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { color: brand.mocha } }}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 2, py: 1, color: brand.ink, fontWeight: 600, textDecoration: 'none', fontSize: '0.88rem', '&:hover': { color: brand.accent } }}
               >
                 All categories <ArrowForwardIcon sx={{ fontSize: 16 }} />
               </Box>
@@ -269,17 +269,17 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                 <FabricImage src={f.photo} alt="" sizes="(max-width: 900px) 100vw, 50vw" />
               </Box>
               <Box>
-                <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.25 }}>{f.eyebrow}</Typography>
+                <Typography sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.25 }}>{f.eyebrow}</Typography>
                 <Typography variant="h2" sx={{ fontSize: { xs: '1.9rem', md: '2.5rem' }, color: brand.ink, mb: 2 }}>
                   {f.title}{' '}
-                  <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{f.italic}</Box>
+                  <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>{f.italic}</Box>
                 </Typography>
                 <Typography sx={{ color: brand.textSecondary, lineHeight: 1.75, fontSize: '1rem', maxWidth: 480 }}>{f.body}</Typography>
                 {f.steps && (
                   <Box sx={{ display: 'grid', gap: 2, mt: 3 }}>
                     {SAMPLE_STEPS.map((step) => (
                       <Box key={step.n} sx={{ display: 'flex', gap: 2 }}>
-                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', color: brand.mocha, fontSize: '1.1rem', mt: '-2px' }}>{step.n}</Typography>
+                        <Typography sx={{ fontFamily: 'var(--font-display), serif', fontStyle: 'italic', color: brand.accent, fontSize: '1.1rem', mt: '-2px' }}>{step.n}</Typography>
                         <Box>
                           <Typography sx={{ fontWeight: 600, color: brand.ink }}>{step.title}</Typography>
                           <Typography sx={{ color: brand.textSecondary, fontSize: '0.9rem', lineHeight: 1.6 }}>{step.desc}</Typography>
@@ -306,7 +306,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
           <Box sx={{ py: { xs: 7, md: 9 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
             <Typography variant="h2" sx={{ color: brand.chalk, fontSize: { xs: '1.9rem', md: '2.5rem' }, maxWidth: '18ch' }}>
               Not sure yet?{' '}
-              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.butter }}>Start with a sample.</Box>
+              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>Start with a sample.</Box>
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.75, flexWrap: 'wrap' }}>
               <TagButton tone="fill" component={Link} href="/sample-books">Browse sample books</TagButton>

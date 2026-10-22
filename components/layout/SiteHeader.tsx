@@ -84,7 +84,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
     textDecoration: 'none',
     py: 0.45,
     transition: 'color 0.15s',
-    '&:hover': { color: brand.mocha },
+    '&:hover': { color: brand.accent },
   };
 
   return (
@@ -97,7 +97,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
         right: 0,
         zIndex: 1300,
         bgcolor: '#fff',
-        borderTop: `2px solid ${brand.butter}`,
+        borderTop: `2px solid ${brand.accent}`,
         boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
         py: 3,
       }}
@@ -131,7 +131,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
                   fontWeight: 700,
                   textDecoration: 'none',
                   transition: 'all 0.15s',
-                  '&:hover': { bgcolor: brand.ink, color: brand.butter },
+                  '&:hover': { bgcolor: brand.ink, color: brand.accent },
                 }}
               >
                 View All Fabrics →
@@ -178,7 +178,7 @@ function FabricMegaMenu({ onClose }: { onClose: () => void }) {
                     color: '#333',
                     fontSize: '0.82rem',
                     transition: 'color 0.15s',
-                    '&:hover': { color: brand.mocha },
+                    '&:hover': { color: brand.accent },
                     '&:hover .color-dot': { transform: 'scale(1.25)' },
                   }}
                 >
@@ -233,13 +233,13 @@ export default function SiteHeader() {
 
   const navLinkSx = (active: boolean) => ({
     fontFamily: 'var(--font-label), sans-serif',
-    color: active ? brand.mocha : brand.ink,
+    color: active ? brand.accent : brand.ink,
     fontWeight: 700,
     position: 'relative' as const,
     fontSize: '0.8rem',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    '&:hover': { color: brand.mocha, bgcolor: 'transparent' },
+    '&:hover': { color: brand.accent, bgcolor: 'transparent' },
     '&::after': {
       content: '""',
       position: 'absolute',
@@ -247,7 +247,7 @@ export default function SiteHeader() {
       right: 14,
       bottom: 4,
       height: 2,
-      bgcolor: brand.mocha,
+      bgcolor: brand.accent,
       transform: active ? 'scaleX(1)' : 'scaleX(0)',
       transition: 'transform 0.2s ease',
     },
@@ -276,7 +276,7 @@ export default function SiteHeader() {
             href="/"
             sx={{ flexGrow: 1, fontFamily: 'var(--font-label), sans-serif', fontWeight: 900, letterSpacing: 1, textDecoration: 'none', color: brand.ink, fontSize: '1.4rem' }}
           >
-            <Box component="span" sx={{ color: brand.mocha }}>JL</Box> COMFORT
+            <Box component="span" sx={{ color: brand.accent }}>JL</Box> COMFORT
           </Typography>
 
           {/* Desktop nav */}
@@ -328,7 +328,7 @@ export default function SiteHeader() {
                     
                     {/* TRENDING - tinted column */}
                     <Box sx={{ width: 240, bgcolor: brand.chalk, p: { xs: 3, md: 4 }, display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, letterSpacing: 1, color: brand.mochaDeep, fontSize: '0.75rem', display: 'block', mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'var(--font-label), sans-serif', fontWeight: 700, letterSpacing: 1, color: brand.accentDeep, fontSize: '0.75rem', display: 'block', mb: 2 }}>
                         TRENDING
                       </Typography>
                       {MEGA_TRENDING.map((item) => (
@@ -337,7 +337,7 @@ export default function SiteHeader() {
                           component={Link}
                           href={item.href}
                           onClick={() => setMegaOpen(false)}
-                          sx={{ display: 'block', color: '#555', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.mocha } }}
+                          sx={{ display: 'block', color: '#555', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.accent } }}
                         >
                           {item.label}
                         </Box>
@@ -358,7 +358,7 @@ export default function SiteHeader() {
                             fontSize: '0.85rem',
                             textDecoration: 'none',
                             transition: 'all 0.15s',
-                            '&:hover': { borderColor: brand.ink, bgcolor: brand.ink, color: brand.butter },
+                            '&:hover': { borderColor: brand.ink, bgcolor: brand.ink, color: brand.accent },
                           }}
                         >
                           View All Fabric
@@ -377,7 +377,7 @@ export default function SiteHeader() {
                           component={Link}
                           href={item.href}
                           onClick={() => setMegaOpen(false)}
-                          sx={{ display: 'block', color: '#666', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.mocha } }}
+                          sx={{ display: 'block', color: '#666', fontSize: '0.9rem', textDecoration: 'none', py: 0.7, transition: 'color 0.15s', '&:hover': { color: brand.accent } }}
                         >
                           {item.label}
                         </Box>
@@ -405,7 +405,7 @@ export default function SiteHeader() {
                               color: '#666',
                               fontSize: '0.9rem',
                               transition: 'color 0.15s',
-                              '&:hover': { color: brand.mocha },
+                              '&:hover': { color: brand.accent },
                               '&:hover .cdot': { transform: 'scale(1.2)' },
                             }}
                           >
@@ -453,9 +453,9 @@ export default function SiteHeader() {
 
       {/* Mobile drawer */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
-        <Box sx={{ width: 280, bgcolor: '#211712', color: '#fff', height: '100%', pt: 2 }} role="presentation">
+        <Box sx={{ width: 280, bgcolor: brand.ink, color: '#fff', height: '100%', pt: 2 }} role="presentation">
           <Typography sx={{ px: 2.5, pb: 2, fontWeight: 'bold', letterSpacing: 2, fontSize: '1rem' }}>
-            <span style={{ color: '#F3D17E' }}>JL</span> COMFORT
+            <span style={{ color: brand.accent }}>JL</span> COMFORT
           </Typography>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
           <List sx={{ pt: 0 }}>
@@ -463,38 +463,38 @@ export default function SiteHeader() {
             {/* Shop Fabrics — expandable in mobile */}
             <ListItemButton onClick={() => setMobileFabricsOpen((o) => !o)} sx={{ color: '#fff', py: 1.5 }}>
               <ListItemText primary="Shop Fabrics" primaryTypographyProps={{ fontWeight: 600 }} />
-              {mobileFabricsOpen ? <ExpandLessIcon sx={{ color: '#F3D17E' }} /> : <ExpandMoreIcon sx={{ color: '#888' }} />}
+              {mobileFabricsOpen ? <ExpandLessIcon sx={{ color: brand.accent }} /> : <ExpandMoreIcon sx={{ color: brand.stone }} />}
             </ListItemButton>
             <Collapse in={mobileFabricsOpen}>
               <Box sx={{ bgcolor: 'rgba(255,255,255,0.04)', pb: 1 }}>
-                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#F3D17E', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: brand.accent, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
                   Trending
                 </Typography>
                 {MEGA_TRENDING.map((item) => (
-                  <ListItemButton key={item.label} component={Link} href={item.href} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
+                  <ListItemButton key={item.label} component={Link} href={item.href} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: brand.accent } }}>
                     <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.83rem' }} />
                   </ListItemButton>
                 ))}
-                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: '#F3D17E', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                <Typography variant="caption" sx={{ px: 3, pt: 1.5, pb: 0.5, display: 'block', color: brand.accent, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.65rem' }}>
                   By Color
                 </Typography>
                 {MEGA_COLORS.slice(0, 8).map((c) => (
-                  <ListItemButton key={c.value} component={Link} href={`/fabrics/${c.slug}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: '#F3D17E' } }}>
+                  <ListItemButton key={c.value} component={Link} href={`/fabrics/${c.slug}`} onClick={() => setMobileOpen(false)} sx={{ py: 0.6, pl: 4, color: 'rgba(255,255,255,0.75)', '&:hover': { color: brand.accent } }}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot, mr: 1.5, border: '1px solid rgba(255,255,255,0.15)', flexShrink: 0 }} />
                     <ListItemText primary={c.label} primaryTypographyProps={{ fontSize: '0.83rem' }} />
                   </ListItemButton>
                 ))}
-                <ListItemButton component={Link} href="/fabrics" onClick={() => setMobileOpen(false)} sx={{ py: 0.8, pl: 4, color: '#F3D17E', fontWeight: 700 }}>
+                <ListItemButton component={Link} href="/fabrics" onClick={() => setMobileOpen(false)} sx={{ py: 0.8, pl: 4, color: brand.accent, fontWeight: 700 }}>
                   <ListItemText primary="View All Fabrics →" primaryTypographyProps={{ fontSize: '0.83rem', fontWeight: 700 }} />
                 </ListItemButton>
               </Box>
             </Collapse>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
-            <ListItemButton component={Link} href="/about" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/about') ? '#F3D17E' : '#fff', py: 1.5 }}>
+            <ListItemButton component={Link} href="/about" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/about') ? brand.accent : '#fff', py: 1.5 }}>
               <ListItemText primary="About" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
-            <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? '#F3D17E' : '#fff', py: 1.5 }}>
+            <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? brand.accent : '#fff', py: 1.5 }}>
               <ListItemText primary="FAQ" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
           </List>

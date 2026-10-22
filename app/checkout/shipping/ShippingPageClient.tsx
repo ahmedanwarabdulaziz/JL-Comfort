@@ -272,7 +272,7 @@ export default function ShippingPageClient() {
                 )}
                 {codeRejected && <Typography sx={{ fontSize: '0.78rem', color: '#b3261e', mt: 0.75 }}>{quote?.discountError}</Typography>}
                 {!discountCode && quote?.discount && (
-                  <Typography sx={{ fontSize: '0.78rem', color: '#6E4F3F', mt: 0.75 }}>{quote.discount.label} applied automatically.</Typography>
+                  <Typography sx={{ fontSize: '0.78rem', color: '#B8612A', mt: 0.75 }}>{quote.discount.label} applied automatically.</Typography>
                 )}
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}><Typography color="text.secondary">Subtotal</Typography><Typography>{'$' + cartTotal.toFixed(2)} CAD</Typography></Box>
@@ -285,7 +285,7 @@ export default function ShippingPageClient() {
               ) : quote ? (
                 <Box sx={{ opacity: isQuoting ? 0.5 : 1, transition: 'opacity .2s' }}>
                   {quote.discount && quote.discountCents > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: '#6E4F3F' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: '#B8612A' }}>
                       <Typography sx={{ color: 'inherit' }}>Discount ({quote.discount.label})</Typography>
                       <Typography sx={{ color: 'inherit' }}>−{formatCents(quote.discountCents)}</Typography>
                     </Box>

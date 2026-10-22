@@ -169,7 +169,7 @@ function FilterSection({
             )}
           </Typography>
           {!open && selected.length > 0 && (
-            <Typography sx={{ mt: 0.4, fontSize: '0.78rem', color: brand.mocha, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Typography sx={{ mt: 0.4, fontSize: '0.78rem', color: brand.accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {selected.join(', ')}
             </Typography>
           )}
@@ -218,7 +218,7 @@ function SidebarContent({
             <Box
               key={opt.value}
               component="label"
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25, cursor: 'pointer', '&:hover .opt-label': { color: brand.mocha } }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25, cursor: 'pointer', '&:hover .opt-label': { color: brand.accent } }}
             >
               <Checkbox
                 checked={active}
@@ -259,7 +259,7 @@ function SidebarContent({
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1.5 }}>
         <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: brand.ink }}>Filter by</Typography>
         {activeCount > 0 && (
-          <Button size="small" onClick={onClearAll} sx={{ p: 0, minWidth: 0, fontSize: '0.7rem', color: brand.mocha, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
+          <Button size="small" onClick={onClearAll} sx={{ p: 0, minWidth: 0, fontSize: '0.7rem', color: brand.accent, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
             Clear all
           </Button>
         )}
@@ -478,7 +478,7 @@ export default function FabricsShopClient() {
       <Box sx={{ bgcolor: brand.chalk, borderBottom: `1px solid ${LINE}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3.5, md: 5 } }}>
           <Typography sx={{ fontSize: '0.74rem', color: MUTED, mb: 1.5 }}>
-            <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.mocha } }}>Home</Box>
+            <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>Home</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
             <Box component="span" sx={{ color: brand.ink }}>Fabrics</Box>
             {collectionLabel && (
@@ -491,11 +491,11 @@ export default function FabricsShopClient() {
           <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.9rem' }, color: brand.ink }}>
             {collectionLabel ? (
               <>
-                {collectionLabel} <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>{groupId ? 'picks' : 'collection'}</Box>
+                {collectionLabel} <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>{groupId ? 'picks' : 'collection'}</Box>
               </>
             ) : (
               <>
-                Designer <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>fabrics</Box>
+                Designer <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>fabrics</Box>
               </>
             )}
           </Typography>
@@ -561,7 +561,7 @@ export default function FabricsShopClient() {
                     <Chip key={`${key}-${value}`} size="small" label={optionLabel(key, value)} onDelete={() => toggleFilter(key, value)} sx={chipSx} />
                   ))
                 )}
-                <Button size="small" onClick={clearAll} sx={{ fontSize: '0.7rem', color: brand.mocha, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
+                <Button size="small" onClick={clearAll} sx={{ fontSize: '0.7rem', color: brand.accent, '&:hover': { bgcolor: 'transparent', color: brand.ink } }}>
                   Clear all
                 </Button>
               </Box>
@@ -642,7 +642,7 @@ export default function FabricsShopClient() {
           <SidebarContent {...sidebarProps} />
         </Box>
         <Box sx={{ p: 2, borderTop: `1px solid ${LINE}` }}>
-          <Button fullWidth variant="contained" disableElevation onClick={() => setMobileDrawerOpen(false)} sx={{ bgcolor: brand.ink, color: brand.chalk, py: 1.4, '&:hover': { bgcolor: brand.mocha } }}>
+          <Button fullWidth variant="contained" disableElevation onClick={() => setMobileDrawerOpen(false)} sx={{ bgcolor: brand.ink, color: brand.chalk, py: 1.4, '&:hover': { bgcolor: brand.accent } }}>
             View {filtered.length.toLocaleString()} fabrics
           </Button>
         </Box>

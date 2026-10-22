@@ -66,7 +66,7 @@ export default function FabricCard({
           )}
           <Box
             className="fabric-view"
-            sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, py: 1, textAlign: 'center', bgcolor: 'rgba(33,23,18,0.78)', color: brand.chalk, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0, transition: 'opacity .25s' }}
+            sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, py: 1, textAlign: 'center', bgcolor: 'rgba(51,56,79,0.78)', color: brand.chalk, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0, transition: 'opacity .25s' }}
           >
             View fabric
           </Box>
@@ -100,7 +100,7 @@ export default function FabricCard({
               href={`/fabrics/${c.id}`}
               title={splitName(c.name).colourway}
               aria-label={`${splitName(c.name).colourway} colourway`}
-              sx={{ position: 'relative', width: 26, height: 26, flexShrink: 0, border: '1px solid #e0dad2', overflow: 'hidden', '&:hover': { borderColor: brand.mocha } }}
+              sx={{ position: 'relative', width: 26, height: 26, flexShrink: 0, border: '1px solid #e0dad2', overflow: 'hidden', '&:hover': { borderColor: brand.accent } }}
             >
               <FabricImage src={c.imageUrl} alt="" sizes="26px" />
             </Box>

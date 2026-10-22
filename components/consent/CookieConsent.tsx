@@ -44,7 +44,7 @@ const primaryButtonSx = {
   bgcolor: brand.ink,
   color: brand.chalk,
   fontWeight: 600,
-  '&:hover': { bgcolor: brand.mocha },
+  '&:hover': { bgcolor: brand.accent },
 };
 const secondaryButtonSx = {
   borderRadius: 0,
@@ -53,7 +53,7 @@ const secondaryButtonSx = {
   borderColor: brand.ink,
   color: brand.ink,
   fontWeight: 600,
-  '&:hover': { borderColor: brand.mocha, color: brand.mocha, bgcolor: 'transparent' },
+  '&:hover': { borderColor: brand.accent, color: brand.accent, bgcolor: 'transparent' },
 };
 
 // The cookie banner and its preferences dialog. Accepting and rejecting are equally easy, nothing
@@ -102,7 +102,7 @@ export default function CookieConsent() {
             bgcolor: '#fff',
             color: brand.ink,
             border: `1px solid ${brand.chalkLine}`,
-            boxShadow: '0 12px 40px rgba(33,23,18,0.18)',
+            boxShadow: '0 12px 40px rgba(51,56,79,0.18)',
             p: { xs: 2.5, md: 3 },
           }}
         >
@@ -113,7 +113,7 @@ export default function CookieConsent() {
             We use essential cookies to run this site. With your permission, we&rsquo;d also like to use
             analytics and advertising cookies to improve the site and measure our ads. You can change your mind
             at any time under &ldquo;Cookie settings&rdquo; in the footer. Read our{' '}
-            <Box component={Link} href="/privacy#cookies" sx={{ color: brand.mocha }}>
+            <Box component={Link} href="/privacy#cookies" sx={{ color: brand.accent }}>
               Privacy Policy
             </Box>
             .
@@ -127,7 +127,7 @@ export default function CookieConsent() {
             </Button>
             <Button
               onClick={() => setDialogOpen(true)}
-              sx={{ color: brand.ink, textDecoration: 'underline', fontWeight: 600, '&:hover': { color: brand.mocha, bgcolor: 'transparent', textDecoration: 'underline' } }}
+              sx={{ color: brand.ink, textDecoration: 'underline', fontWeight: 600, '&:hover': { color: brand.accent, bgcolor: 'transparent', textDecoration: 'underline' } }}
             >
               Customize
             </Button>
@@ -146,7 +146,7 @@ export default function CookieConsent() {
           <Typography sx={{ fontSize: '0.88rem', lineHeight: 1.6, color: brand.textSecondary, mb: 1 }}>
             Choose which optional cookies we may use. Your choice is saved on this device and applies straight
             away. Details are in our{' '}
-            <Box component={Link} href="/privacy#cookies" onClick={() => setDialogOpen(false)} sx={{ color: brand.mocha }}>
+            <Box component={Link} href="/privacy#cookies" onClick={() => setDialogOpen(false)} sx={{ color: brand.accent }}>
               Privacy Policy
             </Box>
             .

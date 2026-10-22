@@ -44,7 +44,7 @@ export default function Footer() {
   return (
     <Box component="footer" sx={{ mt: 'auto' }}>
       {/* CTA strip */}
-      <Box sx={{ bgcolor: brand.butter, color: brand.ink }}>
+      <Box sx={{ bgcolor: brand.accent, color: brand.ink }}>
         <Container maxWidth="xl">
           <Box
             sx={{
@@ -80,18 +80,18 @@ export default function Footer() {
           color: 'rgba(255,255,255,0.7)',
           pt: 7,
           pb: 4,
-          background: `linear-gradient(180deg, #2c2019 0%, ${brand.ink} 45%, #120c08 100%)`,
+          background: `linear-gradient(180deg, #3d4360 0%, ${brand.ink} 45%, #1f2233 100%)`,
         }}
       >
         {/* decorative glow accents */}
-        <Box sx={{ position: 'absolute', top: -80, left: '10%', width: 260, height: 260, borderRadius: '50%', bgcolor: 'rgba(243, 209, 126, 0.08)', filter: 'blur(70px)', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -100, right: '5%', width: 320, height: 320, borderRadius: '50%', bgcolor: 'rgba(207, 226, 103, 0.06)', filter: 'blur(90px)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: -80, left: '10%', width: 260, height: 260, borderRadius: '50%', bgcolor: 'rgba(226, 129, 71, 0.08)', filter: 'blur(70px)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -100, right: '5%', width: 320, height: 320, borderRadius: '50%', bgcolor: 'rgba(166, 166, 164, 0.06)', filter: 'blur(90px)', pointerEvents: 'none' }} />
 
         <Container maxWidth="xl" sx={{ position: 'relative' }}>
           <Grid container spacing={4}>
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="h6" sx={{ fontWeight: 'bold', letterSpacing: 2, mb: 2 }}>
-                <span style={{ color: '#F3D17E' }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
+                <span style={{ color: brand.accent }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
                 Premium upholstery fabric, custom foam and bench cushions. Your furniture, your style.
@@ -99,7 +99,7 @@ export default function Footer() {
             </Grid>
 
             <Grid item xs={6} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#F3D17E', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: brand.accent, mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Shop
               </Typography>
               {shopLinks.map((link) => (
@@ -108,7 +108,7 @@ export default function Footer() {
                   component={Link}
                   href={link.href}
                   underline="hover"
-                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: '#F3D17E' } }}
+                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: brand.accent } }}
                 >
                   {link.label}
                 </MuiLink>
@@ -116,7 +116,7 @@ export default function Footer() {
             </Grid>
 
             <Grid item xs={6} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#F3D17E', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: brand.accent, mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Resources
               </Typography>
               {resourceLinks.map((link) => (
@@ -125,7 +125,7 @@ export default function Footer() {
                   component={Link}
                   href={link.href}
                   underline="hover"
-                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: '#F3D17E' } }}
+                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: brand.accent } }}
                 >
                   {link.label}
                 </MuiLink>
@@ -133,7 +133,7 @@ export default function Footer() {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#F3D17E', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: brand.accent, mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Company
               </Typography>
               {companyLinks.map((link) => (
@@ -142,7 +142,7 @@ export default function Footer() {
                   component={Link}
                   href={link.href}
                   underline="hover"
-                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: '#F3D17E' } }}
+                  sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mb: 1, '&:hover': { color: brand.accent } }}
                 >
                   {link.label}
                 </MuiLink>
@@ -150,15 +150,15 @@ export default function Footer() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <PhoneIcon sx={{ fontSize: 18, color: '#F3D17E' }} />
+                  <PhoneIcon sx={{ fontSize: 18, color: brand.accent }} />
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.phone}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <EmailIcon sx={{ fontSize: 18, color: '#F3D17E' }} />
+                  <EmailIcon sx={{ fontSize: 18, color: brand.accent }} />
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.email}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                  <LocationOnIcon sx={{ fontSize: 18, color: '#F3D17E', mt: 0.2 }} />
+                  <LocationOnIcon sx={{ fontSize: 18, color: brand.accent, mt: 0.2 }} />
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>{BUSINESS.address}</Typography>
                 </Box>
               </Box>
@@ -178,13 +178,13 @@ export default function Footer() {
                 component={Link}
                 href={link.href}
                 underline="hover"
-                sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', '&:hover': { color: '#F3D17E' } }}
+                sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', '&:hover': { color: brand.accent } }}
               >
                 {link.label}
               </MuiLink>
             ))}
             <CookieSettingsLink
-              sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none', '&:hover': { color: '#F3D17E', textDecoration: 'underline' } }}
+              sx={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.78rem', textDecoration: 'none', '&:hover': { color: brand.accent, textDecoration: 'underline' } }}
             />
           </Box>
         </Container>

@@ -10,10 +10,10 @@ interface TagButtonProps extends ButtonProps {
 }
 
 const TONE_STYLES: Record<Tone, { bg: string; color: string; hoverBg: string; stitch: string; ring?: string }> = {
-  fill: { bg: brand.butter, color: brand.ink, hoverBg: brand.lime, stitch: brand.ink },
-  dark: { bg: brand.ink, color: brand.chalk, hoverBg: brand.mochaDeep, stitch: brand.chalk },
+  fill: { bg: brand.accent, color: brand.ink, hoverBg: brand.accentLight, stitch: brand.ink },
+  dark: { bg: brand.ink, color: brand.chalk, hoverBg: brand.accentDeep, stitch: brand.chalk },
   ghost: { bg: 'transparent', color: brand.chalk, hoverBg: 'rgba(246,242,235,0.1)', stitch: brand.chalk, ring: 'rgba(246,242,235,0.45)' },
-  ghostDark: { bg: 'transparent', color: brand.ink, hoverBg: 'rgba(33,23,18,0.06)', stitch: brand.ink, ring: 'rgba(33,23,18,0.3)' },
+  ghostDark: { bg: 'transparent', color: brand.ink, hoverBg: 'rgba(51,56,79,0.06)', stitch: brand.ink, ring: 'rgba(51,56,79,0.3)' },
 };
 
 /**

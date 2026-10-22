@@ -26,7 +26,7 @@ export default function CollectionDirectory({ groups, currentSlug, heading }: { 
           <Box key={group.group}>
             <Typography
               component={heading ? 'h3' : 'h2'}
-              sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.5 }}
+              sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.5 }}
             >
               {group.label}
             </Typography>
@@ -39,7 +39,7 @@ export default function CollectionDirectory({ groups, currentSlug, heading }: { 
                       component={Link}
                       href={`/fabrics/${link.slug}`}
                       aria-current={current ? 'page' : undefined}
-                      sx={{ color: current ? brand.mocha : brand.ink, fontWeight: current ? 700 : 400, textDecoration: 'none', fontSize: '0.9rem', '&:hover': { color: brand.mocha, textDecoration: 'underline' } }}
+                      sx={{ color: current ? brand.accent : brand.ink, fontWeight: current ? 700 : 400, textDecoration: 'none', fontSize: '0.9rem', '&:hover': { color: brand.accent, textDecoration: 'underline' } }}
                     >
                       {link.label}
                     </Box>

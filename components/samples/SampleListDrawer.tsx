@@ -33,7 +33,7 @@ export default function SampleListDrawer() {
           <CloseIcon />
         </IconButton>
       </Box>
-      <LinearProgress variant="determinate" value={Math.min(100, (items.length / max) * 100)} sx={{ height: 3, bgcolor: '#ece7e0', '& .MuiLinearProgress-bar': { bgcolor: brand.mocha } }} />
+      <LinearProgress variant="determinate" value={Math.min(100, (items.length / max) * 100)} sx={{ height: 3, bgcolor: '#ece7e0', '& .MuiLinearProgress-bar': { bgcolor: brand.accent } }} />
 
       <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 2 }}>
         {items.length === 0 ? (
@@ -74,7 +74,7 @@ export default function SampleListDrawer() {
             fullWidth
             variant="contained"
             disableElevation
-            sx={{ bgcolor: brand.ink, color: brand.chalk, py: 1.5, '&:hover': { bgcolor: brand.mocha } }}
+            sx={{ bgcolor: brand.ink, color: brand.chalk, py: 1.5, '&:hover': { bgcolor: brand.accent } }}
           >
             Request my {items.length} sample{items.length === 1 ? '' : 's'}
           </Button>
