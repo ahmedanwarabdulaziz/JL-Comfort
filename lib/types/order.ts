@@ -193,7 +193,7 @@ export const rowToOrder = (row: any): Order => ({
 
 export const rowToEmailSettings = (row: any): EmailSettings => ({
   fromName: row?.from_name || 'JL Comfort',
-  fromEmail: row?.from_email || 'orders@jlcomfort.com',
+  fromEmail: row?.from_email || 'sales@jlcomfort.com',
   // Until set in Admin -> Email Settings, customer replies and new-order/sample alerts go to the
   // business's main inbox (the from address itself is send-only).
   replyTo: row?.reply_to || BUSINESS.email,
