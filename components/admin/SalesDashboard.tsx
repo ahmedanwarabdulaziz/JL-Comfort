@@ -25,6 +25,8 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TelegramIcon from '@mui/icons-material/Telegram';
 import { supabase } from '@/lib/supabase/client';
+import { getCheckoutOrderRows } from '@/lib/data/orders';
+import { buildCheckoutSessions } from '@/lib/analytics/abandonedCheckouts';
 
 // Admin → Dashboard: sales at a glance, the latest alerts (the same ones the Telegram bot sends,
 // from app_events) and the bot's setup. Reads through the admin's session (RLS: admin_users only).
@@ -81,6 +83,18 @@ function Stat({ label, cents, orders }: { label: string; cents: number; orders: 
       <Typography variant="h5" sx={{ fontWeight: 600, mt: 0.5 }}>{money(cents)}</Typography>
       <Typography variant="caption" color="text.secondary">
         {orders} order{orders === 1 ? '' : 's'}{orders ? ` · avg ${money(Math.round(cents / orders))}` : ''}
+      </Typography>
+    </Paper>
+  );
+}
+
+function AbandonedStat({ carts, cents }: { carts: number; cents: number }) {
+  return (
+    <Paper variant="outlined" sx={{ p: 2, flex: '1 1 180px', minWidth: 160 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>Abandoned carts · 7 days</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 600, mt: 0.5, color: carts ? 'error.main' : undefined }}>{carts}</Typography>
+      <Typography variant="caption" color="text.secondary">
+        {money(cents)} left behind · <Link href="/admin/abandoned-checkouts" underline="hover">See carts</Link>
       </Typography>
     </Paper>
   );
@@ -150,6 +164,7 @@ function TelegramBox() {
 export default function SalesDashboard() {
   const [orders, setOrders] = useState<PaidOrder[]>([]);
   const [events, setEvents] = useState<AppEvent[]>([]);
+  const [abandoned, setAbandoned] = useState({ carts: 0, cents: 0 });
   const [show, setShow] = useState<'all' | 'problems'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -162,6 +177,15 @@ export default function SalesDashboard() {
     const since = new Date(Math.min(monthStart.getTime(), now.getTime() - 30 * DAY_MS));
     let eventsQuery = supabase.from('app_events').select('*').order('created_at', { ascending: false }).limit(50);
     if (show === 'problems') eventsQuery = eventsQuery.in('level', ['warning', 'error']);
+    // Same grouping as Admin → Abandoned checkouts: retries by one shopper count once, and a week of
+    // extra history shows whether an attempt was later paid.
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+    getCheckoutOrderRows(new Date(weekStart.getTime() - 7 * DAY_MS))
+      .then((rows) => {
+        const carts = buildCheckoutSessions(rows).filter((s) => s.outcome === 'abandoned' && s.lastAt >= weekStart);
+        setAbandoned({ carts: carts.length, cents: carts.reduce((sum, s) => sum + s.valueCents, 0) });
+      })
+      .catch((rowsError) => console.error('Loading abandoned carts failed:', rowsError));
     const [ordersResult, eventsResult] = await Promise.all([
       supabase
         .from('orders')
@@ -217,6 +241,7 @@ export default function SalesDashboard() {
             <Stat label="Last 7 days" cents={week.cents} orders={week.orders} />
             <Stat label="This month" cents={month.cents} orders={month.orders} />
             <Stat label="Last 30 days" cents={days30.cents} orders={days30.orders} />
+            <AbandonedStat carts={abandoned.carts} cents={abandoned.cents} />
           </Stack>
 
           <TelegramBox />

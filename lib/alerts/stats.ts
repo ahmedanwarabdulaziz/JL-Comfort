@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { formatMoney } from '@/lib/alerts/server';
 import { escapeHtml } from '@/lib/alerts/telegram';
+import { CHECKOUT_ORDER_SELECT, CheckoutSession, buildCheckoutSessions, rowToCheckoutOrderRow } from '@/lib/analytics/abandonedCheckouts';
 
 // Sales figures for the Telegram bot and the daily summary. Server-only (service-role reads).
 // Test orders never count. "Today" and "this month" are in the store's own time zone.
@@ -51,22 +52,40 @@ const db = () => {
 export async function getSalesSummary(since: Date, until = new Date()): Promise<SalesSummary> {
   const from = since.toISOString();
   const to = until.toISOString();
-  const [paid, abandoned, samples, errors] = await Promise.all([
+  const [paid, sessions, samples, errors] = await Promise.all([
     db().from('orders').select('total_cents').eq('is_test', false).in('status', PAID_STATUSES).gte('paid_at', from).lt('paid_at', to),
-    db().from('orders').select('id', { count: 'exact', head: true }).eq('is_test', false).eq('status', 'expired').gte('created_at', from).lt('created_at', to),
+    getCheckoutSessions(since, until),
     db().from('sample_requests').select('id', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to),
     db().from('app_events').select('id', { count: 'exact', head: true }).eq('level', 'error').gte('created_at', from).lt('created_at', to),
   ]);
-  const failed = [paid, abandoned, samples, errors].find((result) => result.error);
+  const failed = [paid, samples, errors].find((result) => result.error);
   if (failed?.error) throw failed.error;
   const rows = (paid.data || []) as { total_cents: number }[];
   return {
     orders: rows.length,
     revenueCents: rows.reduce((sum, row) => sum + (row.total_cents || 0), 0),
-    abandoned: abandoned.count || 0,
+    abandoned: sessions.filter((s) => s.outcome === 'abandoned').length,
     samples: samples.count || 0,
     errors: errors.count || 0,
   };
+}
+
+/**
+ * Checkout sessions (lib/analytics/abandonedCheckouts.ts, same as Admin → Abandoned checkouts) whose
+ * latest attempt falls in the window. A shopper who retried and then paid is one recovered session,
+ * not several abandoned ones, so rows are loaded from a week earlier to see the whole session.
+ */
+export async function getCheckoutSessions(since: Date, until = new Date()): Promise<CheckoutSession[]> {
+  const { data, error } = await db()
+    .from('orders')
+    .select(CHECKOUT_ORDER_SELECT)
+    .eq('is_test', false)
+    .gte('created_at', new Date(since.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .lt('created_at', until.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(3000);
+  if (error) throw error;
+  return buildCheckoutSessions((data || []).map(rowToCheckoutOrderRow)).filter((s) => s.lastAt >= since && s.lastAt < until);
 }
 
 /** Work waiting on someone: paid orders not yet sent to the supplier, sample requests not handled. */
