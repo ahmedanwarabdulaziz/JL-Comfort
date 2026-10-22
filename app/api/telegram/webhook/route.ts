@@ -17,8 +17,36 @@ const HELP = [
   '/month — this month',
   '/errors — the last 10 errors',
   '/pending — orders and sample requests waiting over 24h',
-  '/order 1042 — one order\'s details',
+  '/order 1042 — one order\'s details (or just send the number)',
+  '',
+  'Or use the buttons below the message box.',
 ].join('\n');
+
+// The button keyboard under the message box. Each button sends its label as a message, which is
+// mapped back to its command here. "Find order" can't carry a number, so it asks for one; a bare
+// order number ("1042" or "JL-1042") is looked up directly.
+const BUTTONS: Record<string, string> = {
+  '📊 Today': '/today',
+  '📅 Yesterday': '/yesterday',
+  '🗓 Last 7 days': '/week',
+  '📈 This month': '/month',
+  '🔴 Errors': '/errors',
+  '⏳ Pending': '/pending',
+  '🧾 Find order': '/findorder',
+  '❓ Help': '/help',
+};
+const KEYBOARD = {
+  reply_markup: {
+    keyboard: [
+      ['📊 Today', '📅 Yesterday'],
+      ['🗓 Last 7 days', '📈 This month'],
+      ['🔴 Errors', '⏳ Pending'],
+      ['🧾 Find order', '❓ Help'],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  },
+};
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-CA', { timeZone: STORE_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
@@ -82,6 +110,8 @@ async function answer(command: string, arg: string): Promise<string> {
       return pendingWork();
     case '/order':
       return orderDetails(arg);
+    case '/findorder':
+      return 'Send the order number, e.g. <code>1042</code>';
     default:
       return HELP;
   }
@@ -106,14 +136,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const [rawCommand, ...rest] = text.trim().split(/\s+/);
+  const input = text.trim();
+  const [rawCommand, ...rest] = (BUTTONS[input] || (/^#?(jl-)?\d+$/i.test(input) ? `/order ${input.replace('#', '')}` : input)).split(/\s+/);
   const command = rawCommand.toLowerCase().replace(/@.*$/, ''); // "/today@JLComfortBot" in groups
   try {
     if (!supabaseAdmin) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-    await sendTelegram(await answer(command, rest.join(' ')), chatId);
+    await sendTelegram(await answer(command, rest.join(' ')), chatId, KEYBOARD);
   } catch (error: any) {
     console.error('Telegram command failed:', error);
-    await sendTelegram(`🔴 Couldn't answer ${escapeHtml(command)}: ${escapeHtml(error.message || String(error))}`, chatId);
+    await sendTelegram(`🔴 Couldn't answer ${escapeHtml(command)}: ${escapeHtml(error.message || String(error))}`, chatId, KEYBOARD);
   }
   return NextResponse.json({ ok: true });
 }
