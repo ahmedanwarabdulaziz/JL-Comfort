@@ -1,6 +1,11 @@
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { isTestKeyConfigured } from '@/lib/stripe/server';
+import { isTestKeyConfigured as isStripeTestKeyConfigured } from '@/lib/stripe/server';
+import { isSquareConfigured } from '@/lib/square/server';
+import { paymentProvider } from '@/lib/payments/provider';
+
+// With Square as the provider, "test" means Square's sandbox account instead of Stripe test mode.
+const isTestKeyConfigured = () => (paymentProvider() === 'square' ? isSquareConfigured(true) : isStripeTestKeyConfigured());
 
 // Admin-only test checkout. An admin turns it on from the admin panel, which sets this cookie in
 // their browser only; their checkouts then go to the Stripe test account and the order is marked as

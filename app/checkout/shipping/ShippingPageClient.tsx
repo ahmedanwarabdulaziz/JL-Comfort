@@ -137,7 +137,7 @@ export default function ShippingPageClient() {
       });
       const session = await response.json();
       if (!response.ok || session.error) throw new Error(session.error || 'Unable to start checkout.');
-      if (!session.url) throw new Error('Stripe checkout URL was not returned.');
+      if (!session.url) throw new Error('Checkout URL was not returned.');
       trackAddPaymentInfo(items.map(cartItemToAnalytics));
       window.location.href = session.url;
     } catch (submissionError) {
@@ -194,7 +194,7 @@ export default function ShippingPageClient() {
               </Box>
               <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f1eb', color: '#625b54', display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
                 <LockOutlinedIcon sx={{ fontSize: 19, mt: 0.1, color: '#8d6c4b' }} />
-                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Your address is used to calculate shipping and Canadian tax. Payment details are entered securely on Stripe.</Typography>
+                <Typography sx={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Your address is used to calculate shipping and Canadian tax. Payment details are entered securely on our payment provider&apos;s page.</Typography>
               </Box>
             </Paper>
 

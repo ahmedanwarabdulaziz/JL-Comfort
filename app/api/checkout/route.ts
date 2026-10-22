@@ -14,6 +14,8 @@ import {
   saveOrderMarketing,
 } from '@/lib/orders/server';
 import { recordMarketingConsent } from '@/lib/marketing/server';
+import { paymentProvider } from '@/lib/payments/provider';
+import { SQUARE_REF_PREFIX, assertSquareConfigured, createSquarePaymentLink } from '@/lib/square/server';
 
 
 // Every price in the store (fabric, foam, cushions, shipping) is entered in Canadian dollars.
@@ -95,7 +97,79 @@ export async function POST(req: Request) {
       return response;
     }
     const testMode = mode === 'test';
-    const stripe = stripeFor(testMode);
+    const provider = paymentProvider();
+    // Missing keys fail here, before an order is created for a payment that can't be taken.
+    const stripeClient = provider === 'stripe' ? stripeFor(testMode) : null;
+    if (provider === 'square') assertSquareConfigured(testMode);
+
+    const host = req.headers.get('host');
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const serverOrigin = host ? `${protocol}://${host}` : 'http://localhost:3000';
+    const finalOrigin = clientOrigin || req.headers.get('origin') || serverOrigin;
+
+    const order = await createPendingOrder(lines, quote, discount, {
+      email: String(shippingAddress.email || '').trim(),
+      name: String(shippingAddress.name).trim(),
+      phone: shippingAddress.phone ? String(shippingAddress.phone).trim() : undefined,
+      line1: String(shippingAddress.line1).trim(),
+      line2: shippingAddress.line2 ? String(shippingAddress.line2).trim() : undefined,
+      city: String(shippingAddress.city).trim(),
+      region,
+      postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
+      country,
+    }, testMode, marketingOptIn === true);
+
+    const clientIp = req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0] || undefined;
+    // Recorded when checkout starts, not when it's paid: a cart reminder is for the ones who don't pay.
+    if (marketingOptIn === true && !testMode) {
+      await recordMarketingConsent(String(shippingAddress.email).trim(), 'checkout', clientIp);
+    }
+
+    await saveOrderMarketing(
+      order.id,
+      cleanAttribution(attribution),
+      cleanAdSignals(adSignals, {
+        ip: clientIp,
+        userAgent: req.headers.get('user-agent') || undefined,
+      })
+    );
+
+    if (provider === 'square') {
+      // Square's hosted page sends the shopper back here; /success confirms the order with Square.
+      let link: { id: string; url: string; order_id: string };
+      try {
+        link = await createSquarePaymentLink({
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          currency: CURRENCY,
+          lines,
+          shipping: quote.shippingCents > 0
+            ? { name: 'Shipping', description: `Standard delivery, ${shippingRate.deliveryMinDays}–${shippingRate.deliveryMaxDays} business days`, amountCents: quote.shippingCents }
+            : null,
+          taxes: taxRates.map((tax) => ({ id: tax.id, name: tax.taxName, rate: tax.rate, appliesToShipping: tax.appliesToShipping })),
+          discount: quote.discountCents > 0 ? { name: `Discount (${discount!.label})`, amountCents: quote.discountCents } : null,
+          buyer: {
+            name: String(shippingAddress.name).trim(),
+            email: String(shippingAddress.email).trim(),
+            phone: shippingAddress.phone ? String(shippingAddress.phone).trim() : undefined,
+            line1: String(shippingAddress.line1).trim(),
+            line2: shippingAddress.line2 ? String(shippingAddress.line2).trim() : undefined,
+            city: String(shippingAddress.city).trim(),
+            region,
+            postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
+            country,
+          },
+          redirectUrl: `${finalOrigin}/success?order=${order.id}`,
+        }, testMode);
+      } catch (squareError) {
+        await markOrderExpired(order.id);
+        throw squareError;
+      }
+      await attachCheckoutSession(order.id, SQUARE_REF_PREFIX + link.order_id);
+      return NextResponse.json({ id: link.id, url: link.url });
+    }
+
+    const stripe = stripeClient!;
 
     const stripeTaxRateIdsById = await resolveStripeTaxRates(stripe, testMode, taxRates);
     const productTaxRates = taxRates.map((tax) => stripeTaxRateIdsById.get(tax.id)!);
@@ -133,38 +207,6 @@ export async function POST(req: Request) {
         tax_rates: shippingTaxRates.length > 0 ? shippingTaxRates : undefined,
       });
     }
-
-    const host = req.headers.get('host');
-    const protocol = req.headers.get('x-forwarded-proto') || 'https';
-    const serverOrigin = host ? `${protocol}://${host}` : 'http://localhost:3000';
-    const finalOrigin = clientOrigin || req.headers.get('origin') || serverOrigin;
-
-    const order = await createPendingOrder(lines, quote, discount, {
-      email: String(shippingAddress.email || '').trim(),
-      name: String(shippingAddress.name).trim(),
-      phone: shippingAddress.phone ? String(shippingAddress.phone).trim() : undefined,
-      line1: String(shippingAddress.line1).trim(),
-      line2: shippingAddress.line2 ? String(shippingAddress.line2).trim() : undefined,
-      city: String(shippingAddress.city).trim(),
-      region,
-      postalCode: String(shippingAddress.postalCode).trim().toUpperCase(),
-      country,
-    }, testMode, marketingOptIn === true);
-
-    const clientIp = req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0] || undefined;
-    // Recorded when checkout starts, not when it's paid: a cart reminder is for the ones who don't pay.
-    if (marketingOptIn === true && !testMode) {
-      await recordMarketingConsent(String(shippingAddress.email).trim(), 'checkout', clientIp);
-    }
-
-    await saveOrderMarketing(
-      order.id,
-      cleanAttribution(attribution),
-      cleanAdSignals(adSignals, {
-        ip: clientIp,
-        userAgent: req.headers.get('user-agent') || undefined,
-      })
-    );
 
     // The delivery address is collected once on /checkout/shipping (it decides shipping and tax), so
     // Stripe doesn't ask for it again -- it's attached to the payment as the shipping address.
@@ -228,7 +270,7 @@ export async function POST(req: Request) {
     if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error('Stripe checkout error:', error, error?.detail);
+    console.error(`${paymentProvider() === 'square' ? 'Square' : 'Stripe'} checkout error:`, error, error?.detail);
     // A connection error's own message is generic; the underlying cause (e.g. an invalid header or a
     // DNS/TLS failure) is on .detail and is what tells us what's actually wrong.
     const cause = error?.type === 'StripeConnectionError' && error.detail ? ` (${error.detail.code || ''} ${error.detail.message || ''})`.replace(/\(\s+/, '(') : '';

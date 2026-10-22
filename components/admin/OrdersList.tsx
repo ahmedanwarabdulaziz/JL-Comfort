@@ -364,7 +364,7 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
                 </Box>
                 {order.status === 'cancelled' && (
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    Cancelling here does not refund the customer. Issue the refund in the Stripe dashboard.
+                    Cancelling here does not refund the customer. Issue the refund in the Stripe or Square dashboard.
                   </Typography>
                 )}
               </>
