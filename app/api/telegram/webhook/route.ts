@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { SITE_URL } from '@/lib/site';
 import { alertChatIds, escapeHtml, sendTelegram } from '@/lib/alerts/telegram';
 import { formatMoney } from '@/lib/alerts/server';
-import { STORE_TIME_ZONE, getPendingWork, getSalesSummary, storeMidnight, summaryMessage } from '@/lib/alerts/stats';
+import { STORE_TIME_ZONE, getCheckoutSessions, getPendingWork, getSalesSummary, storeMidnight, summaryMessage } from '@/lib/alerts/stats';
 
 // Telegram calls this for every message sent to the JL Comfort bot. Connected from Admin → Dashboard
 // ("Connect bot"), which registers this URL with TELEGRAM_WEBHOOK_SECRET; Telegram sends the secret
@@ -17,6 +17,7 @@ const HELP = [
   '/month — this month',
   '/errors — the last 10 errors',
   '/pending — orders and sample requests waiting over 24h',
+  '/abandoned — carts left at checkout in the last 7 days',
   '/order 1042 — one order\'s details (or just send the number)',
   '',
   'Or use the buttons below the message box.',
@@ -32,6 +33,7 @@ const BUTTONS: Record<string, string> = {
   '📈 This month': '/month',
   '🔴 Errors': '/errors',
   '⏳ Pending': '/pending',
+  '🛒 Abandoned carts': '/abandoned',
   '🧾 Find order': '/findorder',
   '❓ Help': '/help',
 };
@@ -40,8 +42,9 @@ const KEYBOARD = {
     keyboard: [
       ['📊 Today', '📅 Yesterday'],
       ['🗓 Last 7 days', '📈 This month'],
-      ['🔴 Errors', '⏳ Pending'],
-      ['🧾 Find order', '❓ Help'],
+      ['🛒 Abandoned carts', '⏳ Pending'],
+      ['🔴 Errors', '🧾 Find order'],
+      ['❓ Help'],
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -94,6 +97,34 @@ async function pendingWork() {
   ].filter(Boolean).join('\n');
 }
 
+async function abandonedCarts() {
+  const sessions = await getCheckoutSessions(storeMidnight(6));
+  const abandoned = sessions.filter((s) => s.outcome === 'abandoned');
+  const recovered = sessions.filter((s) => s.outcome === 'recovered');
+  const inProgress = sessions.filter((s) => s.outcome === 'in_progress');
+  const value = abandoned.reduce((sum, s) => sum + s.valueCents, 0);
+  const lines = [
+    '🛒 <b>Abandoned carts — last 7 days</b>',
+    abandoned.length
+      ? `${abandoned.length} cart${abandoned.length === 1 ? '' : 's'} · ${formatMoney(value)} left behind`
+      : '✅ No abandoned carts.',
+    recovered.length ? `Came back and paid: ${recovered.length}` : '',
+    inProgress.length ? `Checking out right now: ${inProgress.length}` : '',
+  ].filter(Boolean);
+  for (const s of abandoned.slice(0, 10)) {
+    const items = s.items.map((i) => (i.quantity > 1 ? `${i.quantity} × ${i.name}` : i.name));
+    lines.push(
+      '',
+      `• <b>${escapeHtml(s.name || s.email)}</b> — ${formatMoney(s.valueCents)} · ${escapeHtml(s.city)}, ${escapeHtml(s.region)}`,
+      `  ${escapeHtml(items.length > 2 ? `${items.slice(0, 2).join(', ')} +${items.length - 2} more` : items.join(', '))}`,
+      `  ${when(s.lastAt.toISOString())}${s.attempts > 1 ? ` · ${s.attempts} tries` : ''} · ${s.optedIn ? '✉️ can email' : 'no email consent'}`
+    );
+  }
+  if (abandoned.length > 10) lines.push('', `…and ${abandoned.length - 10} more`);
+  if (abandoned.length) lines.push('', `<a href="${SITE_URL}/admin/abandoned-checkouts">Open in admin</a>`);
+  return lines.join('\n');
+}
+
 async function answer(command: string, arg: string): Promise<string> {
   switch (command) {
     case '/today':
@@ -108,6 +139,8 @@ async function answer(command: string, arg: string): Promise<string> {
       return recentErrors();
     case '/pending':
       return pendingWork();
+    case '/abandoned':
+      return abandonedCarts();
     case '/order':
       return orderDetails(arg);
     case '/findorder':

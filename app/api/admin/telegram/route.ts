@@ -46,6 +46,7 @@ export async function POST(req: Request) {
           { command: 'month', description: 'This month' },
           { command: 'errors', description: 'The last 10 errors' },
           { command: 'pending', description: 'Work waiting over 24h' },
+          { command: 'abandoned', description: 'Carts left at checkout, last 7 days' },
           { command: 'order', description: "One order's details, e.g. /order 1042" },
         ],
       });

@@ -21,6 +21,28 @@ export interface CheckoutOrderRow {
   items: { name: string; sku: string | null; quantity: number; amountCents: number }[];
 }
 
+/** The orders columns a CheckoutOrderRow is built from (admin page and Telegram bot). */
+export const CHECKOUT_ORDER_SELECT =
+  'id, order_number, status, created_at, customer_email, customer_name, customer_phone, ship_city, ship_region, total_cents, marketing_opt_in, order_items(name, sku, quantity, amount_cents, sort_order)';
+
+export const rowToCheckoutOrderRow = (row: any): CheckoutOrderRow => ({
+  id: row.id,
+  orderNumber: row.order_number,
+  status: row.status,
+  createdAt: new Date(row.created_at),
+  email: row.customer_email || '',
+  name: row.customer_name || '',
+  phone: row.customer_phone,
+  city: row.ship_city || '',
+  region: row.ship_region || '',
+  totalCents: row.total_cents || 0,
+  marketingOptIn: !!row.marketing_opt_in,
+  items: (row.order_items || [])
+    .slice()
+    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((item: any) => ({ name: item.name, sku: item.sku, quantity: Number(item.quantity), amountCents: item.amount_cents })),
+});
+
 export type SessionOutcome =
   | 'completed' // paid on the first try
   | 'recovered' // one or more unpaid attempts, then paid
