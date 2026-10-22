@@ -116,8 +116,8 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
       <List>
         <ListItem disablePadding>
           <ListItemButton
-            selected={selectedView === 'dashboard'}
-            onClick={() => setSelectedView('dashboard')}
+            selected={pathname?.includes('/admin/dashboard')}
+            onClick={() => router.push('/admin/dashboard')}
           >
             <ListItemIcon>
               <DashboardIcon />
@@ -491,11 +491,6 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
           children
         ) : (
           <>
-            {selectedView === 'dashboard' && (
-              <Typography variant="h5" gutterBottom>
-                Dashboard
-              </Typography>
-            )}
             {selectedView === 'products' && <ProductsList />}
           </>
         )}

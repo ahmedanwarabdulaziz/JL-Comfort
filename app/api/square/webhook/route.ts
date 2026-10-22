@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
+import { reportError } from '@/lib/alerts/server';
 import { SQUARE_REF_PREFIX, getSquarePayment, isSquareWebhookConfigured, verifySquareWebhook } from '@/lib/square/server';
 
 // Square's counterpart to /api/stripe/webhook: it marks an order paid even if the shopper never
@@ -12,6 +13,7 @@ import { SQUARE_REF_PREFIX, getSquarePayment, isSquareWebhookConfigured, verifyS
 export async function POST(req: Request) {
   if (!isSquareWebhookConfigured()) {
     console.error('SQUARE_WEBHOOK_SIGNATURE_KEY is not set; rejecting webhook.');
+    await reportError('webhook_failed', 'Square webhook rejected: not configured', 'SQUARE_WEBHOOK_SIGNATURE_KEY is not set, so payments are not being confirmed.');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
   } catch (error) {
     // A 500 makes Square retry later; markOrderPaid's status guard keeps a retry from double-sending.
     console.error(`Square webhook failed for order ${orderId || payment.order_id}:`, error);
+    await reportError('webhook_failed', 'Square webhook failed', error, orderId ? `/admin/orders?order=${orderId}` : undefined);
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 

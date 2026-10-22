@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { webhookVerifier } from '@/lib/stripe/server';
 import { markOrderExpired, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
+import { reportError } from '@/lib/alerts/server';
 
 
 // Stripe calls this after checkout. It is the only thing that marks an order paid -- the /success
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
   const secrets = [process.env.STRIPE_WEBHOOK_SECRET?.trim(), process.env.STRIPE_TEST_WEBHOOK_SECRET?.trim()].filter(Boolean) as string[];
   if (secrets.length === 0) {
     console.error('STRIPE_WEBHOOK_SECRET is not set; rejecting webhook.');
+    await reportError('webhook_failed', 'Stripe webhook rejected: not configured', 'STRIPE_WEBHOOK_SECRET is not set, so payments are not being confirmed.');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
@@ -65,6 +67,7 @@ export async function POST(req: Request) {
   } catch (error) {
     // A 500 makes Stripe retry later; markOrderPaid's status guard keeps a retry from double-sending.
     console.error(`Stripe webhook ${event.type} failed for order ${orderId}:`, error);
+    await reportError('webhook_failed', `Stripe webhook ${event.type} failed`, error, `/admin/orders?order=${orderId}`);
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 

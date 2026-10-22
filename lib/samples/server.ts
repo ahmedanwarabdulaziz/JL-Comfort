@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { alertNewSampleRequest } from '@/lib/alerts/server';
 import { CheckoutError } from '@/lib/checkout/errors';
 import { deliverEmail, getEmailSettings } from '@/lib/email/deliver';
 import { EmailContent } from '@/lib/email/layout';
@@ -205,6 +206,7 @@ export async function sendNewSampleRequestEmails(id: string, siteOrigin: string)
     settings = await getEmailSettings();
   } catch (error: any) {
     await logSampleEvent(id, 'email_failed', `Could not load email settings: ${error.message || error}`);
+    await alertNewSampleRequest(request, 'NOT SENT: could not load email settings');
     return;
   }
 
@@ -220,6 +222,7 @@ export async function sendNewSampleRequestEmails(id: string, siteOrigin: string)
       `${id}-sample-internal`
     );
   }
+  await alertNewSampleRequest(request, supplierStatus);
 }
 
 export async function markSamplesShipped(id: string, carrierId: string, trackingNumber: string, customUrl?: string) {
