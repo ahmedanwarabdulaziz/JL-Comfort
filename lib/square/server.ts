@@ -78,7 +78,7 @@ export interface SquareCheckoutInput {
   shipping: { name: string; description: string; amountCents: number } | null;
   taxes: { id: string; name: string; rate: number; appliesToShipping: boolean }[];
   discount: { name: string; amountCents: number } | null;
-  buyer: { email: string; phone?: string; line1: string; line2?: string; city: string; region: string; postalCode: string; country: string };
+  buyer: { name: string; email: string; phone?: string; line1: string; line2?: string; city: string; region: string; postalCode: string; country: string };
   redirectUrl: string;
 }
 
@@ -97,6 +97,10 @@ function toE164(phone: string | undefined): string | undefined {
  * discount that Square spreads across the lines before tax (as lib/checkout/pricing.ts does).
  */
 export async function createSquarePaymentLink(input: SquareCheckoutInput, testMode: boolean) {
+  // "Mary Ann Smith" -> "Mary Ann" + "Smith"; a single word is a first name.
+  const nameParts = input.buyer.name.trim().split(/\s+/);
+  const lastName = nameParts.length > 1 ? nameParts.pop()! : '';
+  const firstName = nameParts.join(' ');
   // Checked first: the request body below needs the account's location.
   const { locationId } = requireAccount(testMode);
   const money = (amount: number): Money => ({ amount, currency: input.currency.toUpperCase() });
@@ -149,11 +153,16 @@ export async function createSquarePaymentLink(input: SquareCheckoutInput, testMo
         redirect_url: input.redirectUrl,
         // The delivery address was already collected on /checkout/shipping; it decided shipping and tax.
         ask_for_shipping_address: false,
+        // Discount codes are entered (and priced) on our own checkout; Square's coupon box would be a second one.
+        enable_coupon: false,
       },
       pre_populated_data: {
         buyer_email: input.buyer.email,
         buyer_phone_number: toE164(input.buyer.phone),
+        // Square's page always shows a contact section; filling it from our shipping form leaves only the card.
         buyer_address: {
+          first_name: firstName,
+          last_name: lastName || undefined,
           address_line_1: input.buyer.line1,
           address_line_2: input.buyer.line2 || undefined,
           locality: input.buyer.city,

@@ -149,6 +149,7 @@ export async function POST(req: Request) {
           taxes: taxRates.map((tax) => ({ id: tax.id, name: tax.taxName, rate: tax.rate, appliesToShipping: tax.appliesToShipping })),
           discount: quote.discountCents > 0 ? { name: `Discount (${discount!.label})`, amountCents: quote.discountCents } : null,
           buyer: {
+            name: String(shippingAddress.name).trim(),
             email: String(shippingAddress.email).trim(),
             phone: shippingAddress.phone ? String(shippingAddress.phone).trim() : undefined,
             line1: String(shippingAddress.line1).trim(),
