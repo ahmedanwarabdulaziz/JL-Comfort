@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { isTestSessionId, stripeFor } from '@/lib/stripe/server';
-import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
+import { getOrder, markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
+import { SQUARE_REF_PREFIX, getSquarePayment } from '@/lib/square/server';
 import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 
 
@@ -11,7 +12,8 @@ import { hashEmail, reportPurchaseServerSide } from '@/lib/analytics/serverConve
 // markOrderPaid's status guard means whichever of the two paths arrives first sends the emails.
 export async function POST(req: Request) {
   try {
-    const { sessionId } = await req.json();
+    const { sessionId, orderId: squareReturnOrderId } = await req.json();
+    if (typeof squareReturnOrderId === 'string') return await confirmSquareOrder(squareReturnOrderId, req);
     if (typeof sessionId !== 'string' || !sessionId.startsWith('cs_')) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
     }
@@ -44,9 +46,47 @@ export async function POST(req: Request) {
       taxCents: session.total_details?.amount_tax ?? null,
       // Hashed, for Google Ads enhanced conversions; the page sends it only with advertising consent.
       sha256Email: session.customer_details?.email || session.customer_email ? hashEmail((session.customer_details?.email || session.customer_email)!) : null,
+      test: testMode,
     });
   } catch (error: any) {
     console.error('Order confirmation failed:', error);
     return NextResponse.json({ error: 'Unable to confirm the order' }, { status: 500 });
   }
+}
+
+// Square sends the shopper back with our own order id (Square's hosted page has no session id to
+// return). The id only says which order to look at: whether it's paid is asked of Square, using the
+// Square order saved on it at checkout, in the account (production or sandbox) it was created in.
+async function confirmSquareOrder(orderId: string, req: Request) {
+  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return NextResponse.json({ error: 'Invalid order' }, { status: 400 });
+  const order = await getOrder(orderId);
+  const squareOrderId = order?.stripeCheckoutSessionId?.startsWith(SQUARE_REF_PREFIX)
+    ? order.stripeCheckoutSessionId.slice(SQUARE_REF_PREFIX.length)
+    : null;
+  if (!order || !squareOrderId) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+
+  const payment = await getSquarePayment(squareOrderId, order.isTest);
+  if (!payment.paid || payment.orderId !== order.id) {
+    return NextResponse.json({ orderNumber: order.orderNumber, paid: false, test: order.isTest });
+  }
+
+  const firstConfirmation = await markOrderPaid(order.id, {
+    sessionId: order.stripeCheckoutSessionId!,
+    paymentIntentId: payment.paymentId,
+    taxCents: payment.taxCents,
+    totalCents: payment.totalCents,
+  }, order.isTest);
+  if (firstConfirmation) {
+    await sendNewOrderEmails(order.id, process.env.SITE_URL || new URL(req.url).origin);
+    await reportPurchaseServerSide(order.id);
+  }
+
+  return NextResponse.json({
+    orderNumber: order.orderNumber,
+    paid: true,
+    totalCents: payment.totalCents,
+    taxCents: payment.taxCents,
+    sha256Email: order.customerEmail ? hashEmail(order.customerEmail) : null,
+    test: order.isTest,
+  });
 }

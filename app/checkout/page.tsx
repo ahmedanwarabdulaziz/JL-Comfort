@@ -253,7 +253,7 @@ export default function CheckoutPage() {
             </Button>
             
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>
-              You will be redirected to Stripe&apos;s secure checkout to enter your payment and shipping details.
+              You will be redirected to a secure checkout page to enter your payment and shipping details.
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
               🚚 Every order is cut to size and typically ships within 3–5 business days.

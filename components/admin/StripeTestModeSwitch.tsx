@@ -6,7 +6,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typogra
 // Admin top-bar button for test payments. It only affects this browser: checkouts made here while
 // signed in as an admin go to the Stripe test account. Shoppers always pay live.
 export default function StripeTestModeSwitch() {
-  const [state, setState] = useState<{ testMode: boolean; available: boolean; storeKey?: 'live' | 'test' | 'missing' } | null>(null);
+  const [state, setState] = useState<{ testMode: boolean; available: boolean; storeKey?: 'live' | 'test' | 'missing'; provider?: 'stripe' | 'square' } | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -19,10 +19,14 @@ export default function StripeTestModeSwitch() {
 
   if (!state) return null;
 
+  const square = state.provider === 'square';
+
   const toggle = async () => {
     if (!state.available && !state.testMode) {
       setMessage(
-        'Test payments need a Stripe test key. Add STRIPE_TEST_SECRET_KEY (your sk_test_... key from Stripe → Developers → API keys, in Test mode) to the environment variables, then redeploy (or restart the dev server).'
+        square
+          ? 'Test payments need the Square sandbox keys. Add SQUARE_SANDBOX_ACCESS_TOKEN and SQUARE_SANDBOX_LOCATION_ID (from developer.squareup.com, with the Sandbox toggle on) to the environment variables, then redeploy (or restart the dev server).'
+          : 'Test payments need a Stripe test key. Add STRIPE_TEST_SECRET_KEY (your sk_test_... key from Stripe → Developers → API keys, in Test mode) to the environment variables, then redeploy (or restart the dev server).'
       );
       return;
     }
@@ -37,7 +41,9 @@ export default function StripeTestModeSwitch() {
       if (!response.ok) throw new Error(data.error || 'Could not change payment mode.');
       setState(data);
       setMessage(
-        data.testMode
+        data.testMode && square
+          ? 'Test payments are ON in this browser. Checkouts you make here use the Square sandbox: pay with card 4111 1111 1111 1111, any future date, CVV 111 and any postal code. Customers still pay for real.'
+          : data.testMode
           ? 'Test payments are ON in this browser. Checkouts you make here use Stripe test mode: pay with card 4242 4242 4242 4242, any future date and any CVC. Customers still pay for real.'
           : 'Test payments are OFF. Checkouts in this browser are real payments again.'
       );
@@ -52,7 +58,7 @@ export default function StripeTestModeSwitch() {
   // The store's own key, as this deployment sees it: a missing or test key means shoppers can't pay for real.
   const keyWarning =
     state.storeKey === 'missing'
-      ? 'Live Stripe key missing'
+      ? square ? 'Live Square keys missing' : 'Live Stripe key missing'
       : state.storeKey === 'test'
       ? 'Store is on a TEST Stripe key'
       : '';
@@ -61,7 +67,7 @@ export default function StripeTestModeSwitch() {
       {keyWarning && (
         <Box
           component="span"
-          title="STRIPE_SECRET_KEY on this deployment. Fix it in Vercel → Settings → Environment Variables, then redeploy Production."
+          title={`${square ? 'SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID' : 'STRIPE_SECRET_KEY'} on this deployment. Fix it in Vercel → Settings → Environment Variables, then redeploy Production.`}
           sx={{ mr: 1.5, px: 1.25, py: 0.4, borderRadius: 999, bgcolor: '#d32f2f', color: '#fff', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}
         >
           ⚠ {keyWarning}

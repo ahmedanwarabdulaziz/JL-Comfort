@@ -32,7 +32,10 @@ function reportPurchaseOnce(
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get('session_id');
+  // Stripe returns its checkout session id; Square (lib/square/server.ts) returns our own order id.
+  const stripeSessionId = searchParams.get('session_id');
+  const squareOrderId = searchParams.get('order');
+  const sessionId = stripeSessionId || squareOrderId;
   const { clearCart } = useCart();
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
@@ -43,22 +46,23 @@ function SuccessContent() {
     }
   }, [sessionId, clearCart]);
 
-  // Confirms the order with Stripe server-side (a backup to the webhook) and fetches its number.
+  // Confirms the order with Stripe or Square server-side (a backup to the webhook) and fetches its number.
   useEffect(() => {
     if (!sessionId) return;
     fetch('/api/orders/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify(stripeSessionId ? { sessionId: stripeSessionId } : { orderId: squareOrderId }),
     })
       .then((response) => response.json())
       .then((data) => {
         setOrderNumber(data.orderNumber || null);
-        // An admin test checkout (cs_test_...) is not a sale, so the ad platforms don't hear about it.
-        if (data.paid && typeof data.totalCents === 'number' && !sessionId.startsWith('cs_test_')) reportPurchaseOnce(sessionId, data);
+        // An admin test checkout is not a sale, so the ad platforms don't hear about it.
+        const test = data.test ?? sessionId.startsWith('cs_test_');
+        if (data.paid && typeof data.totalCents === 'number' && !test) reportPurchaseOnce(sessionId, data);
       })
       .catch(() => {});
-  }, [sessionId]);
+  }, [sessionId, stripeSessionId, squareOrderId]);
 
   return (
     <Container maxWidth="sm" sx={{ py: 8 }}>

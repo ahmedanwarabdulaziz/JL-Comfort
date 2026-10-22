@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { envSummary } from '@/lib/stripe/server';
+import { paymentProvider } from '@/lib/payments/provider';
 
 // Admin-only (middleware.ts covers /api/admin/:path*). Shows which payment/email settings this
 // deployment actually received from the host -- names, whether each has a value and its length,
 // plus the non-secret key prefix (rk_live_, sk_test_, whsec_). Never the values themselves.
 // Open /api/admin/env-check in a browser that's signed in to the admin panel.
-const WATCHED = /STRIPE|RESEND|GA4|SUPABASE|SITE_URL/i;
+const WATCHED = /STRIPE|SQUARE|PAYMENT_PROVIDER|RESEND|GA4|SUPABASE|SITE_URL/i;
 const PREFIX = /^(?:sk|rk|pk)_(?:live|test)_|^whsec_|^re_/;
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,14 @@ export async function GET() {
       url: process.env.VERCEL_URL || null,
       function: envSummary(),
     },
-    expected: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET', 'RESEND_API_KEY', 'GA4_API_SECRET'].map(
+    provider: paymentProvider(),
+    expected: [
+      ...(paymentProvider() === 'square'
+        ? ['SQUARE_ACCESS_TOKEN', 'SQUARE_LOCATION_ID', 'SQUARE_WEBHOOK_SIGNATURE_KEY', 'SQUARE_SANDBOX_ACCESS_TOKEN', 'SQUARE_SANDBOX_LOCATION_ID']
+        : ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET']),
+      'RESEND_API_KEY',
+      'GA4_API_SECRET',
+    ].map(
       (name) => `${name}: ${(process.env[name] || '').trim() ? 'received' : 'MISSING'}`
     ),
     variables,
