@@ -107,7 +107,7 @@ export default function HeaderIconWithNotice({
         zIndex: '2000',
         pointerEvents: 'none',
         border: '2px solid #fff',
-        boxShadow: '0 8px 24px rgba(33,23,18,0.35)',
+        boxShadow: '0 8px 24px rgba(51,56,79,0.35)',
         transition: `transform ${FLY_MS}ms cubic-bezier(0.55, -0.15, 0.3, 1), opacity ${FLY_MS}ms ease-in`,
       } as Partial<CSSStyleDeclaration>);
       document.body.appendChild(flyer);
@@ -144,20 +144,20 @@ export default function HeaderIconWithNotice({
             onClick?.();
           }}
           aria-label={`${label} (${count})`}
-          sx={{ position: 'relative', color: brand.ink, '&:hover': { color: brand.mocha }, ...sx }}
+          sx={{ position: 'relative', color: brand.ink, '&:hover': { color: brand.accent }, ...sx }}
         >
           {bumpKey > 0 && (
             <Box
               key={`ring-${bumpKey}`}
               aria-hidden
-              sx={{ position: 'absolute', inset: 4, borderRadius: '50%', border: `2px solid ${brand.mocha}`, animation: `${ring} 900ms ease-out forwards`, pointerEvents: 'none' }}
+              sx={{ position: 'absolute', inset: 4, borderRadius: '50%', border: `2px solid ${brand.accent}`, animation: `${ring} 900ms ease-out forwards`, pointerEvents: 'none' }}
             />
           )}
           <Box key={`icon-${bumpKey}`} sx={{ display: 'flex', animation: bumpKey > 0 ? `${bump} 650ms ease-out` : 'none' }}>
             <Badge
               badgeContent={count}
               invisible={count === 0}
-              sx={{ '& .MuiBadge-badge': { bgcolor: brand.mocha, color: brand.chalk, fontWeight: 700, fontSize: '0.65rem', minWidth: 18, height: 18 } }}
+              sx={{ '& .MuiBadge-badge': { bgcolor: brand.accent, color: brand.chalk, fontWeight: 700, fontSize: '0.65rem', minWidth: 18, height: 18 } }}
             >
               {icon}
             </Badge>
@@ -178,8 +178,8 @@ export default function HeaderIconWithNotice({
                     maxWidth: 'calc(100vw - 24px)',
                     p: 2,
                     border: '1px solid #e5e0d9',
-                    boxShadow: '0 12px 32px rgba(33,23,18,0.16)',
-                    borderTop: `3px solid ${brand.mocha}`,
+                    boxShadow: '0 12px 32px rgba(51,56,79,0.16)',
+                    borderTop: `3px solid ${brand.accent}`,
                     '& .notice-actions .MuiButton-root': { whiteSpace: 'nowrap', fontSize: '0.72rem' },
                   }}
                 >

@@ -22,7 +22,7 @@ export interface CollectionLink {
 }
 
 
-const eyebrowSx = { color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' as const };
+const eyebrowSx = { color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' as const };
 const chipSx = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -33,7 +33,7 @@ const chipSx = {
   textDecoration: 'none',
   fontSize: '0.82rem',
   bgcolor: '#fff',
-  '&:hover': { borderColor: brand.mocha, color: brand.mocha },
+  '&:hover': { borderColor: brand.accent, color: brand.accent },
 };
 
 // A collection landing page (/fabrics/velvet, /fabrics/pet-friendly, ...). Everything a search engine
@@ -78,9 +78,9 @@ export default function CollectionPage({
       <Box sx={{ bgcolor: brand.chalk, borderBottom: `1px solid ${LINE}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
           <Box component="nav" aria-label="Breadcrumb" sx={{ fontSize: '0.78rem', color: MUTED, mb: 1.5 }}>
-            <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.mocha } }}>Home</Box>
+            <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>Home</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
-            <Box component={Link} href="/fabrics" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.mocha } }}>Fabrics</Box>
+            <Box component={Link} href="/fabrics" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>Fabrics</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
             <Box component="span" sx={{ color: brand.ink }}>{collection.label}</Box>
           </Box>
@@ -100,7 +100,7 @@ export default function CollectionPage({
                 component={Link}
                 href={`/fabrics?${collection.shopQuery}`}
                 startIcon={<TuneIcon />}
-                sx={{ color: brand.ink, borderBottom: `1px solid ${brand.ink}`, borderRadius: 0, px: 0.5, fontSize: '0.8rem', '&:hover': { color: brand.mocha, bgcolor: 'transparent' } }}
+                sx={{ color: brand.ink, borderBottom: `1px solid ${brand.ink}`, borderRadius: 0, px: 0.5, fontSize: '0.8rem', '&:hover': { color: brand.accent, bgcolor: 'transparent' } }}
               >
                 Refine by colour, pattern and more
               </Button>
@@ -187,7 +187,7 @@ export default function CollectionPage({
             <Typography sx={{ color: brand.textSecondary, lineHeight: 1.7, mb: 2 }}>
               Colour and texture never look quite the same on screen. Add fabrics to your sample list from any fabric page and we’ll send swatches to your door, free.
             </Typography>
-            <Box component={Link} href="/sample-books" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, fontWeight: 600, textDecoration: 'none', borderBottom: `1px solid ${brand.ink}`, '&:hover': { color: brand.mocha, borderColor: brand.mocha } }}>
+            <Box component={Link} href="/sample-books" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, fontWeight: 600, textDecoration: 'none', borderBottom: `1px solid ${brand.ink}`, '&:hover': { color: brand.accent, borderColor: brand.accent } }}>
               How free samples work <ArrowForwardIcon sx={{ fontSize: 16 }} />
             </Box>
           </Box>

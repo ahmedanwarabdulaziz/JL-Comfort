@@ -70,7 +70,7 @@ export interface FabricDetailData {
   colorwaySiblings: ColorwaySibling[];
 }
 
-// Shared look for this page: brand ink/mocha/chalk, Work Sans labels, Fraunces headings.
+// Shared look for this page: brand ink/accent/chalk, Work Sans labels, Fraunces headings.
 const LINE = '#e5e0d9';
 const MUTED = '#8b857e';
 const labelSx = { color: MUTED, fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' as const };
@@ -179,7 +179,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     <Box sx={{ minHeight: '100vh', bgcolor: '#fff', pb: { xs: 8, md: 14 }, color: brand.ink }}>
       <Box sx={{ borderBottom: `1px solid ${LINE}`, bgcolor: brand.chalk }}>
         <Container maxWidth="xl" sx={{ py: 1.25 }}>
-          <Button component={Link} href="/fabrics" startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />} sx={{ color: MUTED, fontSize: '0.68rem', p: 0.5, '&:hover': { bgcolor: 'transparent', color: brand.mocha } }}>
+          <Button component={Link} href="/fabrics" startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />} sx={{ color: MUTED, fontSize: '0.68rem', p: 0.5, '&:hover': { bgcolor: 'transparent', color: brand.accent } }}>
             All fabrics
           </Button>
         </Container>
@@ -202,7 +202,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                 <Typography sx={{ color: MUTED }}>Image unavailable</Typography>
               )}
               {activeImage && (
-                <Box className="zoom-hint" sx={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 0.5, px: 1.25, py: 0.6, bgcolor: 'rgba(33,23,18,0.72)', color: brand.chalk, fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, transition: 'opacity .2s' }}>
+                <Box className="zoom-hint" sx={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 0.5, px: 1.25, py: 0.6, bgcolor: 'rgba(51,56,79,0.72)', color: brand.chalk, fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85, transition: 'opacity .2s' }}>
                   <ZoomInIcon sx={{ fontSize: 16 }} /> Click to enlarge
                 </Box>
               )}
@@ -221,9 +221,9 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                         component={current ? 'div' : Link}
                         href={current ? undefined : '/fabrics/' + colourwayFabric.id}
                         aria-current={current ? 'page' : undefined}
-                        sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.mocha } }}
+                        sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.accent } }}
                       >
-                        <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.mocha}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
+                        <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.accent}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
                           {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" />}
                         </Box>
                         <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: current ? brand.ink : brand.textSecondary, fontWeight: current ? 600 : 400 }}>
@@ -240,20 +240,20 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
           {/* ── Details ───────────────────────────────────────────── */}
           <Box sx={{ maxWidth: 520 }}>
             {/* Stacked title: house, pattern, colour, collection */}
-            <Typography sx={{ ...labelSx, color: brand.mocha, mb: 1 }}>JL Comfort</Typography>
+            <Typography sx={{ ...labelSx, color: brand.accent, mb: 1 }}>JL Comfort</Typography>
             {pattern && (
               <Typography sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' }, fontWeight: 600, letterSpacing: '0.06em', color: brand.ink }}>{pattern}</Typography>
             )}
             <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.8rem' }, lineHeight: 1.08, color: brand.ink, mt: 0.25 }}>
               {colourway}{' '}
-              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.mocha }}>Fabric</Box>
+              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>Fabric</Box>
             </Typography>
             {collections.length > 0 && (
               <Typography sx={{ mt: 1, color: brand.textSecondary, fontSize: '0.92rem' }}>
                 {collections.map((book, i) => (
                   <span key={book.raw}>
                     {i > 0 && ', '}
-                    <Box component={Link} href={`/fabrics?sampleBook=${encodeURIComponent(book.raw)}`} sx={{ color: 'inherit', textDecorationColor: LINE, '&:hover': { color: brand.mocha } }}>
+                    <Box component={Link} href={`/fabrics?sampleBook=${encodeURIComponent(book.raw)}`} sx={{ color: 'inherit', textDecorationColor: LINE, '&:hover': { color: brand.accent } }}>
                       {book.label}
                     </Box>
                   </span>
@@ -269,7 +269,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                   <Typography sx={labelSx}>Sample</Typography>
                   <Typography sx={{ fontSize: '1.35rem', fontWeight: 600, color: brand.ink }}>Free</Typography>
                 </Box>
-                <Typography sx={{ color: brand.mocha, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'right' }}>Sample recommended</Typography>
+                <Typography sx={{ color: brand.accent, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'right' }}>Sample recommended</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 2, borderTop: `1px solid ${LINE}` }}>
                 <Typography sx={labelSx}>Product details</Typography>
@@ -296,13 +296,13 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
               startIcon={alreadySampled ? <CheckCircleIcon /> : undefined}
               disabled={(!alreadySampled && isFull) || !sampleSettings.requestsEnabled}
               onClick={handleRequestSample}
-              sx={{ mt: 2.5, height: 52, borderColor: brand.ink, color: brand.ink, borderWidth: 1.5, fontSize: '0.8rem', '&:hover': { borderColor: brand.mocha, color: brand.mocha, bgcolor: brand.chalk, borderWidth: 1.5 } }}
+              sx={{ mt: 2.5, height: 52, borderColor: brand.ink, color: brand.ink, borderWidth: 1.5, fontSize: '0.8rem', '&:hover': { borderColor: brand.accent, color: brand.accent, bgcolor: brand.chalk, borderWidth: 1.5 } }}
             >
               {alreadySampled ? (sampleAdded ? 'Added to your samples' : 'In your samples · view list') : isFull ? `Sample list full (${sampleSettings.maxPerRequest})` : 'Order free sample'}
             </Button>
             {sampleItems.length > 0 && (
               <Typography sx={{ textAlign: 'center', mt: 0.75, fontSize: '0.78rem' }}>
-                <Box component={Link} href="/request-samples" sx={{ color: brand.mocha }}>
+                <Box component={Link} href="/request-samples" sx={{ color: brand.accent }}>
                   Request your {sampleItems.length} sample{sampleItems.length === 1 ? '' : 's'} →
                 </Box>
               </Typography>
@@ -320,7 +320,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                 disabled={!hasPrice || !inStock}
                 onClick={handleAddToCart}
                 disableElevation
-                sx={{ height: 52, bgcolor: brand.ink, color: brand.chalk, fontSize: '0.8rem', '&:hover': { bgcolor: brand.mocha }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}
+                sx={{ height: 52, bgcolor: brand.ink, color: brand.chalk, fontSize: '0.8rem', '&:hover': { bgcolor: brand.accent }, '&.Mui-disabled': { bgcolor: '#ece9e6', color: '#aaa' } }}
               >
                 {added ? 'Added to cart' : 'Order product'}
               </Button>
@@ -344,7 +344,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
             onChange={(_, value) => setTab(value)}
             variant="scrollable"
             allowScrollButtonsMobile
-            sx={{ borderBottom: `1px solid ${LINE}`, '& .MuiTab-root': { color: MUTED, fontSize: '0.78rem', minHeight: 56 }, '& .Mui-selected': { color: `${brand.ink} !important` }, '& .MuiTabs-indicator': { bgcolor: brand.mocha, height: 2 } }}
+            sx={{ borderBottom: `1px solid ${LINE}`, '& .MuiTab-root': { color: MUTED, fontSize: '0.78rem', minHeight: 56 }, '& .Mui-selected': { color: `${brand.ink} !important` }, '& .MuiTabs-indicator': { bgcolor: brand.accent, height: 2 } }}
           >
             <Tab label="Specifications" />
             <Tab label="Description" />

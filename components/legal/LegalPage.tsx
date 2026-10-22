@@ -29,7 +29,7 @@ export default function LegalPage({
     <Box sx={{ bgcolor: '#fff', color: brand.ink, pb: { xs: 8, md: 12 } }}>
       <Box sx={{ bgcolor: brand.chalk, borderBottom: `1px solid ${brand.chalkLine}` }}>
         <Container maxWidth="md" sx={{ py: { xs: 6, md: 9 } }}>
-          <Typography sx={{ color: brand.mocha, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.5 }}>
+          <Typography sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.5 }}>
             {eyebrow}
           </Typography>
           <Typography variant="h1" sx={{ fontSize: { xs: '2.3rem', md: '3.2rem' }, mb: 2 }}>
@@ -43,13 +43,13 @@ export default function LegalPage({
         <Box sx={{ fontSize: '1rem', lineHeight: 1.8, color: brand.ink, mb: 5, '& p': { m: 0, mb: 2 } }}>{intro}</Box>
 
         <Box component="nav" aria-label="Contents" sx={{ border: `1px solid ${brand.chalkLine}`, bgcolor: brand.chalk, p: { xs: 2.5, md: 3.5 }, mb: { xs: 6, md: 8 } }}>
-          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: brand.mocha, mb: 1.5 }}>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: brand.accent, mb: 1.5 }}>
             Contents
           </Typography>
           <Box component="ol" sx={{ m: 0, pl: 3, columns: { sm: 2 }, columnGap: 5, '& li': { breakInside: 'avoid', mb: 0.75, fontSize: '0.92rem' } }}>
             {sections.map((section) => (
               <li key={section.id}>
-                <Box component="a" href={`#${section.id}`} sx={{ color: brand.ink, textDecoration: 'none', '&:hover': { color: brand.mocha, textDecoration: 'underline' } }}>
+                <Box component="a" href={`#${section.id}`} sx={{ color: brand.ink, textDecoration: 'none', '&:hover': { color: brand.accent, textDecoration: 'underline' } }}>
                   {section.title}
                 </Box>
               </li>
@@ -73,12 +73,12 @@ export default function LegalPage({
               '& ul': { m: 0, mb: 2, pl: 3 },
               '& li': { mb: 0.75 },
               '& h3': { fontFamily: 'var(--font-label), sans-serif', fontSize: '1rem', fontWeight: 700, mt: 3, mb: 1 },
-              '& a, & button': { color: brand.mocha },
+              '& a, & button': { color: brand.accent },
               '& strong': { fontWeight: 700 },
             }}
           >
             <Typography id={`${section.id}-title`} variant="h2" sx={{ fontSize: { xs: '1.45rem', md: '1.7rem' }, mb: 2, display: 'flex', gap: 1.5 }}>
-              <Box component="span" sx={{ color: brand.mocha, fontWeight: 400 }}>{index + 1}.</Box>
+              <Box component="span" sx={{ color: brand.accent, fontWeight: 400 }}>{index + 1}.</Box>
               {section.title}
             </Typography>
             {section.content}

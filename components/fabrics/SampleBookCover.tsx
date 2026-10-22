@@ -31,7 +31,7 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
     aspectRatio: '300 / 331',
     bgcolor: '#fff',
     border: '1px solid #d9d3cb',
-    boxShadow: '0 1px 2px rgba(33,23,18,0.18), 0 8px 18px rgba(33,23,18,0.10)',
+    boxShadow: '0 1px 2px rgba(51,56,79,0.18), 0 8px 18px rgba(51,56,79,0.10)',
     overflow: 'hidden',
   } as const;
 
@@ -67,9 +67,9 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
       </Box>
 
       {/* Title label */}
-      <Box sx={{ flex: '0 0 auto', px: '5cqw', pt: '3.2cqw', pb: '3cqw', borderBottom: `0.9cqw solid ${brand.mocha}` }}>
+      <Box sx={{ flex: '0 0 auto', px: '5cqw', pt: '3.2cqw', pb: '3cqw', borderBottom: `0.9cqw solid ${brand.accent}` }}>
         {series && (
-          <Box sx={{ color: brand.mocha, fontWeight: 700, letterSpacing: '0.12em', fontSize: '2.7cqw', textTransform: 'uppercase', lineHeight: 1.2 }}>
+          <Box sx={{ color: brand.accent, fontWeight: 700, letterSpacing: '0.12em', fontSize: '2.7cqw', textTransform: 'uppercase', lineHeight: 1.2 }}>
             {series}
           </Box>
         )}
@@ -103,7 +103,7 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
       </Box>
 
       {/* Swatch edges */}
-      <Box sx={{ flex: '0 0 auto', height: '7%', display: 'flex', bgcolor: '#ede9e3', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(33,23,18,0.25)' }}>
+      <Box sx={{ flex: '0 0 auto', height: '7%', display: 'flex', bgcolor: '#ede9e3', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(51,56,79,0.25)' }}>
         {(edges.length > 0 ? edges : ok(photo) ? [photo] : []).map((src, i) => (
           <Box key={`${src}-${i}`} sx={{ flex: 1, position: 'relative', borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.65)' }}>
             <FabricImage src={src} alt="" sizes="64px" onError={fail(src)} />

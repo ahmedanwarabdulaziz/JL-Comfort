@@ -36,7 +36,7 @@ export default function AddedNotice({
         close();
         a.onClick?.();
       }}
-      sx={contained ? { bgcolor: brand.ink, color: brand.chalk, '&:hover': { bgcolor: brand.mocha } } : { borderColor: brand.ink, color: brand.ink }}
+      sx={contained ? { bgcolor: brand.ink, color: brand.chalk, '&:hover': { bgcolor: brand.accent } } : { borderColor: brand.ink, color: brand.ink }}
     >
       {a.label}
     </Button>
@@ -50,7 +50,7 @@ export default function AddedNotice({
           {imageUrl && <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.78rem', fontWeight: 700, color: brand.mocha, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.78rem', fontWeight: 700, color: brand.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             <CheckCircleIcon sx={{ fontSize: 15 }} /> {heading}
           </Typography>
           {title && (

@@ -1,19 +1,18 @@
 import { createTheme } from '@mui/material/styles';
 
-// Single source of truth for the "Swatch Report" brand palette — a
-// color-blocked, trend-forecast identity built from real seasonal textile
-// colors rather than a generic neutral+accent scheme. Pages should reference
-// these tokens instead of hardcoding hex values.
+// Single source of truth for the JL Comfort brand palette: slate navy (ink),
+// orange (accent) and warm grey (stone). Pages should reference these tokens
+// instead of hardcoding hex values.
 export const brand = {
-  ink: '#211712',
+  ink: '#33384F',
   inkSoft: 'rgba(246,242,235,0.72)',
-  mocha: '#8B6552',
-  mochaDeep: '#6E4F3F',
-  butter: '#F3D17E',
-  lime: '#CFE267',
+  accent: '#E28147',
+  accentLight: '#EC9F6E',
+  accentDeep: '#B8612A',
+  stone: '#A6A6A4',
   chalk: '#F6F2EB',
-  chalkLine: 'rgba(33,23,18,0.14)',
-  textSecondary: 'rgba(33,23,18,0.65)',
+  chalkLine: 'rgba(51,56,79,0.14)',
+  textSecondary: 'rgba(51,56,79,0.68)',
 };
 
 // Shared clip-path for the "tag" shape used by TagButton and other die-cut
@@ -37,9 +36,9 @@ export const theme = createTheme({
       contrastText: brand.chalk,
     },
     secondary: {
-      main: brand.mocha,
-      light: brand.butter,
-      dark: brand.mochaDeep,
+      main: brand.accent,
+      light: brand.accentLight,
+      dark: brand.accentDeep,
       contrastText: brand.ink,
     },
     background: {
