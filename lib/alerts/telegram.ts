@@ -34,15 +34,15 @@ export async function telegramApi(method: string, body: Record<string, unknown>)
   return result.result;
 }
 
-/** Sends an HTML message to one chat, or to every alert chat. Never throws. */
-export async function sendTelegram(html: string, chatId?: string | number): Promise<boolean> {
+/** Sends an HTML message to one chat, or to every alert chat. `extra` adds sendMessage fields (e.g. reply_markup). Never throws. */
+export async function sendTelegram(html: string, chatId?: string | number, extra: Record<string, unknown> = {}): Promise<boolean> {
   const chats = chatId !== undefined ? [String(chatId)] : alertChatIds();
   if (!token() || chats.length === 0) return false;
   let allSent = true;
   for (const chat of chats) {
     try {
       // Telegram rejects messages over 4096 characters.
-      await telegramApi('sendMessage', { chat_id: chat, text: html.slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true });
+      await telegramApi('sendMessage', { chat_id: chat, text: html.slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true, ...extra });
     } catch (error) {
       console.error('Telegram alert failed:', error);
       allSent = false;
