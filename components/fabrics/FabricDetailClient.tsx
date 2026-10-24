@@ -264,7 +264,7 @@ export default function FabricDetailClient({
                         sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.accent } }}
                       >
                         <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.accent}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
-                          {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" />}
+                          {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" quality={50} swatchWidth={96} />}
                         </Box>
                         <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: current ? brand.ink : brand.textSecondary, fontWeight: current ? 600 : 400 }}>
                           {current ? colourway : splitName(colourwayFabric.name, '').colourway}

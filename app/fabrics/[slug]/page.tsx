@@ -115,6 +115,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   try {
     const fabric = await loadFabricDetail(params.slug);
     if (!fabric) return { title: 'Fabric Not Found', robots: { index: false } };
+    // No photo or no price: the page still works by link, but stays out of search results until
+    // it's complete (the sitemap leaves these out too).
+    const listable = !!fabric.imageUrl && fabric.pricePerYard != null;
     // "Charlotte D2215 Sky – Grey Textured Upholstery Fabric": the code alone is not what people search for.
     const keywords = fabricKeywords(tagsOf(fabric));
     const name = searchFabricName(fabric.name);
@@ -125,6 +128,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       title,
       description,
       alternates: { canonical: url },
+      ...(listable ? {} : { robots: { index: false, follow: true } }),
       openGraph: {
         type: 'website',
         siteName: SITE_NAME,

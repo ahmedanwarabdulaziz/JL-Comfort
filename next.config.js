@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
+    // AVIF first: fabric textures are 20-30% smaller than WebP at the same quality. Supplier photos
+    // rarely change, so keep optimised copies for 30 days instead of re-fetching them every minute.
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: 'https',
