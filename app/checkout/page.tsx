@@ -76,8 +76,8 @@ export default function CheckoutPage() {
           <Typography variant="h5" gutterBottom color="text.secondary">
             Your cart is currently empty.
           </Typography>
-          <Button component={Link} href="/foam" variant="contained" sx={{ mt: 2 }}>
-            Start Customizing Foam
+          <Button component={Link} href="/fabrics" variant="contained" sx={{ mt: 2 }}>
+            Shop Fabrics
           </Button>
         </Paper>
       </Container>
@@ -88,7 +88,7 @@ export default function CheckoutPage() {
     <Container maxWidth="lg" sx={{ py: 6 }}>
       <Button
         component={Link}
-        href="/foam"
+        href="/fabrics"
         startIcon={<ArrowBackIcon />}
         sx={{ mb: 4 }}
       >

@@ -213,7 +213,10 @@ export default async function FabricDetailPage({ params }: { params: { slug: str
           ],
         }}
       />
-      <FabricDetailClient fabric={fabric} />
+      <FabricDetailClient
+        fabric={fabric}
+        primaryCollection={primaryCollection ? { slug: primaryCollection.slug, label: primaryCollection.label } : undefined}
+      />
       <FabricCollectionLinks links={collections.map((c) => ({ slug: c.slug, label: c.label }))} />
     </>
   );

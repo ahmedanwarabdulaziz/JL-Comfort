@@ -15,7 +15,6 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -27,6 +26,8 @@ import { getShippingRate } from '@/lib/data/shippingRates';
 import { ShippingRate } from '@/lib/types/checkout';
 import { brand } from '@/lib/theme';
 import { fabricBrand } from '@/lib/seo/fabric';
+import { aboutFabric, yardageGuide } from '@/lib/seo/fabricCopy';
+import { fabricKeywords } from '@/lib/collections/definitions';
 import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
 import { trackViewItem } from '@/lib/analytics/track';
@@ -110,7 +111,22 @@ const splitName = (name: string, sku: string) => {
 
 const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?\s*\w+\s*$/i, '').trim();
 
-export default function FabricDetailClient({ fabric }: { fabric: FabricDetailData }) {
+// Search engines read every tab, so all panels are rendered and only the selected one is shown.
+function TabPanel({ index, tab, children }: { index: number; tab: number; children: React.ReactNode }) {
+  return (
+    <Box role="tabpanel" id={`fabric-tab-${index}`} hidden={tab !== index}>
+      {children}
+    </Box>
+  );
+}
+
+export default function FabricDetailClient({
+  fabric,
+  primaryCollection,
+}: {
+  fabric: FabricDetailData;
+  primaryCollection?: { slug: string; label: string };
+}) {
   const { addToCart } = useCart();
   const { items: sampleItems, addSample, isFull, settings: sampleSettings, setListOpen } = useSampleCart();
   const [yards, setYards] = useState(1);
@@ -163,26 +179,49 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
     setTimeout(() => setSampleAdded(false), 2000);
   };
 
-  const style = words(fabric.pattern).toLowerCase();
-  const type = words(fabric.material).toLowerCase();
-  const description = [
-    `${colourway}${pattern ? ` (${pattern})` : ''} is sold by the yard${collections[0] ? ` and belongs to our ${collections[0].label} collection` : ''}.`,
-    style || type ? `Style: ${[style, type].filter(Boolean).join(', ')}.` : '',
-    fabric.fiberContent ? `Content: ${fabric.fiberContent}.` : '',
-    fabric.applications.length ? `Suited to ${fabric.applications.join(', ').toLowerCase()}.` : '',
-    fabric.durability ? `Durability: ${fabric.durability}.` : '',
-    fabric.cleanability ? `Care: ${fabric.cleanability}.` : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const keywords = fabricKeywords({ color: fabric.color, material: fabric.material });
+  const copyInput = {
+    brand: fabricBrand(),
+    pattern,
+    colourway,
+    keywords,
+    collection: collections[0]?.label,
+    fiberContent: fabric.fiberContent,
+    width: fabric.width,
+    repeat: fabric.repeat,
+    patternDirection: fabric.patternDirection,
+    durability: fabric.durability,
+    cleanability: fabric.cleanability,
+    properties: fabric.properties,
+    applications: fabric.applications,
+    markets: fabric.markets,
+    origin: fabric.origin,
+  };
+  const about = aboutFabric(copyInput);
+  const yardage = yardageGuide(copyInput);
+  const crumbs = [
+    { label: 'Home', href: '/' },
+    { label: 'Fabrics', href: '/fabrics' },
+    ...(primaryCollection ? [{ label: primaryCollection.label, href: `/fabrics/${primaryCollection.slug}` }] : []),
+  ];
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fff', pb: { xs: 8, md: 14 }, color: brand.ink }}>
       <Box sx={{ borderBottom: `1px solid ${LINE}`, bgcolor: brand.chalk }}>
         <Container maxWidth="xl" sx={{ py: 1.25 }}>
-          <Button component={Link} href="/fabrics" startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />} sx={{ color: MUTED, fontSize: '0.68rem', p: 0.5, '&:hover': { bgcolor: 'transparent', color: brand.accent } }}>
-            All fabrics
-          </Button>
+          <Box component="nav" aria-label="Breadcrumb">
+            <Box component="ol" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75, m: 0, p: 0, listStyle: 'none', fontSize: '0.72rem', letterSpacing: '0.04em', color: MUTED }}>
+              {crumbs.map((crumb) => (
+                <Box component="li" key={crumb.href} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box component={Link} href={crumb.href} sx={{ color: MUTED, textDecoration: 'none', '&:hover': { color: brand.accent } }}>
+                    {crumb.label}
+                  </Box>
+                  <span aria-hidden="true">›</span>
+                </Box>
+              ))}
+              <Box component="li" aria-current="page" sx={{ color: brand.ink }}>{fabric.name}</Box>
+            </Box>
+          </Box>
         </Container>
       </Box>
 
@@ -242,12 +281,18 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
           <Box sx={{ maxWidth: 520 }}>
             {/* Stacked title: house, pattern, colour, collection */}
             <Typography sx={{ ...labelSx, color: brand.accent, mb: 1 }}>{fabricBrand()}</Typography>
-            {pattern && (
-              <Typography sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' }, fontWeight: 600, letterSpacing: '0.06em', color: brand.ink }}>{pattern}</Typography>
-            )}
-            <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.8rem' }, lineHeight: 1.08, color: brand.ink, mt: 0.25 }}>
-              {colourway}{' '}
-              <Box component="span" sx={{ fontStyle: 'italic', fontWeight: 400, color: brand.accent }}>Fabric</Box>
+            {/* One heading carries what people search: "D2215 Sky – Grey Textured Upholstery Fabric". */}
+            <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.8rem' }, lineHeight: 1.08, color: brand.ink }}>
+              {pattern && (
+                <Box component="span" sx={{ display: 'block', fontFamily: 'var(--font-label)', fontSize: { xs: '1.05rem', md: '1.2rem' }, fontWeight: 600, letterSpacing: '0.06em', lineHeight: 1.4, mb: 0.25 }}>
+                  {pattern}
+                </Box>
+              )}
+              {colourway}
+              <Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}> – </Box>
+              <Box component="span" sx={{ display: 'block', fontStyle: 'italic', fontWeight: 400, color: brand.accent, fontSize: { xs: '1.15rem', md: '1.35rem' }, lineHeight: 1.3, mt: 0.75 }}>
+                {keywords ? `${keywords} ` : ''}{yardage ? 'Upholstery Fabric' : 'Fabric'}
+              </Box>
             </Typography>
             {collections.length > 0 && (
               <Typography sx={{ mt: 1, color: brand.textSecondary, fontSize: '0.92rem' }}>
@@ -347,14 +392,15 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
             allowScrollButtonsMobile
             sx={{ borderBottom: `1px solid ${LINE}`, '& .MuiTab-root': { color: MUTED, fontSize: '0.78rem', minHeight: 56 }, '& .Mui-selected': { color: `${brand.ink} !important` }, '& .MuiTabs-indicator': { bgcolor: brand.accent, height: 2 } }}
           >
-            <Tab label="Specifications" />
-            <Tab label="Description" />
-            <Tab label="Samples" />
-            <Tab label="Shipping" />
+            <Tab label="Specifications" aria-controls="fabric-tab-0" />
+            <Tab label="About this fabric" aria-controls="fabric-tab-1" />
+            {yardage && <Tab label="How much do I need?" value={4} aria-controls="fabric-tab-4" />}
+            <Tab label="Samples" value={2} aria-controls="fabric-tab-2" />
+            <Tab label="Shipping" value={3} aria-controls="fabric-tab-3" />
           </Tabs>
 
           <Box sx={{ py: { xs: 3, md: 4 }, maxWidth: 860 }}>
-            {tab === 0 && (
+            <TabPanel index={0} tab={tab}>
               <Box sx={{ borderTop: `1px solid ${LINE}` }}>
                 {specRows(fabric, pattern).map(([label, value]) => (
                   <Box key={label} sx={{ display: 'grid', gridTemplateColumns: { xs: '40% 60%', md: '30% 70%' }, gap: 2, py: 1.4, borderBottom: `1px solid ${LINE}` }}>
@@ -363,10 +409,14 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                   </Box>
                 ))}
               </Box>
-            )}
-            {tab === 1 && (
+            </TabPanel>
+            <TabPanel index={1} tab={tab}>
               <Box>
-                <Typography sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>{description}</Typography>
+                {about.map((paragraph) => (
+                  <Typography key={paragraph.slice(0, 40)} sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem', mb: 1.75 }}>
+                    {paragraph}
+                  </Typography>
+                ))}
                 {fabric.properties && fabric.properties.length > 0 && (
                   <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
                     {fabric.properties.map((property) => (
@@ -375,8 +425,28 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                   </Stack>
                 )}
               </Box>
+            </TabPanel>
+            {yardage && (
+              <TabPanel index={4} tab={tab}>
+                <Typography component="h2" sx={{ fontSize: '1.05rem', fontWeight: 600, color: brand.ink, mb: 1.5 }}>
+                  How much {colourway} fabric do I need?
+                </Typography>
+                <Box sx={{ borderTop: `1px solid ${LINE}`, maxWidth: 520 }}>
+                  {yardage.rows.map((row) => (
+                    <Box key={row.item} sx={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 2, py: 1.1, borderBottom: `1px solid ${LINE}` }}>
+                      <Typography sx={{ color: brand.ink, fontSize: '0.9rem' }}>{row.item}</Typography>
+                      <Typography sx={{ color: brand.ink, fontSize: '0.9rem', fontWeight: 600 }}>{row.yards}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+                {yardage.notes.map((note) => (
+                  <Typography key={note} sx={{ color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.7, mt: 1.25 }}>
+                    {note}
+                  </Typography>
+                ))}
+              </TabPanel>
             )}
-            {tab === 2 && (
+            <TabPanel index={2} tab={tab}>
               <Typography component="div" sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>
                 <p style={{ marginTop: 0 }}>
                   Samples are free. We recommend ordering one before buying yardage: screens show colour and scale differently, and a
@@ -387,20 +457,21 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
                   {sampleSettings.periodDays} days. We email you a tracking number as soon as your samples ship.
                 </p>
               </Typography>
-            )}
-            {tab === 3 && (
+            </TabPanel>
+            <TabPanel index={3} tab={tab}>
               <Typography component="div" sx={{ color: brand.textSecondary, lineHeight: 1.8, fontSize: '0.95rem' }}>
                 <p style={{ marginTop: 0 }}>
                   We ship across Canada. Shipping and tax are shown before you pay, once you enter your delivery address.
                   {shipping?.freeShippingOver != null && ` Orders over $${shipping.freeShippingOver.toFixed(0)} CAD ship free.`}
                 </p>
                 <p>
-                  Fabric is cut to order and usually arrives within {shipping ? `${shipping.deliveryMinDays}–${shipping.deliveryMaxDays}` : 'a few'} business
-                  days of shipping. You&apos;ll get a tracking number by email when it ships. Cut fabric is made to order, so please order a sample first if
-                  you&apos;re unsure about the colour.
+                  Fabric is cut to order and usually ships within 3–5 business days, then arrives{' '}
+                  {shipping ? `${shipping.deliveryMinDays}–${shipping.deliveryMaxDays}` : 'a few'} business days later. You&apos;ll get a tracking
+                  number by email when it ships. Cut fabric can&apos;t be returned for a change of mind, so please order a sample first if
+                  you&apos;re unsure about the colour. See our <Link href="/shipping-returns" style={{ color: 'inherit' }}>shipping and return policy</Link>.
                 </p>
               </Typography>
-            )}
+            </TabPanel>
           </Box>
         </Box>
       </Container>

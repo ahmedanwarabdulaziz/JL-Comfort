@@ -31,6 +31,10 @@ export interface PricedLine extends ShippingLine {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,120}$/i; // charlotte_fabrics.legacy_id, e.g. "d2215-sky"
 const VINYL_PATTERN = /vinyl/i;
+
+// Vinyl ships at its own per-yard rate. Shared with the product feed so Google shows the same shipping.
+export const isVinylFabric = (row: { material?: string[] | null; construction_type?: string[] | null; fiber_content?: string | null }) =>
+  [...(row.material || []), ...(row.construction_type || []), row.fiber_content || ''].some((value: string) => VINYL_PATTERN.test(value));
 const MAX_QUANTITY = 999;
 const MAX_DIMENSION_INCHES = 1000;
 
@@ -106,9 +110,7 @@ const loadFabrics = async (ids: string[]): Promise<Map<string, PricedFabric>> =>
       sku: row.sku,
       pricePerYard: Number(pricePerYard),
       sampleBooks: row.sample_books || [],
-      isVinyl: [...(row.material || []), ...(row.construction_type || []), row.fiber_content || ''].some((value: string) =>
-        VINYL_PATTERN.test(value)
-      ),
+      isVinyl: isVinylFabric(row),
     };
     fabrics.set(row.id, priced);
     if (row.legacy_id) fabrics.set(row.legacy_id, priced);

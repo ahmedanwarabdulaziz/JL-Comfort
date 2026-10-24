@@ -5,6 +5,9 @@ import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 import { describeFabric, fabricBrand, prettyFacet, searchFabricName } from '@/lib/seo/fabric';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { fabricKeywords } from '@/lib/collections/definitions';
+import { getShippingRate } from '@/lib/data/shippingRates';
+import { isVinylFabric } from '@/lib/checkout/serverPricing';
+import type { ShippingRate } from '@/lib/types/checkout';
 
 // Product feed for Google Merchant Center (free listings in Google Shopping + Shopping / Performance
 // Max ads) and the Meta Commerce catalog (Instagram & Facebook shop and dynamic product ads).
@@ -31,10 +34,21 @@ interface FabricRow {
   color: string[] | null;
   material: string[] | null;
   pattern: string[] | null;
+  construction_type: string[] | null;
   availability: string | null;
   manual_retail_price: number | null;
   retail_price: number | null;
   price_tag_id: string | null;
+}
+
+// What checkout charges to ship one yard of this fabric (the quantity Google prices), so the listing
+// matches checkout even when vinyl's per-yard rate differs. Omitted if the rate table can't be read:
+// Merchant Center then falls back to the account's shipping settings.
+function shippingXml(row: FabricRow, price: number, rate: ShippingRate | null): string {
+  if (!rate?.enabled) return '';
+  const free = rate.freeShippingOver !== null && price >= rate.freeShippingOver;
+  const cost = free ? 0 : rate.fabricOrderFee + (isVinylFabric(row) ? rate.vinylPerYard : rate.fabricPerYard);
+  return `<g:shipping><g:country>CA</g:country><g:service>Standard</g:service><g:price>${cost.toFixed(2)} CAD</g:price></g:shipping>`;
 }
 
 export async function GET() {
@@ -47,11 +61,12 @@ export async function GET() {
     fetchAllRows<FabricRow>(() =>
       supabase
         .from('charlotte_fabrics')
-        .select('legacy_id, name, sku, image_url, fiber_content, durability, width, color, material, pattern, availability, manual_retail_price, retail_price, price_tag_id')
+        .select('legacy_id, name, sku, image_url, fiber_content, durability, width, color, material, pattern, construction_type, availability, manual_retail_price, retail_price, price_tag_id')
         .eq('status', 'active')
     ),
     getFabricPriceTags(),
   ]);
+  const shippingRate = await getShippingRate('CA').catch(() => null);
   const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
 
   const items: string[] = [];
@@ -88,7 +103,7 @@ export async function GET() {
       ['g:unit_pricing_base_measure', '1 yd'],
     ];
     items.push(
-      `<item>${fields
+      `<item>${shippingXml(row, price, shippingRate)}${fields
         .filter(([, value]) => value)
         .map(([tag, value]) => `<${tag}>${xml(value!)}</${tag}>`)
         .join('')}</item>`

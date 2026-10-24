@@ -9,7 +9,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { brand } from '@/lib/theme';
 import TagButton from '@/components/ui/TagButton';
 import CookieSettingsLink from '@/components/consent/CookieSettingsLink';
-import { BUSINESS, BUSINESS_DETAILS_PENDING } from '@/lib/site';
+import { BUSINESS, BUSINESS_DETAILS_PENDING, FOAM_PRODUCTS_LIVE } from '@/lib/site';
 
 // Phase 1: Fabric-only launch.
 const shopLinks = [
@@ -94,7 +94,9 @@ export default function Footer() {
                 <span style={{ color: brand.accent }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                Premium upholstery fabric, custom foam and bench cushions. Your furniture, your style.
+                {FOAM_PRODUCTS_LIVE
+                  ? 'Premium upholstery fabric, custom foam and bench cushions. Your furniture, your style.'
+                  : 'Charlotte upholstery fabric by the yard, with free samples and prices in CAD. Shipped across Canada.'}
               </Typography>
             </Grid>
 
