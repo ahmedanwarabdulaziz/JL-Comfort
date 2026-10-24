@@ -22,7 +22,7 @@ export const BUSINESS = {
   phone: '+1 (647) 261-4116',
   address: 'Unit 107, 1380 Costigan Road, Milton, ON L9T 8L2', // full mailing address, including postal code
   province: 'Ontario', // where the business is based; its laws govern the Terms, e.g. "Ontario"
-  privacyOfficer: '[Name of Privacy Officer]', // the person responsible for personal information
+  privacyOfficer: 'Ahmed El Boghdady', // the person responsible for personal information
 };
 
 export const BUSINESS_DETAILS_PENDING = Object.values(BUSINESS).some((value) => value.startsWith('['));
