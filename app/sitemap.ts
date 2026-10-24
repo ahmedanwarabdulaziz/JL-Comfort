@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { FOAM_PAGES, FOAM_PRODUCTS_LIVE, SITE_URL } from '@/lib/site';
 import { COLLECTIONS } from '@/lib/collections/definitions';
+import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
+import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 
 // Rebuilt at most hourly -- new or retired fabrics show up without a redeploy.
 export const revalidate = 3600;
@@ -29,11 +31,34 @@ async function fabricEntries(): Promise<MetadataRoute.Sitemap> {
   if (!url || !key) return [];
   // A plain anon client: the sitemap has no visitor, so there are no session cookies to carry.
   const supabase = createClient(url, key, { auth: { persistSession: false } });
-  const rows = await fetchAllRows<{ legacy_id: string; updated_at: string | null }>(() =>
-    supabase.from('charlotte_fabrics').select('legacy_id, updated_at').eq('status', 'active')
-  );
+  type Row = {
+    legacy_id: string;
+    updated_at: string | null;
+    image_url: string | null;
+    manual_retail_price: number | null;
+    retail_price: number | null;
+    price_tag_id: string | null;
+  };
+  const [rows, priceTags] = await Promise.all([
+    fetchAllRows<Row>(() =>
+      supabase
+        .from('charlotte_fabrics')
+        .select('legacy_id, updated_at, image_url, manual_retail_price, retail_price, price_tag_id')
+        .eq('status', 'active')
+    ),
+    getFabricPriceTags(),
+  ]);
+  const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
+  // Only fabrics a customer can actually buy: a page with no photo and "Price on request" looks thin
+  // to search engines (the fabric page marks those noindex too).
+  const listable = (row: Row) =>
+    row.image_url &&
+    resolveEffectivePrice(
+      { manualRetailPrice: row.manual_retail_price ?? undefined, retailPrice: row.retail_price ?? undefined, priceTagId: row.price_tag_id ?? undefined },
+      priceTagsById
+    ).pricePerYard != null;
   return rows
-    .filter((row) => row.legacy_id)
+    .filter((row) => row.legacy_id && listable(row))
     .map((row) => ({
       url: `${SITE_URL}/fabrics/${encodeURIComponent(row.legacy_id)}`,
       lastModified: row.updated_at ? new Date(row.updated_at) : undefined,
