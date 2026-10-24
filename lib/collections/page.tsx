@@ -4,7 +4,8 @@ import CollectionPage, { CollectionLink } from '@/components/collections/Collect
 import type { CardColourway } from '@/components/fabrics/FabricCard';
 import JsonLd from '@/components/seo/JsonLd';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
-import { FabricCollection, collectionGroups, collectionHref, getCollection } from './definitions';
+import { FabricCollection, collectionGroups, collectionUrl, comboCollections, getCollection } from './definitions';
+import { publishedComboSlugs } from './catalogIndex';
 import { COLLECTION_PAGE_SIZE, loadCollectionFabrics } from './server';
 import { getGuide, guideHref, guidesForCollection } from '@/lib/guides';
 
@@ -18,19 +19,42 @@ const collectionGuides = (slug: string) => {
     .map((g) => ({ href: guideHref(g!.slug), title: g!.title }));
 };
 
-// Server side of a collection page, shared by /fabrics/<slug> and /fabrics/<slug>/page/<n>.
+// Server side of a collection page, shared by /fabrics/<slug>, /fabrics/<slug>/page/<n> and the
+// sample book pages under /sample-books.
+
+// Links between a type, a colour and their colour + type pages ("Velvet by colour", "Grey fabric by
+// type", "More velvet colours"), limited to the ones with enough fabrics to be published.
+async function collectionVariants(collection: FabricCollection): Promise<{ heading: string; links: CollectionLink[] } | undefined> {
+  const published = await publishedComboSlugs().catch(() => new Set<string>());
+  const combos = comboCollections().filter((c) => published.has(c.slug));
+  const link = (c: FabricCollection, label: string): CollectionLink => ({ slug: c.slug, label, group: c.group });
+  const colourOf = (c: FabricCollection) => getCollection(c.comboOf!.colour)!.label;
+  const parentOf = (c: FabricCollection) => getCollection(c.comboOf!.parent)!.label;
+  if (collection.comboOf) {
+    const siblings = combos.filter((c) => c.comboOf!.parent === collection.comboOf!.parent && c.slug !== collection.slug);
+    return { heading: `More ${parentOf(collection).toLowerCase()} colours`, links: siblings.map((c) => link(c, colourOf(c))) };
+  }
+  if (collection.group === 'colour') {
+    const types = combos.filter((c) => c.comboOf!.colour === collection.slug);
+    return { heading: `${collection.label} fabric by type`, links: types.map((c) => link(c, parentOf(c))) };
+  }
+  const colours = combos.filter((c) => c.comboOf!.parent === collection.slug);
+  return colours.length ? { heading: `${collection.label} by colour`, links: colours.map((c) => link(c, colourOf(c))) } : undefined;
+}
 
 const toLink = (collection: FabricCollection): CollectionLink => ({ slug: collection.slug, label: collection.label, group: collection.group });
 
 export async function collectionMetadata(collection: FabricCollection, page: number): Promise<Metadata> {
-  const url = collectionHref(collection.slug, page);
+  const url = collectionUrl(collection, page);
   const title = page > 1 ? `${collection.metaTitle} – Page ${page}` : collection.metaTitle;
   const fabrics = await loadCollectionFabrics(collection).catch(() => []);
   const image = fabrics[0]?.imageUrl;
+  const hidden = collection.noindex || (collection.minFabrics != null && fabrics.length < collection.minFabrics);
   return {
     title,
     description: collection.description,
     alternates: { canonical: url },
+    ...(hidden ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -45,6 +69,8 @@ export async function collectionMetadata(collection: FabricCollection, page: num
 
 export async function renderCollection(collection: FabricCollection, page: number) {
   const all = await loadCollectionFabrics(collection);
+  // Generated colour + type pages only exist when there's enough to show.
+  if (collection.minFabrics != null && all.length < collection.minFabrics) notFound();
   const pageCount = Math.max(1, Math.ceil(all.length / COLLECTION_PAGE_SIZE));
   if (!Number.isInteger(page) || page < 1 || page > pageCount) notFound();
   const fabrics = all.slice((page - 1) * COLLECTION_PAGE_SIZE, page * COLLECTION_PAGE_SIZE);
@@ -63,8 +89,9 @@ export async function renderCollection(collection: FabricCollection, page: numbe
     .filter(Boolean)
     .map((c) => toLink(c!));
   const groups = collectionGroups();
+  const variants = await collectionVariants(collection);
 
-  const pageUrl = `${SITE_URL}${collectionHref(collection.slug, page)}`;
+  const pageUrl = `${SITE_URL}${collectionUrl(collection, page)}`;
   const offset = (page - 1) * COLLECTION_PAGE_SIZE;
   const structuredData = {
     '@context': 'https://schema.org',
@@ -91,8 +118,8 @@ export async function renderCollection(collection: FabricCollection, page: numbe
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-          { '@type': 'ListItem', position: 2, name: 'Fabrics', item: `${SITE_URL}/fabrics` },
-          { '@type': 'ListItem', position: 3, name: collection.label, item: `${SITE_URL}${collectionHref(collection.slug)}` },
+          { '@type': 'ListItem', position: 2, name: collection.parent?.label || 'Fabrics', item: `${SITE_URL}${collection.parent?.href || '/fabrics'}` },
+          { '@type': 'ListItem', position: 3, name: collection.label, item: `${SITE_URL}${collectionUrl(collection)}` },
         ],
       },
       ...(collection.faqs?.length && page === 1
@@ -122,7 +149,8 @@ export async function renderCollection(collection: FabricCollection, page: numbe
         pageCount={pageCount}
         related={related}
         groups={groups}
-        guides={collectionGuides(collection.slug)}
+        guides={collectionGuides(collection.comboOf?.parent || collection.slug)}
+        variants={variants}
       />
     </>
   );

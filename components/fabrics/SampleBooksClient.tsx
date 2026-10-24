@@ -20,6 +20,7 @@ import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot } from '@/lib/data/charlotteFabricCatalog';
 import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics/SampleBookCover';
 import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
+import { sampleBookHref } from '@/lib/sampleBooks';
 
 interface SampleBook {
   name: string;
@@ -313,7 +314,7 @@ export default function SampleBooksClient() {
 // ── Book card ────────────────────────────────────────────────────────────────
 function BookCard({ book }: { book: SampleBook }) {
   const title = cleanBookName(book.name);
-  const href = `/fabrics?sampleBook=${encodeURIComponent(book.name)}`;
+  const href = sampleBookHref(book.name);
 
   return (
     <Box

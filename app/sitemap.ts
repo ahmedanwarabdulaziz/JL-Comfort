@@ -4,6 +4,8 @@ import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { FOAM_PAGES, FOAM_PRODUCTS_LIVE, SITE_URL } from '@/lib/site';
 import { COLLECTIONS } from '@/lib/collections/definitions';
 import { GUIDES, guideHref } from '@/lib/guides';
+import { getCatalogIndex, publishedComboSlugs } from '@/lib/collections/catalogIndex';
+import { SAMPLE_BOOK_MIN_INDEXED } from '@/lib/sampleBooks';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 
@@ -16,6 +18,7 @@ const STATIC_PAGES: { path: string; priority: number; changeFrequency: MetadataR
   { path: '/bench-cushions', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/fabrics', priority: 0.9, changeFrequency: 'daily' },
   { path: '/sample-books', priority: 0.7, changeFrequency: 'weekly' },
+  { path: '/free-fabric-samples', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/how-to-measure', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/firmness-guide', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/fibre-wrap', priority: 0.5, changeFrequency: 'monthly' },
@@ -68,10 +71,25 @@ async function fabricEntries(): Promise<MetadataRoute.Sitemap> {
     }));
 }
 
+// Sample book pages and colour + type pages with enough fabrics to be indexed.
+async function generatedEntries(): Promise<MetadataRoute.Sitemap> {
+  const [index, combos] = await Promise.all([getCatalogIndex(), publishedComboSlugs()]);
+  return [
+    ...index.books
+      .filter((book) => book.count >= SAMPLE_BOOK_MIN_INDEXED)
+      .map((book) => ({ url: `${SITE_URL}/sample-books/${book.slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
+    ...[...combos].map((slug) => ({ url: `${SITE_URL}/fabrics/${slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
+  ];
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fabrics = await fabricEntries().catch((error) => {
     // Still serve the core pages rather than failing the whole sitemap.
     console.error('Sitemap: fabric list failed:', error);
+    return [];
+  });
+  const generated = await generatedEntries().catch((error) => {
+    console.error('Sitemap: sample books / colour pages failed:', error);
     return [];
   });
   return [
@@ -93,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: collection.group === 'brand' ? 0.9 : collection.group === 'colour' ? 0.7 : 0.8,
     })),
+    ...generated,
     ...fabrics,
   ];
 }

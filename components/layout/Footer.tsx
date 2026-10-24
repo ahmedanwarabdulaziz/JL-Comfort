@@ -24,6 +24,7 @@ const shopLinks = [
 const resourceLinks = [
   { label: 'How Much Fabric Do I Need?', href: '/guides/how-much-fabric-do-i-need' },
   { label: 'Buying Guides', href: '/guides' },
+  { label: 'Free Fabric Samples', href: '/free-fabric-samples' },
   { label: 'FAQ', href: '/faq' },
 ];
 

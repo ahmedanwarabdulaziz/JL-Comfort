@@ -32,6 +32,7 @@ import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
 import { trackViewItem } from '@/lib/analytics/track';
 import FabricImage from '@/components/ui/FabricImage';
+import { cleanBookName, sampleBookHref } from '@/lib/sampleBooks';
 
 export interface ColorwaySibling {
   id: string;
@@ -109,7 +110,6 @@ const splitName = (name: string, sku: string) => {
   return { pattern: sku && sku !== name ? sku : '', colourway: name };
 };
 
-const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?\s*\w+\s*$/i, '').trim();
 
 // Search engines read every tab, so all panels are rendered and only the selected one is shown.
 function TabPanel({ index, tab, children }: { index: number; tab: number; children: React.ReactNode }) {
@@ -299,7 +299,7 @@ export default function FabricDetailClient({
                 {collections.map((book, i) => (
                   <span key={book.raw}>
                     {i > 0 && ', '}
-                    <Box component={Link} href={`/fabrics?sampleBook=${encodeURIComponent(book.raw)}`} sx={{ color: 'inherit', textDecorationColor: LINE, '&:hover': { color: brand.accent } }}>
+                    <Box component={Link} href={sampleBookHref(book.raw)} sx={{ color: 'inherit', textDecorationColor: LINE, '&:hover': { color: brand.accent } }}>
                       {book.label}
                     </Box>
                   </span>

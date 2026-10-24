@@ -10,6 +10,7 @@ import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
 import type { HomeCatalog } from '@/lib/data/homeCatalog';
 import FabricImage from '@/components/ui/FabricImage';
 import GuideCards from '@/components/guides/GuideCards';
+import { sampleBookHref } from '@/lib/sampleBooks';
 
 const LINE = '#e5e0d9';
 
@@ -150,7 +151,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                 <Box
                   key={book.name}
                   component={Link}
-                  href={`/fabrics?sampleBook=${encodeURIComponent(book.name)}`}
+                  href={sampleBookHref(book.name)}
                   sx={{ textDecoration: 'none', color: 'inherit', '& .cover': { transition: 'transform .25s' }, '&:hover .cover': { transform: 'translateY(-4px)' }, '&:hover .name': { color: brand.accent } }}
                 >
                   <Box className="cover">

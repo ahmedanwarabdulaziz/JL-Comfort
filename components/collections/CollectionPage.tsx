@@ -9,7 +9,7 @@ import FabricCard, { CardColourway } from '@/components/fabrics/FabricCard';
 import CollectionDirectory, { DirectoryGroup } from './CollectionDirectory';
 import { brand } from '@/lib/theme';
 import { trackSelectItem, trackViewItemList } from '@/lib/analytics/track';
-import { collectionHref, type CollectionGroup, type FabricCollection } from '@/lib/collections/definitions';
+import { collectionHref, collectionUrl, type CollectionGroup, type FabricCollection } from '@/lib/collections/definitions';
 import type { CollectionFabric } from '@/lib/collections/server';
 
 const LINE = '#e5e0d9';
@@ -55,6 +55,7 @@ export default function CollectionPage({
   related,
   groups,
   guides = [],
+  variants,
 }: {
   collection: FabricCollection;
   fabrics: CollectionFabric[];
@@ -65,6 +66,7 @@ export default function CollectionPage({
   related: CollectionLink[];
   groups: DirectoryGroup[];
   guides?: { href: string; title: string }[];
+  variants?: { heading: string; links: CollectionLink[] }; // e.g. "Velvet by colour"
 }) {
   const listName = `Collection: ${collection.label}`;
   const toItem = (fabric: CollectionFabric) => ({
@@ -89,7 +91,7 @@ export default function CollectionPage({
           <Box component="nav" aria-label="Breadcrumb" sx={{ fontSize: '0.78rem', color: MUTED, mb: 1.5 }}>
             <Box component={Link} href="/" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>Home</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
-            <Box component={Link} href="/fabrics" sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>Fabrics</Box>
+            <Box component={Link} href={collection.parent?.href || '/fabrics'} sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: brand.accent } }}>{collection.parent?.label || 'Fabrics'}</Box>
             <Box component="span" sx={{ mx: 0.75 }}>›</Box>
             <Box component="span" sx={{ color: brand.ink }}>{collection.label}</Box>
           </Box>
@@ -115,6 +117,20 @@ export default function CollectionPage({
               </Button>
             )}
           </Box>
+          {variants && variants.links.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Typography component="h2" sx={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, mb: 1 }}>
+                {variants.heading}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {variants.links.map((link) => (
+                  <Box key={link.slug} component={Link} href={collectionHref(link.slug)} sx={chipSx}>
+                    {link.label}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
           {related.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 3 }}>
               {related.map((link) => (
@@ -150,7 +166,7 @@ export default function CollectionPage({
         {pageCount > 1 && (
           <Box component="nav" aria-label="Pages" sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 1, mt: 7 }}>
             {page > 1 && (
-              <Box component={Link} href={collectionHref(collection.slug, page - 1)} rel="prev" sx={chipSx}>‹ Previous</Box>
+              <Box component={Link} href={collectionUrl(collection, page - 1)} rel="prev" sx={chipSx}>‹ Previous</Box>
             )}
             {pageNumbers(page, pageCount).map((n, i) =>
               n === null ? (
@@ -159,7 +175,7 @@ export default function CollectionPage({
                 <Box
                   key={n}
                   component={Link}
-                  href={collectionHref(collection.slug, n)}
+                  href={collectionUrl(collection, n)}
                   aria-current={n === page ? 'page' : undefined}
                   sx={{ ...chipSx, minWidth: 40, justifyContent: 'center', ...(n === page ? { bgcolor: brand.ink, color: brand.chalk, borderColor: brand.ink, '&:hover': {} } : {}) }}
                 >
@@ -168,7 +184,7 @@ export default function CollectionPage({
               )
             )}
             {page < pageCount && (
-              <Box component={Link} href={collectionHref(collection.slug, page + 1)} rel="next" sx={chipSx}>Next ›</Box>
+              <Box component={Link} href={collectionUrl(collection, page + 1)} rel="next" sx={chipSx}>Next ›</Box>
             )}
           </Box>
         )}

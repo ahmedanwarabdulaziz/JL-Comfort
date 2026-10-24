@@ -28,6 +28,7 @@ export interface CollectionRule {
   applications?: string[];
   cleanabilityContains?: string; // case-insensitive substring of the cleaning code
   minDoubleRubs?: number; // Wyzenbeek double rubs, parsed from the durability spec
+  sampleBooks?: string[]; // a Charlotte sample book: every raw sample_books value that belongs to it
 }
 
 export interface FabricCollection {
@@ -43,6 +44,11 @@ export interface FabricCollection {
   rule: CollectionRule;
   shopQuery?: string; // the same selection in the filterable shop, e.g. "material=velvet"
   related?: string[];
+  basePath?: string; // where the page lives; '/fabrics' unless set (sample books live under /sample-books)
+  parent?: { label: string; href: string }; // breadcrumb level above the page; 'Fabrics' unless set
+  minFabrics?: number; // generated pages (colour + type) only exist with at least this many fabrics
+  comboOf?: { parent: string; colour: string }; // a colour + type page: the two collections it combines
+  noindex?: boolean; // a real page, but kept out of search results (e.g. a sample book with few fabrics)
 }
 
 const typeCollection = (c: Omit<FabricCollection, 'group'>): FabricCollection => ({ ...c, group: 'type' });
@@ -603,6 +609,104 @@ export const COLLECTIONS: FabricCollection[] = [
     related: ['drapery', 'commercial', 'healthcare', 'heavy-duty'],
   }),
 
+  // ── Projects: what people are making, rather than a fabric type ──
+  usageCollection({
+    slug: 'headboard',
+    label: 'Headboard Fabric',
+    title: 'Headboard Fabric',
+    metaTitle: 'Headboard Fabric by the Yard: Velvet, Bouclé, Linen & More',
+    description: 'Upholstery fabric for headboards by the yard: velvet, bouclé, linen, chenille and textured weaves. Free samples, prices in CAD, shipped across Canada.',
+    intro: 'A new headboard is one of the easiest ways to change a bedroom. These are the fabrics that make the best headboards: rich velvets, soft bouclé, relaxed linen looks, chenille and textured weaves.',
+    sections: [
+      {
+        heading: 'Choosing headboard fabric',
+        body: 'A headboard sees little wear, so you can choose almost any fabric for its look and feel. Velvet gives a hotel-like richness, bouclé a soft modern texture, and linen looks a relaxed, airy one. Choose a fabric with some body: very thin fabric can show the padding through it. If you like to sit up in bed, a mid-tone or textured fabric hides marks where heads rest.',
+      },
+      {
+        heading: 'How much fabric for a headboard',
+        body: 'With 54-inch plain fabric, allow about 2 yards for a twin or full headboard, 2 to 3 yards for a queen and 3 to 4 yards for a king. A king headboard is wider than the fabric, so a railroaded fabric lets it be covered without a seam. Add extra for a large pattern you want centred.',
+      },
+    ],
+    faqs: [
+      { q: 'What is the best fabric for a headboard?', a: 'Velvet, bouclé, linen-look and textured weaves are the most popular. Durability matters less than on a sofa, so choose for colour and texture, with enough body that the padding does not show through.' },
+      { q: 'How much fabric do I need for a queen headboard?', a: 'About 2 to 3 yards of 54-inch plain fabric, more for a tall or wingback design or a large pattern repeat.' },
+    ],
+    rule: { material: ['velvet', 'boucle', 'linen', 'chenille', 'matelasse', 'shearling', 'tweed-textures'] },
+    related: ['velvet', 'boucle', 'linen', 'chenille', 'matelasse'],
+  }),
+  usageCollection({
+    slug: 'bench-cushion',
+    label: 'Bench Cushion Fabric',
+    title: 'Bench Cushion Fabric',
+    metaTitle: 'Bench Cushion Fabric for Window Seats, Banquettes & Patios',
+    description: 'Durable, easy-clean fabric for bench cushions, window seats, kitchen banquettes and patio benches, by the yard. Free samples, prices in CAD.',
+    intro: 'Bench cushions get sat on, leaned on and spilled on, so they need fabric that is tough and easy to clean. These stain-resistant and weather-resistant fabrics suit window seats, entryway benches, kitchen banquettes and patio benches.',
+    sections: [
+      {
+        heading: 'Choosing bench cushion fabric',
+        body: 'For a kitchen banquette or entryway bench, choose a stain-resistant performance fabric with a water-based or bleach-cleanable cleaning code. For a window seat in the sun, look for fade resistance. Outdoors, choose a fabric made for outdoor use, which also resists moisture and mildew.',
+      },
+      {
+        heading: 'Long cushions and yardage',
+        body: 'Bench cushions are often longer than the 54-inch width of the fabric. A railroaded fabric lets a long cushion be cut in one piece without a seam. To work out yardage, measure the top, the bottom and the strip around the sides, add about an inch all round for seams, and lay the pieces out on a 54-inch-wide strip.',
+      },
+    ],
+    faqs: [
+      { q: 'What fabric is best for a kitchen bench cushion?', a: 'A stain-resistant performance fabric with a W, W/S or bleach-cleanable cleaning code, so food and drink spills clean up easily.' },
+      { q: 'Can I use outdoor fabric for an indoor bench?', a: 'Yes. Outdoor fabric resists fading, moisture and stains, which makes it a practical choice for kitchen banquettes, mudrooms and sunny window seats.' },
+    ],
+    rule: { properties: ['Stain Resistant', 'Weather Resistant'] },
+    related: ['performance', 'outdoor', 'canvas-denim', 'bleach-cleanable', 'striped'],
+  }),
+  usageCollection({
+    slug: 'marine',
+    label: 'Boat & Marine Fabric',
+    title: 'Boat & Marine Upholstery Fabric',
+    metaTitle: 'Boat & Marine Upholstery Fabric by the Yard in Canada',
+    description: 'Marine upholstery fabric for boat seats, cushions and cottage furniture: resists sun, moisture and mildew. Free samples, prices in CAD, shipped across Canada.',
+    intro: 'Boat seats and cushions face strong sun, spray, damp and long winters in storage. These fabrics are made for marine use, resisting fading, moisture and mildew, for boats, docks and cottages.',
+    sections: [
+      {
+        heading: 'What marine fabric needs',
+        body: 'Look for fabric labelled for marine or outdoor use: fade resistant for long days in the sun, water resistant so cushions dry quickly, and mildew resistant for damp mornings and storage. A high double-rub rating matters too, because boat seats are climbed over and sat on in wet swimwear.',
+      },
+      {
+        heading: 'Getting through a Canadian winter',
+        body: 'At the end of the season, clean cushions as the cleaning code allows, rinse well and dry them completely before storing them somewhere dry and ventilated. Use breathable covers or bags rather than sealed plastic, which traps moisture and invites mildew.',
+      },
+    ],
+    faqs: [
+      { q: 'What is the best fabric for boat seats?', a: 'A fabric made for marine use that resists fading, moisture and mildew, with a high double-rub rating. Many are solution-dyed and can be cleaned with a diluted bleach solution.' },
+      { q: 'Can marine fabric be used indoors?', a: 'Yes. It is a practical choice anywhere fading, spills or moisture are a concern, such as sunrooms, kitchens and cottages.' },
+    ],
+    rule: { markets: ['Marine'] },
+    related: ['outdoor', 'automotive', 'bleach-cleanable', 'canvas-denim'],
+  }),
+  usageCollection({
+    slug: 'banquette',
+    label: 'Booth & Banquette Fabric',
+    title: 'Booth & Banquette Fabric',
+    metaTitle: 'Restaurant Booth & Banquette Upholstery Fabric',
+    description: 'Contract-grade fabric for restaurant booths, café banquettes and built-in seating, rated over 100,000 double rubs. Free samples, prices in CAD.',
+    intro: 'Booths and banquettes are the hardest-working seats in a restaurant, café or kitchen: people slide in and out all day. Every fabric here is contract grade and rated for more than 100,000 double rubs.',
+    sections: [
+      {
+        heading: 'Choosing booth and banquette fabric',
+        body: 'Choose durability first, then cleanability: a W, W/S or bleach-cleanable code makes daily cleaning simple, and a stain-resistant finish helps with spills. Mid-tones, textures and small patterns hide wear between cleanings. For long runs of seating, a railroaded fabric avoids seams across the seat and back.',
+      },
+      {
+        heading: 'Fire codes',
+        body: 'Many commercial spaces have flammability requirements for seating. They depend on your province, municipality and type of business, so confirm what your project needs with your designer, architect or local fire authority before ordering, and check the flammability line on each fabric page.',
+      },
+    ],
+    faqs: [
+      { q: 'What fabric is best for restaurant booths?', a: 'A contract-grade fabric rated over 100,000 double rubs with an easy cleaning code, such as W, W/S or bleach cleanable.' },
+      { q: 'How much fabric do I need for a booth?', a: 'It depends on the length and style. Measure the seat and back of each section; long runs use less fabric with a railroaded fabric, which can be cut in one length. Your upholsterer can give you an exact yardage.' },
+    ],
+    rule: { markets: ['Contract'], minDoubleRubs: 100000 },
+    related: ['commercial', 'heavy-duty', 'performance', 'bleach-cleanable', 'healthcare'],
+  }),
+
   // ───────────────────────────── Patterns ─────────────────────────────
   ...([
     ['floral', 'Floral', ['floral'], 'Floral Upholstery Fabric', 'From romantic cabbage roses to modern, painterly blooms, floral fabrics bring life and colour to chairs, pillows, headboards and drapery.', 'Scale is everything: large florals suit a single accent chair or headboard, while small, ditsy florals work on dining chairs and cushions. Pull a solid colour from the print for the rest of the room.', ['botanical', 'printed', 'damask', 'pink']],
@@ -671,7 +775,7 @@ export const COLLECTIONS: FabricCollection[] = [
 
 const bySlug = new Map(COLLECTIONS.map((collection) => [collection.slug, collection]));
 
-export const getCollection = (slug: string): FabricCollection | undefined => bySlug.get(slug);
+export const getCollection = (slug: string): FabricCollection | undefined => bySlug.get(slug) ?? comboBySlug().get(slug);
 
 // Every collection, grouped for menus and link directories.
 export const collectionGroups = () =>
@@ -682,7 +786,10 @@ export const collectionGroups = () =>
   }));
 
 // A collection page's address; page 2 onward lives at /fabrics/<slug>/page/<n>.
-export const collectionHref = (slug: string, page = 1) => (page > 1 ? `/fabrics/${slug}/page/${page}` : `/fabrics/${slug}`);
+export const collectionHref = (slug: string, page = 1, basePath = '/fabrics') =>
+  page > 1 ? `${basePath}/${slug}/page/${page}` : `${basePath}/${slug}`;
+
+export const collectionUrl = (collection: FabricCollection, page = 1) => collectionHref(collection.slug, page, collection.basePath);
 
 // ---- Matching a single fabric to its collections (fabric pages link "up" to these) ----
 
@@ -695,6 +802,7 @@ export interface FabricTags {
   applications?: string[];
   cleanability?: string;
   durability?: string;
+  sampleBooks?: string[];
 }
 
 const overlaps = (want: string[] | undefined, have: string[] | undefined) => !want || want.some((value) => (have || []).includes(value));
@@ -706,6 +814,7 @@ export function fabricMatchesRule(rule: CollectionRule, fabric: FabricTags): boo
   if (!overlaps(rule.properties, fabric.properties)) return false;
   if (!overlaps(rule.markets, fabric.markets)) return false;
   if (!overlaps(rule.applications, fabric.applications)) return false;
+  if (!overlaps(rule.sampleBooks, fabric.sampleBooks)) return false;
   if (rule.cleanabilityContains && !(fabric.cleanability || '').toLowerCase().includes(rule.cleanabilityContains)) return false;
   if (rule.minDoubleRubs) {
     const rubs = Number((fabric.durability || '').replace(/,/g, '').match(/(\d{4,7})/)?.[1] || 0);
@@ -736,3 +845,53 @@ export function fabricKeywords(fabric: FabricTags): string {
   const material = fabric.material?.map((m) => MATERIAL_WORDS[m]).find(Boolean);
   return [colour, material].filter(Boolean).join(' ');
 }
+
+// ---- Colour + type pages: /fabrics/grey-velvet, /fabrics/blue-performance ... ----
+// One candidate per fabric type (and a few uses) per colour, matching both collections' rules. Only
+// those with at least COMBO_MIN_FABRICS fabrics are published (lib/collections/catalogIndex.ts counts
+// them), so there are no thin pages; the rest 404 and stay out of the sitemap.
+
+export const COMBO_MIN_FABRICS = 12;
+
+// The parent collections, and the word each puts in the title ("Grey Velvet Upholstery Fabric").
+const COMBO_PARENTS: Record<string, string> = {
+  velvet: 'Velvet', chenille: 'Chenille', boucle: 'Bouclé', linen: 'Linen', tweed: 'Textured', crypton: 'Crypton',
+  microsuede: 'Microsuede', 'canvas-denim': 'Canvas', tapestry: 'Tapestry', matelasse: 'Matelassé', shearling: 'Faux Shearling',
+  metallic: 'Metallic', embroidered: 'Embroidered', printed: 'Printed', woven: 'Woven', performance: 'Performance',
+  'pet-friendly': 'Pet-Friendly', outdoor: 'Outdoor', commercial: 'Commercial',
+};
+
+// Built on first use: this module also loads in the browser (menus), which never needs these.
+let combos: FabricCollection[] | null = null;
+export const comboCollections = (): FabricCollection[] => (combos ||= buildCombos());
+
+const buildCombos = (): FabricCollection[] => Object.entries(COMBO_PARENTS).flatMap(([parentSlug, noun]) => {
+  const parent = bySlug.get(parentSlug);
+  if (!parent) return [];
+  return COLLECTIONS.filter((c) => c.group === 'colour').map((colour): FabricCollection => {
+    const word = COLOUR_WORDS[colour.rule.color![0]] || colour.label;
+    const title = `${word} ${noun} Upholstery Fabric`;
+    return {
+      slug: `${colour.slug}-${parent.slug}`,
+      group: parent.group,
+      label: `${word} ${noun}`,
+      title,
+      metaTitle: `${title} by the Yard`,
+      description: `Shop ${word.toLowerCase()} ${noun.toLowerCase()} upholstery fabric by the yard in Canada, with free samples and prices in CAD. Shipped across Canada.`,
+      intro: `Every ${word.toLowerCase()} ${noun.toLowerCase()} fabric in our catalog, sold by the yard. ${parent.intro}`,
+      sections: [
+        { heading: `Decorating with ${word.toLowerCase()} ${noun.toLowerCase()}`, body: colour.sections[0]?.body || colour.intro },
+        ...parent.sections.slice(0, 1),
+      ],
+      rule: { ...parent.rule, ...colour.rule },
+      shopQuery: [parent.shopQuery, colour.shopQuery].filter(Boolean).join('&') || undefined,
+      related: [parent.slug, colour.slug, ...(parent.related || [])].slice(0, 6),
+      minFabrics: COMBO_MIN_FABRICS,
+      comboOf: { parent: parent.slug, colour: colour.slug },
+    };
+  });
+});
+
+let comboMap: Map<string, FabricCollection> | null = null;
+const comboBySlug = () => (comboMap ||= new Map(comboCollections().map((collection) => [collection.slug, collection])));
+
