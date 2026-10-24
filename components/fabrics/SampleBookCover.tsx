@@ -115,7 +115,7 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
 }
 
 /** "Decorative Durables X & Ring Book Page #21" -> "Decorative Durables X" (supplier binder notes). */
-export const cleanBookName = (name: string) => name.replace(/\s*&\s*Ring Book Page\s*#?\s*\w+\s*$/i, '').trim();
+export { cleanBookName } from '@/lib/sampleBooks';
 
 /** A short series line for the cover label, from words in the book name. */
 export const bookSeries = (name: string) => {

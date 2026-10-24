@@ -84,7 +84,7 @@ export const GUIDES: Guide[] = [
       'Choosing outdoor fabric that handles Canadian sun, rain and humidity, plus how to clean and store cushions so they last through the winter.',
     published: '2026-10-25',
     updated: '2026-10-25',
-    collections: ['outdoor', 'canvas-denim', 'striped'],
+    collections: ['outdoor', 'marine', 'bench-cushion', 'canvas-denim', 'striped'],
   },
   {
     slug: 'velvet-vs-chenille-vs-boucle',
@@ -94,7 +94,7 @@ export const GUIDES: Guide[] = [
       'How velvet, chenille and bouclé compare for look, feel, durability, pets and cleaning, and which suits a sofa, accent chair or headboard.',
     published: '2026-10-25',
     updated: '2026-10-25',
-    collections: ['velvet', 'chenille', 'boucle'],
+    collections: ['velvet', 'chenille', 'boucle', 'headboard'],
   },
   {
     slug: 'railroaded-vs-up-the-roll',
@@ -104,7 +104,7 @@ export const GUIDES: Guide[] = [
       'What railroaded and up-the-roll mean on a fabric spec sheet, why it matters for sofas, benches and headboards, and how it changes yardage.',
     published: '2026-10-25',
     updated: '2026-10-25',
-    collections: ['striped', 'woven'],
+    collections: ['striped', 'woven', 'bench-cushion', 'headboard'],
   },
   {
     slug: 'best-fabric-for-dining-chairs',
@@ -124,7 +124,17 @@ export const GUIDES: Guide[] = [
       'How to choose contract-grade fabric for restaurants, offices, hotels and clinics: durability ratings, cleanability, flammability standards and more.',
     published: '2026-10-25',
     updated: '2026-10-25',
-    collections: ['commercial', 'healthcare', 'heavy-duty', 'fire-rated'],
+    collections: ['commercial', 'banquette', 'healthcare', 'heavy-duty', 'fire-rated'],
+  },
+  {
+    slug: 'upholstery-fabric-glossary',
+    title: 'Upholstery Fabric Glossary',
+    metaTitle: 'Upholstery Fabric Glossary: Trade Terms Explained A to Z',
+    description:
+      'Upholstery fabric terms explained in plain language: double rubs, railroaded, repeat, selvage, solution-dyed, cleaning codes, nap and more.',
+    published: '2026-10-25',
+    updated: '2026-10-25',
+    collections: [],
   },
 ];
 

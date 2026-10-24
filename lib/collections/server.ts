@@ -74,6 +74,7 @@ export const loadCollectionFabrics = cache(async (collection: FabricCollection):
       if (rule.properties) query = query.overlaps('properties', rule.properties);
       if (rule.markets) query = query.overlaps('markets', rule.markets);
       if (rule.applications) query = query.overlaps('applications', rule.applications);
+      if (rule.sampleBooks) query = query.overlaps('sample_books', rule.sampleBooks);
       if (rule.cleanabilityContains) query = query.ilike('cleanability', `%${rule.cleanabilityContains}%`);
       if (rule.minDoubleRubs) query = query.not('durability', 'is', null);
       return query;

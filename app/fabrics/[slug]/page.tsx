@@ -8,7 +8,8 @@ import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/compone
 import JsonLd from '@/components/seo/JsonLd';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { describeFabric, fabricBrand, searchFabricName } from '@/lib/seo/fabric';
-import { collectionsForFabric, fabricKeywords, FabricTags, getCollection } from '@/lib/collections/definitions';
+import { collectionsForFabric, comboCollections, fabricKeywords, fabricMatchesRule, FabricTags, getCollection } from '@/lib/collections/definitions';
+import { publishedComboSlugs } from '@/lib/collections/catalogIndex';
 import FabricCollectionLinks from '@/components/collections/FabricCollectionLinks';
 import { collectionMetadata, renderCollection } from '@/lib/collections/page';
 
@@ -199,6 +200,9 @@ export default async function FabricDetailPage({ params }: { params: { slug: str
   if (!fabric) notFound();
   const collections = collectionsForFabric(tagsOf(fabric));
   const primaryCollection = collections.find((c) => c.group === 'type');
+  // Its colour + type pages too ("Grey Velvet"), where those have enough fabrics to be published.
+  const published = await publishedComboSlugs().catch(() => new Set<string>());
+  const combos = comboCollections().filter((c) => published.has(c.slug) && fabricMatchesRule(c.rule, tagsOf(fabric)));
 
   return (
     <>
@@ -221,7 +225,7 @@ export default async function FabricDetailPage({ params }: { params: { slug: str
         fabric={fabric}
         primaryCollection={primaryCollection ? { slug: primaryCollection.slug, label: primaryCollection.label } : undefined}
       />
-      <FabricCollectionLinks links={collections.map((c) => ({ slug: c.slug, label: c.label }))} />
+      <FabricCollectionLinks links={[...combos, ...collections].map((c) => ({ slug: c.slug, label: c.label }))} />
     </>
   );
 }

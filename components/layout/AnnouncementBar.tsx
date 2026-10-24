@@ -22,7 +22,7 @@ export default function AnnouncementBar() {
         px: 2,
       }}
     >
-      <Box component={Link} href="/sample-books" sx={{ color: brand.accent, textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>
+      <Box component={Link} href="/free-fabric-samples" sx={{ color: brand.accent, textDecoration: 'none', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>
         Free fabric samples
       </Box>
       <Box component="span" sx={{ mx: 1.25, opacity: 0.5 }}>·</Box>
