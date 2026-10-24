@@ -11,7 +11,7 @@ import ClarityInit from '@/components/analytics/ClarityInit';
 import AdTracking from '@/components/analytics/AdTracking';
 import CookieConsent from '@/components/consent/CookieConsent';
 import JsonLd from '@/components/seo/JsonLd';
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { BUSINESS, BUSINESS_POSTAL_ADDRESS, SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL_PROFILES, businessDetail } from '@/lib/site';
 import { AI_FEATURES_ENABLED } from '@/lib/features';
 
 // Body copy, buttons, and labels/eyebrows/nav (exposed as --font-label). Loaded as the variable
@@ -60,8 +60,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Who the business is, for Google's knowledge panel and rich results. Add sameAs links
-// (Instagram, Facebook) and contact details once they're final.
+// Who the business is, for Google's knowledge panel, rich results and Merchant Center's store
+// checks. Contact details and profiles come from lib/site.ts; any still unset are left out.
+const addressParts = Object.fromEntries(Object.entries(BUSINESS_POSTAL_ADDRESS).filter(([, value]) => value));
 const organizationJsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -71,6 +72,22 @@ const organizationJsonLd = {
       name: SITE_NAME,
       url: SITE_URL,
       logo: `${SITE_URL}/icon.png`,
+      description: SITE_DESCRIPTION,
+      legalName: businessDetail(BUSINESS.legalName),
+      email: businessDetail(BUSINESS.email),
+      telephone: businessDetail(BUSINESS.phone),
+      address: Object.keys(addressParts).length
+        ? { '@type': 'PostalAddress', ...addressParts, addressCountry: 'CA' }
+        : undefined,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer service',
+        email: businessDetail(BUSINESS.email),
+        telephone: businessDetail(BUSINESS.phone),
+        areaServed: 'CA',
+        availableLanguage: ['en'],
+      },
+      sameAs: SOCIAL_PROFILES.length ? SOCIAL_PROFILES : undefined,
       areaServed: 'CA',
     },
     {

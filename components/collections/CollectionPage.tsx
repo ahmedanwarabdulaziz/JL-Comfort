@@ -36,6 +36,13 @@ const chipSx = {
   '&:hover': { borderColor: brand.accent, color: brand.accent },
 };
 
+// Page links to show: the first, the last and two either side of the current one, with null for a
+// gap. A large collection (the full Charlotte catalog is 140+ pages) would otherwise list them all.
+function pageNumbers(page: number, pageCount: number): (number | null)[] {
+  const shown = Array.from({ length: pageCount }, (_, i) => i + 1).filter((n) => n === 1 || n === pageCount || Math.abs(n - page) <= 2);
+  return shown.flatMap((n, i) => (i > 0 && n - shown[i - 1] > 1 ? [null, n] : [n]));
+}
+
 // A collection landing page (/fabrics/velvet, /fabrics/pet-friendly, ...). Everything a search engine
 // needs is in the server-rendered HTML: the heading, the copy, and real links to every fabric shown.
 export default function CollectionPage({
@@ -143,17 +150,21 @@ export default function CollectionPage({
             {page > 1 && (
               <Box component={Link} href={collectionHref(collection.slug, page - 1)} rel="prev" sx={chipSx}>‹ Previous</Box>
             )}
-            {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
-              <Box
-                key={n}
-                component={Link}
-                href={collectionHref(collection.slug, n)}
-                aria-current={n === page ? 'page' : undefined}
-                sx={{ ...chipSx, minWidth: 40, justifyContent: 'center', ...(n === page ? { bgcolor: brand.ink, color: brand.chalk, borderColor: brand.ink, '&:hover': {} } : {}) }}
-              >
-                {n}
-              </Box>
-            ))}
+            {pageNumbers(page, pageCount).map((n, i) =>
+              n === null ? (
+                <Box key={`gap-${i}`} sx={{ alignSelf: 'center', px: 0.5, color: brand.textSecondary }}>…</Box>
+              ) : (
+                <Box
+                  key={n}
+                  component={Link}
+                  href={collectionHref(collection.slug, n)}
+                  aria-current={n === page ? 'page' : undefined}
+                  sx={{ ...chipSx, minWidth: 40, justifyContent: 'center', ...(n === page ? { bgcolor: brand.ink, color: brand.chalk, borderColor: brand.ink, '&:hover': {} } : {}) }}
+                >
+                  {n}
+                </Box>
+              )
+            )}
             {page < pageCount && (
               <Box component={Link} href={collectionHref(collection.slug, page + 1)} rel="next" sx={chipSx}>Next ›</Box>
             )}

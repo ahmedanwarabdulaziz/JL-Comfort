@@ -7,7 +7,7 @@ import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/components/fabrics/FabricDetailClient';
 import JsonLd from '@/components/seo/JsonLd';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
-import { describeFabric } from '@/lib/seo/fabric';
+import { describeFabric, fabricBrand, searchFabricName } from '@/lib/seo/fabric';
 import { collectionsForFabric, fabricKeywords, FabricTags, getCollection } from '@/lib/collections/definitions';
 import FabricCollectionLinks from '@/components/collections/FabricCollectionLinks';
 import { collectionMetadata, renderCollection } from '@/lib/collections/page';
@@ -115,10 +115,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   try {
     const fabric = await loadFabricDetail(params.slug);
     if (!fabric) return { title: 'Fabric Not Found', robots: { index: false } };
-    // "D2215 Sky – Grey Textured Upholstery Fabric": the code alone is not what people search for.
+    // "Charlotte D2215 Sky – Grey Textured Upholstery Fabric": the code alone is not what people search for.
     const keywords = fabricKeywords(tagsOf(fabric));
-    const title = `${fabric.name} – ${keywords ? `${keywords} ` : ''}Upholstery Fabric`;
-    const description = describeFabric({ ...fabric, keywords });
+    const name = searchFabricName(fabric.name);
+    const title = `${name} – ${keywords ? `${keywords} ` : ''}Upholstery Fabric`;
+    const description = describeFabric({ ...fabric, name, keywords });
     const url = `/fabrics/${params.slug}`;
     return {
       title,
@@ -148,12 +149,12 @@ function productJsonLd(fabric: FabricDetailData, slug: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: fabric.name,
+    name: searchFabricName(fabric.name),
     sku: fabric.sku || fabric.id,
     url,
     image: fabric.imageUrl ? [fabric.imageUrl] : undefined,
-    description: describeFabric({ ...fabric, keywords: fabricKeywords(tagsOf(fabric)) }),
-    brand: { '@type': 'Brand', name: SITE_NAME },
+    description: describeFabric({ ...fabric, name: searchFabricName(fabric.name), keywords: fabricKeywords(tagsOf(fabric)) }),
+    brand: { '@type': 'Brand', name: fabricBrand() },
     material: fabric.fiberContent,
     offers:
       fabric.pricePerYard != null

@@ -58,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...COLLECTIONS.map((collection) => ({
       url: `${SITE_URL}/fabrics/${collection.slug}`,
       changeFrequency: 'weekly' as const,
-      priority: collection.group === 'colour' ? 0.7 : 0.8,
+      priority: collection.group === 'brand' ? 0.9 : collection.group === 'colour' ? 0.7 : 0.8,
     })),
     ...fabrics,
   ];
