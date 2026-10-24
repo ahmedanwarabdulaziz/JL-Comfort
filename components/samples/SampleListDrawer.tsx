@@ -51,7 +51,7 @@ export default function SampleListDrawer() {
             <Box key={item.fabricId} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', py: 1.25, borderBottom: '1px solid #ece7e0' }}>
               <Box sx={{ width: 56, height: 56, flexShrink: 0, bgcolor: '#f5f3f0', border: '1px solid #e5e0d9', overflow: 'hidden' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                {item.imageUrl && <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: brand.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</Typography>

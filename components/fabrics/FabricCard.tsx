@@ -102,7 +102,7 @@ export default function FabricCard({
               aria-label={`${splitName(c.name).colourway} colourway`}
               sx={{ position: 'relative', width: 26, height: 26, flexShrink: 0, border: '1px solid #e0dad2', overflow: 'hidden', '&:hover': { borderColor: brand.accent } }}
             >
-              <FabricImage src={c.imageUrl} alt="" sizes="26px" />
+              <FabricImage src={c.imageUrl} alt={c.name} sizes="26px" />
             </Box>
           ))}
           {others.length > MAX_SWATCHES && (

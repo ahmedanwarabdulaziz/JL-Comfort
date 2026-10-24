@@ -255,7 +255,7 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
                         </Box>
                         {selectedStyle.images.length > 1 && (
                           <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
-                            {selectedStyle.images.slice(1).map((img) => (
+                            {selectedStyle.images.slice(1).map((img, i) => (
                               <Box
                                 key={img}
                                 sx={{
@@ -268,7 +268,7 @@ export default function BenchCushionsPageClient({ styles }: BenchCushionsPageCli
                                   bgcolor: '#fff',
                                 }}
                               >
-                                <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={img} alt={`${selectedStyle.name} view ${i + 2}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </Box>
                             ))}
                           </Box>

@@ -98,7 +98,7 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
       {/* Cover fabric */}
       <Box sx={{ flex: '1 1 auto', minHeight: 0, bgcolor: '#ede9e3', position: 'relative' }}>
         {ok(photo) && (
-          <FabricImage src={photo} alt="" sizes="(max-width: 600px) 50vw, (max-width: 1200px) 25vw, 300px" onError={fail(photo)} />
+          <FabricImage src={photo} alt={`${title} sample book fabric`} sizes="(max-width: 600px) 50vw, (max-width: 1200px) 25vw, 300px" onError={fail(photo)} />
         )}
       </Box>
 
@@ -106,7 +106,7 @@ export default function SampleBookCover({ title, series, footnote, photo, edgePh
       <Box sx={{ flex: '0 0 auto', height: '7%', display: 'flex', bgcolor: '#ede9e3', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(51,56,79,0.25)' }}>
         {(edges.length > 0 ? edges : ok(photo) ? [photo] : []).map((src, i) => (
           <Box key={`${src}-${i}`} sx={{ flex: 1, position: 'relative', borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.65)' }}>
-            <FabricImage src={src} alt="" sizes="64px" onError={fail(src)} />
+            <FabricImage src={src} alt={`${title} swatch ${i + 1}`} sizes="64px" onError={fail(src)} />
           </Box>
         ))}
       </Box>
