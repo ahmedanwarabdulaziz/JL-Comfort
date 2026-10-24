@@ -6,9 +6,12 @@
 // Copy is written for shoppers first: what the fabric is, where it works, how to choose. Keep each
 // page's wording unique -- near-duplicate pages rank poorly.
 
-export type CollectionGroup = 'type' | 'use' | 'pattern' | 'colour';
+import { CHARLOTTE_BRAND_ENABLED } from '@/lib/site';
+
+export type CollectionGroup = 'brand' | 'type' | 'use' | 'pattern' | 'colour';
 
 export const COLLECTION_GROUP_LABELS: Record<CollectionGroup, string> = {
+  brand: 'Shop by brand',
   type: 'Shop by fabric type',
   use: 'Shop by use & performance',
   pattern: 'Shop by pattern',
@@ -45,7 +48,51 @@ export interface FabricCollection {
 const typeCollection = (c: Omit<FabricCollection, 'group'>): FabricCollection => ({ ...c, group: 'type' });
 const usageCollection = (c: Omit<FabricCollection, 'group'>): FabricCollection => ({ ...c, group: 'use' });
 
+// The whole catalog under the maker's name, for "Charlotte Fabrics Canada" searches. Only exists
+// while the brand may be shown (lib/site.ts), so it drops out of menus, links and the sitemap with it.
+const CHARLOTTE_COLLECTION: FabricCollection = {
+  slug: 'charlotte-fabrics',
+  group: 'brand',
+  label: 'Charlotte Fabrics',
+  title: 'Charlotte Fabrics in Canada',
+  metaTitle: 'Charlotte Fabrics Canada – Upholstery Fabric by the Yard',
+  description: 'Shop Charlotte Fabrics upholstery fabric by the yard in Canada: velvets, chenilles, Crypton, outdoor and more. Prices in CAD and free samples.',
+  intro: 'Charlotte Fabrics makes decorative upholstery, multi-purpose and drapery fabrics for furniture makers, upholsterers and designers. Here you can order the full range by the yard, priced in Canadian dollars and delivered across Canada.',
+  sections: [
+    {
+      heading: 'The Charlotte range',
+      body: 'The catalog covers almost every upholstery need: soft velvets and chenilles, bouclé and textured weaves, Crypton and other performance fabrics, outdoor fabrics, and contract-grade fabrics rated for commercial and healthcare seating. Most patterns come in several colourways, shown on each fabric’s page.',
+    },
+    {
+      heading: 'Ordering from Canada',
+      body: 'Every price is in CAD, so the total you see at checkout is the total you pay, with no currency conversion. Fabric is cut to the yardage you order, and free samples let you check colour and feel in your own room before you buy.',
+    },
+    {
+      heading: 'Finding a pattern by its number',
+      body: 'Charlotte fabrics are named by pattern number and colour, such as D2215 Sky. If you have a number from a sample book, a designer or an upholsterer, search for it in the shop to go straight to that fabric and its other colourways.',
+    },
+  ],
+  faqs: [
+    {
+      q: 'Can I buy Charlotte Fabrics in Canada?',
+      a: 'Yes. JL Comfort sells Charlotte upholstery fabric by the yard, priced in Canadian dollars and shipped across Canada.',
+    },
+    {
+      q: 'Can I get a sample before I order?',
+      a: 'Yes. Samples are free, so you can see the colour and texture in your own light before ordering yardage.',
+    },
+    {
+      q: 'How long does an order take?',
+      a: 'Fabric is cut to the yardage you order and typically ships within 3–5 business days of payment.',
+    },
+  ],
+  rule: {},
+  related: ['velvet', 'chenille', 'crypton', 'performance', 'outdoor', 'commercial'],
+};
+
 export const COLLECTIONS: FabricCollection[] = [
+  ...(CHARLOTTE_BRAND_ENABLED ? [CHARLOTTE_COLLECTION] : []),
+
   // ───────────────────────────── Fabric types ─────────────────────────────
   typeCollection({
     slug: 'velvet',

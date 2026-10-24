@@ -26,6 +26,7 @@ import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { getShippingRate } from '@/lib/data/shippingRates';
 import { ShippingRate } from '@/lib/types/checkout';
 import { brand } from '@/lib/theme';
+import { fabricBrand } from '@/lib/seo/fabric';
 import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
 import { trackViewItem } from '@/lib/analytics/track';
@@ -240,7 +241,7 @@ export default function FabricDetailClient({ fabric }: { fabric: FabricDetailDat
           {/* ── Details ───────────────────────────────────────────── */}
           <Box sx={{ maxWidth: 520 }}>
             {/* Stacked title: house, pattern, colour, collection */}
-            <Typography sx={{ ...labelSx, color: brand.accent, mb: 1 }}>JL Comfort</Typography>
+            <Typography sx={{ ...labelSx, color: brand.accent, mb: 1 }}>{fabricBrand()}</Typography>
             {pattern && (
               <Typography sx={{ fontSize: { xs: '1.05rem', md: '1.2rem' }, fontWeight: 600, letterSpacing: '0.06em', color: brand.ink }}>{pattern}</Typography>
             )}

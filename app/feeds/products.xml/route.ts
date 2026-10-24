@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
-import { describeFabric, prettyFacet } from '@/lib/seo/fabric';
+import { describeFabric, fabricBrand, prettyFacet, searchFabricName } from '@/lib/seo/fabric';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { fabricKeywords } from '@/lib/collections/definitions';
 
@@ -65,18 +65,19 @@ export async function GET() {
 
     const fiber = row.fiber_content || undefined;
     const keywords = fabricKeywords({ color: row.color || [], material: row.material || [] });
+    const name = searchFabricName(row.name);
     // Shopping ranks on the title: lead with what people search for, e.g. "Grey Textured Upholstery Fabric".
-    const title = `${row.name} ${keywords ? `${keywords} ` : ''}Upholstery Fabric by the Yard${fiber ? ` – ${fiber}` : ''}`.slice(0, 150);
+    const title = `${name} ${keywords ? `${keywords} ` : ''}Upholstery Fabric by the Yard${fiber ? ` – ${fiber}` : ''}`.slice(0, 150);
     const pattern = row.pattern?.[0] ? prettyFacet(row.pattern[0]) : null;
     const fields: [string, string | null | undefined][] = [
       ['g:id', (row.sku || row.legacy_id).slice(0, 50)],
       ['g:title', title],
-      ['g:description', describeFabric({ name: row.name, fiberContent: fiber, durability: row.durability, width: row.width, pricePerYard: price, keywords })],
+      ['g:description', describeFabric({ name, fiberContent: fiber, durability: row.durability, width: row.width, pricePerYard: price, keywords })],
       ['g:link', `${SITE_URL}/fabrics/${encodeURIComponent(row.legacy_id)}`],
       ['g:image_link', row.image_url],
       ['g:availability', row.availability === 'OutOfStock' ? 'out_of_stock' : 'in_stock'],
       ['g:price', `${price.toFixed(2)} CAD`],
-      ['g:brand', SITE_NAME],
+      ['g:brand', fabricBrand()],
       ['g:condition', 'new'],
       ['g:identifier_exists', 'no'],
       ['g:google_product_category', GOOGLE_CATEGORY],

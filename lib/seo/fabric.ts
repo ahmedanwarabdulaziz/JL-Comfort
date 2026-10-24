@@ -1,5 +1,14 @@
 // Shared wording for a fabric in search results, link previews, structured data and the product feed.
 
+import { CHARLOTTE_BRAND, CHARLOTTE_BRAND_ENABLED, SITE_NAME } from '@/lib/site';
+
+// "Charlotte D2215 Sky": people search the brand with the pattern code. Plain name while the brand is hidden.
+export const searchFabricName = (name: string) =>
+  CHARLOTTE_BRAND_ENABLED && !/^charlotte\b/i.test(name) ? `Charlotte ${name}` : name;
+
+// The brand Google and Merchant Center match a fabric on: the maker's, once it may be shown.
+export const fabricBrand = () => (CHARLOTTE_BRAND_ENABLED ? CHARLOTTE_BRAND : SITE_NAME);
+
 export interface FabricSeoFields {
   name: string;
   fiberContent?: string | null;
