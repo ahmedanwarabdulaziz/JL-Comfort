@@ -16,12 +16,12 @@ export const SITE_DESCRIPTION =
 // The business's legal and contact details, shown in the footer, the Privacy Policy and the Terms
 // of Service. Anything still in [brackets] is a placeholder that must be replaced before launch.
 export const BUSINESS = {
-  legalName: '[Legal business name]', // e.g. "JL Comfort Inc." -- as registered
+  legalName: 'JL Upholstery', // as registered with the CRA; JL Comfort is its trade name
   email: 'sales@jlcomfort.com', // general customer service
   privacyEmail: 'sales@jlcomfort.com', // reaches the Privacy Officer
-  phone: '[Phone Number]',
-  address: '[Business Address]', // full mailing address, including postal code
-  province: '[Province]', // where the business is based; its laws govern the Terms, e.g. "Ontario"
+  phone: '+1 (647) 261-4116',
+  address: 'Unit 107, 1380 Costigan Road, Milton, ON L9T 8L2', // full mailing address, including postal code
+  province: 'Ontario', // where the business is based; its laws govern the Terms, e.g. "Ontario"
   privacyOfficer: '[Name of Privacy Officer]', // the person responsible for personal information
 };
 
@@ -30,10 +30,10 @@ export const BUSINESS_DETAILS_PENDING = Object.values(BUSINESS).some((value) => 
 // The mailing address split into parts for structured data (Google reads these, not the one-line
 // address above). Leave a part as '' until it's known; empty parts are left out of the markup.
 export const BUSINESS_POSTAL_ADDRESS = {
-  streetAddress: '',
-  addressLocality: '', // city
-  addressRegion: '', // province code, e.g. "ON"
-  postalCode: '',
+  streetAddress: '1380 Costigan Road, Unit 107',
+  addressLocality: 'Milton', // city
+  addressRegion: 'ON', // province code
+  postalCode: 'L9T 8L2',
 };
 
 // Public profiles (Instagram, Facebook, Pinterest, Google Business Profile...), full URLs. They tell
