@@ -58,8 +58,14 @@ const fabricGroups: FaqGroup[] = [
       },
       {
         question: 'How much fabric do I need?',
-        answer:
-          'For a 54-inch-wide plain fabric, a dining chair seat takes about 1 yard, an armchair 6 to 8 yards, a loveseat 10 to 12 yards and a three-seat sofa 14 to 18 yards. Patterns with a large repeat need more, so allow an extra 10 to 20 percent. Every fabric page has a guide for that fabric, and your upholsterer can confirm the exact amount.',
+        answer: (
+          <>
+            For a 54-inch-wide plain fabric, a dining chair seat takes about 1 yard, an armchair 6 to 8 yards, a loveseat 10 to 12 yards
+            and a three-seat sofa 14 to 18 yards. Patterns with a large repeat need more, so allow an extra 10 to 20 percent. See our{' '}
+            <Link href="/guides/how-much-fabric-do-i-need" style={linkSx}>yardage guide and calculator</Link>; every fabric page also has
+            a chart for that fabric, and your upholsterer can confirm the exact amount.
+          </>
+        ),
       },
       {
         question: 'Is fabric sold in whole yards?',

@@ -444,6 +444,10 @@ export default function FabricDetailClient({
                     {note}
                   </Typography>
                 ))}
+                <Typography sx={{ color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.7, mt: 1.25 }}>
+                  More detail on cushions, curtains and patterns in our{' '}
+                  <Link href="/guides/how-much-fabric-do-i-need" style={{ color: brand.accent }}>yardage guide and calculator</Link>.
+                </Typography>
               </TabPanel>
             )}
             <TabPanel index={2} tab={tab}>

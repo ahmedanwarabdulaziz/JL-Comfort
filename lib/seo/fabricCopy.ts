@@ -138,7 +138,7 @@ export function aboutFabric(f: FabricCopyInput): string[] {
 }
 
 // Typical yardage for a 54"-wide plain fabric; adjusted below for this fabric's width and repeat.
-const BASE_YARDAGE: [string, number, number][] = [
+export const BASE_YARDAGE: [string, number, number][] = [
   ['Dining chair seat', 0.75, 1],
   ['Dining chair, seat and back', 1.5, 2],
   ['Ottoman or footstool', 2, 3],
@@ -156,15 +156,23 @@ export interface YardageGuide {
   notes: string[];
 }
 
+// How much more fabric than the 54" plain baseline: narrower fabric needs more length, and a
+// pattern repeat needs extra to match across cushions and seams. Shared with the yardage guide.
+export const yardageFactor = (widthInches: number, repeatInches: number) =>
+  (54 / widthInches) * (repeatInches >= 13 ? 1.2 : repeatInches >= 6 ? 1.1 : 1);
+
+// Whole yards to order for a baseline amount (fabric is sold by the whole yard).
+export const wholeYards = (baseline: number, factor: number) => Math.max(1, Math.ceil(baseline * factor - 0.01));
+
 // How much to order for common pieces, in whole yards (fabric is sold by the whole yard).
 // Wide drapery and sheer fabrics get no furniture table: they're ordered by window, not by chair.
 export function yardageGuide(f: FabricCopyInput): YardageGuide | null {
   const width = inches(f.width) ?? 54;
   if (width >= 100) return null;
   const repeat = verticalRepeat(f.repeat);
-  const repeatFactor = repeat >= 13 ? 1.2 : repeat >= 6 ? 1.1 : 1;
-  const factor = (54 / width) * repeatFactor;
-  const yards = (n: number) => Math.max(1, Math.ceil(n * factor - 0.01));
+  const repeatFactor = yardageFactor(54, repeat);
+  const factor = yardageFactor(width, repeat);
+  const yards = (n: number) => wholeYards(n, factor);
   const rows = BASE_YARDAGE.map(([item, min, max]) => {
     const [lo, hi] = [yards(min), yards(max)];
     return { item, yards: lo === hi ? `${lo} yd` : `${lo}–${hi} yd` };
