@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { FOAM_PAGES, FOAM_PRODUCTS_LIVE, SITE_URL } from '@/lib/site';
 import { COLLECTIONS } from '@/lib/collections/definitions';
+import { GUIDES, guideHref } from '@/lib/guides';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 
@@ -78,6 +79,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}${page.path === '/' ? '' : page.path}`,
       changeFrequency: page.changeFrequency,
       priority: page.priority,
+    })),
+    { url: `${SITE_URL}/guides`, changeFrequency: 'monthly' as const, priority: 0.6 },
+    ...GUIDES.map((guide) => ({
+      url: `${SITE_URL}${guideHref(guide.slug)}`,
+      lastModified: new Date(guide.updated),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
     })),
     // Collection landing pages: the pages most likely to rank for broad searches ("velvet upholstery fabric").
     ...COLLECTIONS.map((collection) => ({
