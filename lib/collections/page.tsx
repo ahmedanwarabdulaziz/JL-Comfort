@@ -6,6 +6,17 @@ import JsonLd from '@/components/seo/JsonLd';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { FabricCollection, collectionGroups, collectionHref, getCollection } from './definitions';
 import { COLLECTION_PAGE_SIZE, loadCollectionFabrics } from './server';
+import { getGuide, guideHref, guidesForCollection } from '@/lib/guides';
+
+// Guides about this collection first, topped up with the general ones so every collection links to some.
+const GENERAL_GUIDES = ['how-to-choose-upholstery-fabric', 'how-much-fabric-do-i-need'];
+const collectionGuides = (slug: string) => {
+  const specific = guidesForCollection(slug);
+  const general = GENERAL_GUIDES.map(getGuide).filter((g) => g && !specific.includes(g));
+  return [...specific, ...general]
+    .slice(0, Math.max(3, specific.length))
+    .map((g) => ({ href: guideHref(g!.slug), title: g!.title }));
+};
 
 // Server side of a collection page, shared by /fabrics/<slug> and /fabrics/<slug>/page/<n>.
 
@@ -111,6 +122,7 @@ export async function renderCollection(collection: FabricCollection, page: numbe
         pageCount={pageCount}
         related={related}
         groups={groups}
+        guides={collectionGuides(collection.slug)}
       />
     </>
   );

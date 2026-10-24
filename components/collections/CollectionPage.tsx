@@ -54,6 +54,7 @@ export default function CollectionPage({
   pageCount,
   related,
   groups,
+  guides = [],
 }: {
   collection: FabricCollection;
   fabrics: CollectionFabric[];
@@ -63,6 +64,7 @@ export default function CollectionPage({
   pageCount: number;
   related: CollectionLink[];
   groups: DirectoryGroup[];
+  guides?: { href: string; title: string }[];
 }) {
   const listName = `Collection: ${collection.label}`;
   const toItem = (fabric: CollectionFabric) => ({
@@ -189,6 +191,18 @@ export default function CollectionPage({
                 <Box key={faq.q} sx={{ borderTop: `1px solid ${LINE}`, py: 2.5 }}>
                   <Typography component="h3" sx={{ fontWeight: 700, mb: 0.75 }}>{faq.q}</Typography>
                   <Typography sx={{ lineHeight: 1.8, color: brand.textSecondary }}>{faq.a}</Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+          {guides.length > 0 && (
+            <Box sx={{ mt: 5 }}>
+              <Typography component="h2" variant="h2" sx={{ fontSize: { xs: '1.5rem', md: '1.8rem' }, mb: 2 }}>Helpful guides</Typography>
+              {guides.map((guide) => (
+                <Box key={guide.href} sx={{ borderTop: `1px solid ${LINE}`, py: 1.75 }}>
+                  <Box component={Link} href={guide.href} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: brand.ink, fontWeight: 600, textDecoration: 'none', '&:hover': { color: brand.accent } }}>
+                    {guide.title} <ArrowForwardIcon sx={{ fontSize: 16 }} />
+                  </Box>
                 </Box>
               ))}
             </Box>

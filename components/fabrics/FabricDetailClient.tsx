@@ -424,6 +424,15 @@ export default function FabricDetailClient({
                     ))}
                   </Stack>
                 )}
+                {/* The guides that explain the specs above: durability, cleaning code, direction. */}
+                <Typography sx={{ color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.7, mt: 2.5 }}>
+                  Learn more:{' '}
+                  <Link href="/guides/double-rubs-explained" style={{ color: brand.accent }}>double rubs explained</Link>
+                  {' · '}
+                  <Link href="/guides/upholstery-cleaning-codes" style={{ color: brand.accent }}>cleaning codes</Link>
+                  {' · '}
+                  <Link href="/guides/railroaded-vs-up-the-roll" style={{ color: brand.accent }}>railroaded vs. up the roll</Link>
+                </Typography>
               </Box>
             </TabPanel>
             {yardage && (
