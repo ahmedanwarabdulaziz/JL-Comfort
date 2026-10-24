@@ -5,9 +5,9 @@ export const SITE_URL = (process.env.SITE_URL || 'https://jlcomfort.com').replac
 export const SITE_NAME = 'JL Comfort';
 
 // Whether shoppers and search engines see the supplier's brand: "Charlotte" in fabric titles, the
-// Product schema and feed brand, and the /fabrics/charlotte-fabrics page. Off until the dealer
-// agreement confirms the name may be used; set NEXT_PUBLIC_SHOW_CHARLOTTE_BRAND=true and redeploy.
-export const CHARLOTTE_BRAND_ENABLED = process.env.NEXT_PUBLIC_SHOW_CHARLOTTE_BRAND === 'true';
+// Product schema and feed brand, and the /fabrics/charlotte-fabrics page. Charlotte approved the
+// use of its name in October 2026; set NEXT_PUBLIC_SHOW_CHARLOTTE_BRAND=false and redeploy to hide it.
+export const CHARLOTTE_BRAND_ENABLED = process.env.NEXT_PUBLIC_SHOW_CHARLOTTE_BRAND !== 'false';
 export const CHARLOTTE_BRAND = 'Charlotte Fabrics';
 
 export const SITE_DESCRIPTION =
