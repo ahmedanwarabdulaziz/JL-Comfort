@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Box, Container, Typography, Grid, Paper } from '@mui/material';
 import Link from 'next/link';
+import { BUSINESS, FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -9,10 +10,34 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 export const metadata: Metadata = {
   title: 'About Us',
   alternates: { canonical: '/about' },
-  description: 'JL Comfort cuts custom foam to your exact dimensions using premium NeoGel High-Density foam.',
+  description:
+    'JL Comfort sells Charlotte upholstery fabric by the yard across Canada, with free samples and prices in CAD. Based in Milton, Ontario.',
 };
 
-const pillars = [
+const fabricPillars = [
+  {
+    icon: <AutoAwesomeIcon sx={{ fontSize: 32 }} />,
+    title: 'The Full Charlotte Range',
+    text: 'Thousands of upholstery, drapery and multi-purpose fabrics from Charlotte Fabrics: velvets, chenilles, bouclé, Crypton, outdoor and contract-grade fabrics.',
+  },
+  {
+    icon: <DesignServicesIcon sx={{ fontSize: 32 }} />,
+    title: 'Free Samples First',
+    text: 'See the colour and feel the texture in your own room before you buy. Samples are free, and we recommend one for every order.',
+  },
+  {
+    icon: <PrecisionManufacturingIcon sx={{ fontSize: 32 }} />,
+    title: 'Cut to Your Yardage',
+    text: 'Order exactly what your project needs, in 1-yard increments. Every fabric page lists the full specs: width, repeat, double rubs and cleaning code.',
+  },
+  {
+    icon: <VerifiedUserIcon sx={{ fontSize: 32 }} />,
+    title: 'Canadian Prices, No Surprises',
+    text: 'Every price is in Canadian dollars, and shipping and tax are shown before you pay. If an order arrives damaged or wrong, we make it right.',
+  },
+];
+
+const foamPillars = [
   {
     icon: <PrecisionManufacturingIcon sx={{ fontSize: 32 }} />,
     title: 'Cut to Your Exact Dimensions',
@@ -36,6 +61,7 @@ const pillars = [
 ];
 
 export default function AboutPage() {
+  const pillars = FOAM_PRODUCTS_LIVE ? [...fabricPillars, ...foamPillars] : fabricPillars;
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa' }}>
 
@@ -44,23 +70,29 @@ export default function AboutPage() {
           About JL Comfort
         </Typography>
         <Typography variant="h6" sx={{ maxWidth: 640, mx: 'auto', fontWeight: 'normal', opacity: 0.9 }}>
-          Custom-cut comfort, made simple.
+          Upholstery fabric by the yard, shipped across Canada.
         </Typography>
       </Box>
 
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, mb: 3, color: 'text.secondary' }}>
-          JL Comfort exists to solve one specific problem: finding replacement or custom foam that actually fits.
-          Off-the-shelf cushion foam almost never matches the piece you’re working on, so we built an ordering
-          system that cuts every order to your exact thickness, depth, and width — no compromise sizes, no
-          trimming required on your end.
+          JL Comfort is the online fabric shop of {BUSINESS.legalName}, an upholstery business in Milton, Ontario. We
+          know first-hand how hard it is to find good upholstery fabric in Canada: most online fabric stores are in the
+          United States, price in US dollars and add cross-border surprises at the door.
         </Typography>
-        <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, mb: 6, color: 'text.secondary' }}>
-          We keep our foam lineup focused on NeoGel, a high-density polyurethane foam available in four
-          compressions, so you can spend your time picking the right firmness instead of comparing dozens of
-          unfamiliar grades. Pair it with fibre wrap for a rounder, fuller finish, and you have everything needed
-          to bring a cushion back to life.
+        <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, mb: FOAM_PRODUCTS_LIVE ? 3 : 6, color: 'text.secondary' }}>
+          So we built the shop we wanted: the{' '}
+          <Box component={Link} href="/fabrics" sx={{ color: '#b8935f' }}>Charlotte Fabrics range</Box>, priced in
+          Canadian dollars, cut to the yardage you need and shipped across Canada, with free samples so you can be sure
+          before you buy. Whether you&rsquo;re a professional upholsterer, a designer or reupholstering a favourite chair
+          at home, you get the same fabrics, the same specs and the same help.
         </Typography>
+        {FOAM_PRODUCTS_LIVE && (
+          <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.8, mb: 6, color: 'text.secondary' }}>
+            We also cut NeoGel high-density foam to your exact dimensions and make bench cushions to order, in the
+            fabric you choose.
+          </Typography>
+        )}
 
         <Grid container spacing={4} sx={{ mb: 6 }}>
           {pillars.map((item) => (
@@ -74,25 +106,17 @@ export default function AboutPage() {
           ))}
         </Grid>
 
-        <Paper elevation={0} sx={{ p: 3, mb: 6, borderRadius: 3, border: '1px dashed', borderColor: '#b8935f' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Quality & Materials</Typography>
-          <Typography variant="body2" color="text.secondary">
-            [Add any relevant foam certifications here — e.g. CertiPUR-US®, GOLS — once confirmed with our foam
-            supplier. Placeholder pending verification.]
-          </Typography>
-        </Paper>
-
         <Paper elevation={0} sx={{ p: 4, borderRadius: 3, bgcolor: '#000', color: '#fff', textAlign: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>Ready to measure your cushion?</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>Ready to find your fabric?</Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3 }}>
-            Our foam wizard walks you through it in two easy steps.
+            Browse thousands of fabrics and order free samples before you buy.
           </Typography>
           <Typography
             component={Link}
-            href="/foam"
+            href="/fabrics"
             sx={{ color: '#e3c29a', fontWeight: 'bold', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
-            Start Your Order &rarr;
+            Shop Fabrics &rarr;
           </Typography>
         </Paper>
       </Container>

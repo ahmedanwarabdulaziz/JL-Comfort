@@ -10,8 +10,18 @@ export const SITE_NAME = 'JL Comfort';
 export const CHARLOTTE_BRAND_ENABLED = process.env.NEXT_PUBLIC_SHOW_CHARLOTTE_BRAND !== 'false';
 export const CHARLOTTE_BRAND = 'Charlotte Fabrics';
 
+// Launching with fabric only: the foam and bench-cushion pages (and their guides) still work by link,
+// but stay out of the sitemap and search results until NEXT_PUBLIC_SHOW_FOAM_PRODUCTS=true.
+export const FOAM_PRODUCTS_LIVE = process.env.NEXT_PUBLIC_SHOW_FOAM_PRODUCTS === 'true';
+export const FOAM_PAGES = ['/foam', '/bench-cushions', '/how-to-measure', '/firmness-guide', '/fibre-wrap'];
+
+// For a foam-side page's metadata: kept out of search results while only fabric is on sale.
+export const foamPageRobots = FOAM_PRODUCTS_LIVE ? undefined : { index: false, follow: true };
+
 export const SITE_DESCRIPTION =
-  'Upholstery fabric by the yard, custom-cut foam and made-to-order bench cushions. Free fabric samples, prices in CAD, shipped across Canada.';
+  FOAM_PRODUCTS_LIVE
+    ? 'Upholstery fabric by the yard, custom-cut foam and made-to-order bench cushions. Free fabric samples, prices in CAD, shipped across Canada.'
+    : 'Charlotte upholstery fabric by the yard: velvet, chenille, bouclé, Crypton, outdoor and more. Free samples, prices in CAD, shipped across Canada.';
 
 // The business's legal and contact details, shown in the footer, the Privacy Policy and the Terms
 // of Service. Anything still in [brackets] is a placeholder that must be replaced before launch.

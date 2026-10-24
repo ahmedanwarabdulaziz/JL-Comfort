@@ -11,7 +11,7 @@ import ClarityInit from '@/components/analytics/ClarityInit';
 import AdTracking from '@/components/analytics/AdTracking';
 import CookieConsent from '@/components/consent/CookieConsent';
 import JsonLd from '@/components/seo/JsonLd';
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS, SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL_PROFILES, businessDetail } from '@/lib/site';
+import { BUSINESS, BUSINESS_POSTAL_ADDRESS, FOAM_PRODUCTS_LIVE, SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL_PROFILES, businessDetail } from '@/lib/site';
 import { AI_FEATURES_ENABLED } from '@/lib/features';
 
 // Body copy, buttons, and labels/eyebrows/nav (exposed as --font-label). Loaded as the variable
@@ -35,7 +35,9 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'JL Comfort | Custom Foam, Cushions & Upholstery Fabric in Canada',
+    default: FOAM_PRODUCTS_LIVE
+      ? 'JL Comfort | Custom Foam, Cushions & Upholstery Fabric in Canada'
+      : 'Upholstery Fabric by the Yard in Canada – Charlotte Fabrics | JL Comfort',
     template: '%s | JL Comfort',
   },
   description: SITE_DESCRIPTION,

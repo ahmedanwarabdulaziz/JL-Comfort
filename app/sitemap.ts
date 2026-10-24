@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
-import { SITE_URL } from '@/lib/site';
+import { FOAM_PAGES, FOAM_PRODUCTS_LIVE, SITE_URL } from '@/lib/site';
 import { COLLECTIONS } from '@/lib/collections/definitions';
 
 // Rebuilt at most hourly -- new or retired fabrics show up without a redeploy.
@@ -49,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [];
   });
   return [
-    ...STATIC_PAGES.map((page) => ({
+    ...STATIC_PAGES.filter((page) => FOAM_PRODUCTS_LIVE || !FOAM_PAGES.includes(page.path)).map((page) => ({
       url: `${SITE_URL}${page.path === '/' ? '' : page.path}`,
       changeFrequency: page.changeFrequency,
       priority: page.priority,

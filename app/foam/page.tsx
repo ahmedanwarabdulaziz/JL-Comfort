@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import { foamPageRobots } from '@/lib/site';
 import { getCategories } from '@/lib/data/categories';
 import FoamPageClient from './FoamPageClient';
 
 export const metadata: Metadata = {
   title: 'Custom Foam Cut to Size',
   alternates: { canonical: '/foam' },
+  robots: foamPageRobots,
   description:
     'Design your custom cushion foam in two steps: choose a shape, enter your dimensions, and pick from four premium NeoGel High-Density compressions.',
 };

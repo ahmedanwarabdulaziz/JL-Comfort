@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import { Box, Container, Typography, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
 import Link from 'next/link';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -6,7 +7,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 export const metadata: Metadata = {
   title: 'FAQ',
   alternates: { canonical: '/faq' },
-  description: 'Answers to common questions about measuring, foam grades, fibre wrap, shipping, and returns for custom-cut foam.',
+  description: FOAM_PRODUCTS_LIVE
+    ? 'Answers to common questions about upholstery fabric, samples, custom-cut foam, shipping and returns.'
+    : 'Answers to common questions about buying upholstery fabric online in Canada: samples, yardage, durability, cleaning codes, shipping and returns.',
 };
 
 interface FaqItem {
@@ -19,7 +22,89 @@ interface FaqGroup {
   items: FaqItem[];
 }
 
-const faqGroups: FaqGroup[] = [
+const linkSx = { color: '#b8935f' };
+
+const fabricGroups: FaqGroup[] = [
+  {
+    category: 'Fabric & Samples',
+    items: [
+      {
+        question: 'Can I get a fabric sample before I order?',
+        answer: (
+          <>
+            Yes, samples are free. Screens show colour and texture differently, so we recommend seeing a sample in your
+            own light before ordering yardage. Use <strong>Order free sample</strong> on any fabric page, or browse our{' '}
+            <Link href="/sample-books" style={linkSx}>sample books</Link>.
+          </>
+        ),
+      },
+      {
+        question: 'Do you sell Charlotte Fabrics in Canada?',
+        answer: (
+          <>
+            Yes. We sell the <Link href="/fabrics/charlotte-fabrics" style={linkSx}>Charlotte Fabrics</Link> range by the
+            yard, priced in Canadian dollars and shipped across Canada.
+          </>
+        ),
+      },
+      {
+        question: 'I have a pattern number. How do I find the fabric?',
+        answer: (
+          <>
+            Charlotte fabrics are named by pattern number and colour, such as D2215 Sky. Search for the number in the{' '}
+            <Link href="/fabrics" style={linkSx}>fabric shop</Link> to go straight to it and see its other colourways.
+          </>
+        ),
+      },
+      {
+        question: 'How much fabric do I need?',
+        answer:
+          'For a 54-inch-wide plain fabric, a dining chair seat takes about 1 yard, an armchair 6 to 8 yards, a loveseat 10 to 12 yards and a three-seat sofa 14 to 18 yards. Patterns with a large repeat need more, so allow an extra 10 to 20 percent. Every fabric page has a guide for that fabric, and your upholsterer can confirm the exact amount.',
+      },
+      {
+        question: 'Is fabric sold in whole yards?',
+        answer: 'Yes. Fabric is cut to order and sold in 1-yard increments.',
+      },
+    ],
+  },
+  {
+    category: 'Choosing a Fabric',
+    items: [
+      {
+        question: 'What do double rubs mean?',
+        answer:
+          'Double rubs (the Wyzenbeek test) measure how much abrasion a fabric withstands. Around 15,000 suits light home use, 30,000 or more suits everyday furniture, and 100,000 or more is heavy duty, suitable for family sofas and commercial seating.',
+      },
+      {
+        question: 'What do the cleaning codes mean?',
+        answer:
+          'W: clean with water-based cleaners. S: solvent-based cleaners only, no water. W/S or SW: either kind. X: vacuum or brush only. Bleach cleanable fabrics can also be cleaned with a diluted bleach solution. Always test a hidden area first.',
+      },
+      {
+        question: 'Which fabrics are best with pets and kids?',
+        answer: (
+          <>
+            Look for tight weaves with high double rubs and stain resistance. Our{' '}
+            <Link href="/fabrics/pet-friendly" style={linkSx}>pet-friendly</Link>,{' '}
+            <Link href="/fabrics/performance" style={linkSx}>performance</Link> and{' '}
+            <Link href="/fabrics/crypton" style={linkSx}>Crypton</Link> collections are chosen for exactly that.
+          </>
+        ),
+      },
+      {
+        question: 'Do you have fabric for outdoor cushions?',
+        answer: (
+          <>
+            Yes. Our <Link href="/fabrics/outdoor" style={linkSx}>outdoor and marine fabrics</Link> resist fading,
+            moisture and mildew for patios, decks, boats and cottages.
+          </>
+        ),
+      },
+    ],
+  },
+];
+
+const foamGroups: FaqGroup[] = [
   {
     category: 'Ordering & Measuring',
     items: [
@@ -78,19 +163,23 @@ const faqGroups: FaqGroup[] = [
       },
     ],
   },
+];
+
+const sharedGroups: FaqGroup[] = [
   {
     category: 'Shipping & Turnaround',
     items: [
       {
         question: 'How long does an order take?',
         answer:
-          'Because every order is cut to your exact dimensions, please allow approximately 3–5 business days to cut and ship your order. Full details are on our Shipping & Returns page.',
+          'Every order is cut to order, so please allow 3–5 business days for us to cut and ship it, then a few business days for delivery. Full details are on our Shipping & Returns page.',
       },
       {
-        question: 'Do you ship orders?',
+        question: 'Where do you ship?',
         answer: (
           <>
-            Yes — see our{' '}
+            We ship across Canada, and prices are in Canadian dollars. Shipping and tax are shown at checkout before
+            you pay. See our{' '}
             <Link href="/shipping-returns" style={{ color: '#b8935f' }}>Shipping & Returns</Link> page for current
             details.
           </>
@@ -102,13 +191,22 @@ const faqGroups: FaqGroup[] = [
     category: 'Returns & Guarantees',
     items: [
       {
-        question: 'Can I return custom-cut foam?',
-        answer:
-          'Because foam is cut specifically to the dimensions you provide, orders are final sale once cut. If your order arrives damaged or doesn’t match what you ordered, contact us right away and we’ll make it right.',
+        question: FOAM_PRODUCTS_LIVE ? 'Can I return fabric or foam?' : 'Can I return fabric?',
+        answer: (
+          <>
+            Because fabric is cut to the yardage you order{FOAM_PRODUCTS_LIVE ? ' and foam to your dimensions' : ''}, we
+            can&rsquo;t accept returns for a change of mind, so please order a free sample first. If your order arrives
+            damaged, is defective or isn&rsquo;t what you ordered, contact us within 14 days of delivery and we&rsquo;ll
+            replace or refund it at no cost. See our{' '}
+            <Link href="/shipping-returns#returns" style={{ color: '#b8935f' }}>return policy</Link>.
+          </>
+        ),
       },
     ],
   },
 ];
+
+const faqGroups = [...fabricGroups, ...(FOAM_PRODUCTS_LIVE ? foamGroups : []), ...sharedGroups];
 
 export default function FaqPage() {
   return (
@@ -119,7 +217,7 @@ export default function FaqPage() {
           Frequently Asked Questions
         </Typography>
         <Typography variant="h6" sx={{ maxWidth: 640, mx: 'auto', fontWeight: 'normal', opacity: 0.9 }}>
-          Everything you need to know before ordering custom foam.
+          Everything you need to know before you order.
         </Typography>
       </Box>
 

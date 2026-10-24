@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import { foamPageRobots } from '@/lib/site';
 import { Box, Container, Typography, Grid, Paper } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 export const metadata: Metadata = {
   title: 'Fibre Wrap Guide',
   alternates: { canonical: '/fibre-wrap' },
+  robots: foamPageRobots,
   description: 'What Dacron fibre wrap is, its benefits, and when to add it to your custom foam order.',
 };
 
