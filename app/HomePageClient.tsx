@@ -9,6 +9,7 @@ import SampleBookCover, { bookSeries, cleanBookName } from '@/components/fabrics
 import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
 import type { HomeCatalog } from '@/lib/data/homeCatalog';
 import FabricImage from '@/components/ui/FabricImage';
+import GuideCards from '@/components/guides/GuideCards';
 
 const LINE = '#e5e0d9';
 
@@ -297,6 +298,14 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
               </Box>
             </Box>
           ))}
+        </Container>
+      </Box>
+
+      {/* ── BUYING GUIDES ── */}
+      <Box sx={{ bgcolor: brand.chalk, borderTop: '1px solid #e5e0d9' }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 8, md: 11 } }}>
+          <SectionHeading eyebrow="Buying guides" title="Choose with" italic="confidence" link={{ label: 'All guides', href: '/guides' }} />
+          <GuideCards slugs={['how-to-choose-upholstery-fabric', 'how-much-fabric-do-i-need', 'best-pet-friendly-sofa-fabric', 'double-rubs-explained']} />
         </Container>
       </Box>
 

@@ -37,6 +37,12 @@ export default function GuidesPage() {
               <Typography sx={{ color: brand.textSecondary, lineHeight: 1.7 }}>{guide.description}</Typography>
             </Box>
           ))}
+          <Box component={Link} href="/faq" sx={{ display: 'block', p: 3, bgcolor: brand.chalk, border: '1px solid #e5e0d9', textDecoration: 'none', '&:hover': { borderColor: brand.accent } }}>
+            <Typography component="h2" sx={{ fontFamily: 'var(--font-display), serif', fontSize: '1.4rem', color: brand.ink, mb: 0.75 }}>
+              Frequently asked questions
+            </Typography>
+            <Typography sx={{ color: brand.textSecondary, lineHeight: 1.7 }}>Samples, ordering, shipping and returns, answered.</Typography>
+          </Box>
         </Box>
       </Container>
     </Box>

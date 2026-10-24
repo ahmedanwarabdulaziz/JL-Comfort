@@ -434,7 +434,7 @@ export default function SiteHeader() {
 
             <Button component={Link} href="/sample-books" sx={navLinkSx(isActive('/sample-books'))}>Sample Books</Button>
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
-            <Button component={Link} href="/faq" sx={navLinkSx(isActive('/faq'))}>Resources</Button>
+            <Button component={Link} href="/guides" sx={navLinkSx(isActive('/guides') || isActive('/faq'))}>Resources</Button>
 
             <SampleIconButton sx={{ ml: 2 }} />
             <CartIconButton sx={{ ml: 0.5 }} />
@@ -493,6 +493,9 @@ export default function SiteHeader() {
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
             <ListItemButton component={Link} href="/about" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/about') ? brand.accent : '#fff', py: 1.5 }}>
               <ListItemText primary="About" primaryTypographyProps={{ fontWeight: 600 }} />
+            </ListItemButton>
+            <ListItemButton component={Link} href="/guides" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/guides') ? brand.accent : '#fff', py: 1.5 }}>
+              <ListItemText primary="Buying Guides" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
             <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? brand.accent : '#fff', py: 1.5 }}>
               <ListItemText primary="FAQ" primaryTypographyProps={{ fontWeight: 600 }} />
