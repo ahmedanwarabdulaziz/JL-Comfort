@@ -119,7 +119,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
         }}
       >
         {/* The hero photo is the page's largest paint, so it loads first and optimised. */}
-        <FabricImage src={HERO_PHOTO} alt="" sizes="100vw" priority />
+        <FabricImage src={HERO_PHOTO} alt="Charlotte upholstery fabric" sizes="100vw" priority />
         <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(51,56,79,0.88) 0%, rgba(51,56,79,0.62) 45%, rgba(51,56,79,0.15) 100%)' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', py: { xs: 8, md: 10 } }}>
           <Typography sx={{ color: brand.accent, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 2 }}>
@@ -218,7 +218,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
                   sx={{ position: 'relative', display: 'block', aspectRatio: '1 / 1', overflow: 'hidden', bgcolor: '#ddd6cc', textDecoration: 'none', '&:hover img': { transform: 'scale(1.06)' } }}
                 >
                   {m.photo && (
-                    <FabricImage src={m.photo} alt="" sizes="(max-width: 900px) 50vw, 25vw" style={{ transition: 'transform .5s ease' }} />
+                    <FabricImage src={m.photo} alt={`${m.label} upholstery fabric`} sizes="(max-width: 900px) 50vw, 25vw" style={{ transition: 'transform .5s ease' }} />
                   )}
                   <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: { xs: 1.5, md: 2 }, background: 'linear-gradient(180deg, rgba(51,56,79,0) 0%, rgba(51,56,79,0.82) 100%)', color: brand.chalk }}>
                     <Typography sx={{ fontFamily: 'var(--font-display), serif', fontSize: { xs: '1.15rem', md: '1.35rem' }, fontWeight: 600, lineHeight: 1.1 }}>{m.label}</Typography>
@@ -266,7 +266,7 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
               sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 7 }, alignItems: 'center' }}
             >
               <Box sx={{ position: 'relative', order: { md: i % 2 === 0 ? 0 : 1 }, aspectRatio: '5 / 4', overflow: 'hidden', bgcolor: brand.chalk }}>
-                <FabricImage src={f.photo} alt="" sizes="(max-width: 900px) 100vw, 50vw" />
+                <FabricImage src={f.photo} alt={`${f.title} ${f.italic}`} sizes="(max-width: 900px) 100vw, 50vw" />
               </Box>
               <Box>
                 <Typography sx={{ color: brand.accent, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', mb: 1.25 }}>{f.eyebrow}</Typography>

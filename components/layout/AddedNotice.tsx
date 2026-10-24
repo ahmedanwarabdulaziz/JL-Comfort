@@ -47,7 +47,7 @@ export default function AddedNotice({
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 1.5 }}>
         <Box sx={{ width: 48, height: 48, flexShrink: 0, bgcolor: '#f5f3f0', overflow: 'hidden', border: '1px solid #e5e0d9' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {imageUrl && <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+          {imageUrl && <img src={imageUrl} alt={title || 'Added item'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         </Box>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.78rem', fontWeight: 700, color: brand.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
