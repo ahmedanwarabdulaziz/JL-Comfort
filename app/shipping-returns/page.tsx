@@ -1,16 +1,48 @@
 import type { Metadata } from 'next';
-import { Box, Container, Typography, Paper, Grid } from '@mui/material';
+import Link from 'next/link';
+import { Box, Container, Typography, Paper, Grid, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import { getShippingRate } from '@/lib/data/shippingRates';
+import { BUSINESS } from '@/lib/site';
+import type { ShippingRate } from '@/lib/types/checkout';
 
 export const metadata: Metadata = {
   title: 'Shipping & Returns',
   alternates: { canonical: '/shipping-returns' },
-  description: 'Turnaround time, shipping, and return policy for custom-cut NeoGel foam orders.',
+  description:
+    'Shipping costs, delivery times and the return policy for upholstery fabric, custom-cut foam and bench cushions shipped across Canada.',
 };
 
-export default function ShippingReturnsPage() {
+// Google Merchant Center checks this page against the shipping and return settings entered there, so
+// it must say the same as checkout and the Terms (app/terms/page.tsx, "shipping" and "returns").
+// Shipping costs are read from the same table checkout uses, so an admin price change shows up here too.
+
+// Turnaround before an order ships; matches the handling time given to Google.
+const HANDLING_DAYS = '3–5';
+
+const money = (dollars: number) => `$${dollars.toFixed(2)}`;
+const perUnit = (dollars: number, unit: string) => (dollars > 0 ? `${money(dollars)} per ${unit}` : 'Free');
+
+function shippingRows(rate: ShippingRate): { product: string; cost: string }[] {
+  const fee = rate.fabricOrderFee > 0 ? `${money(rate.fabricOrderFee)} per order + ` : '';
+  return [
+    { product: 'Upholstery fabric', cost: rate.fabricPerYard > 0 ? `${fee}${money(rate.fabricPerYard)} per yard` : fee ? `${money(rate.fabricOrderFee)} per order` : 'Free' },
+    { product: 'Vinyl & faux leather', cost: rate.vinylPerYard > 0 ? `${fee}${money(rate.vinylPerYard)} per yard` : fee ? `${money(rate.fabricOrderFee)} per order` : 'Free' },
+    { product: 'Custom-cut foam', cost: perUnit(rate.foamPerItem, 'piece') },
+    { product: 'Bench cushions', cost: perUnit(rate.benchCushionPerItem, 'cushion') },
+    { product: 'Fabric samples', cost: 'Free' },
+  ];
+}
+
+const sectionSx = { fontWeight: 'bold', mb: 2, mt: 5, scrollMarginTop: 96 };
+const bodySx = { lineHeight: 1.8, mb: 2 };
+
+export default async function ShippingReturnsPage() {
+  const rate = await getShippingRate('CA').catch(() => null);
+  const shipping = rate?.enabled ? rate : null;
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa' }}>
 
@@ -19,61 +51,144 @@ export default function ShippingReturnsPage() {
           Shipping & Returns
         </Typography>
         <Typography variant="h6" sx={{ maxWidth: 640, mx: 'auto', fontWeight: 'normal', opacity: 0.9 }}>
-          What to expect after you place an order.
+          What to expect after you order fabric, foam or cushions.
         </Typography>
       </Box>
 
       <Container maxWidth="md" sx={{ py: 6 }}>
-        <Grid container spacing={4} sx={{ mb: 5 }}>
+        <Grid container spacing={4} sx={{ mb: 2 }}>
           <Grid item xs={12} md={4}>
             <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, textAlign: 'center' }}>
               <LocalShippingIcon sx={{ fontSize: 36, color: '#b8935f', mb: 1.5 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Turnaround Time</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Shipped Across Canada</Typography>
               <Typography variant="body2" color="text.secondary">
-                Orders are cut to your exact dimensions and typically ship within 3–5 business days of payment.
+                Orders ship within {HANDLING_DAYS} business days
+                {shipping ? `, then arrive in about ${shipping.deliveryMinDays}–${shipping.deliveryMaxDays} business days` : ''}.
               </Typography>
             </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
             <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, textAlign: 'center' }}>
               <AssignmentReturnIcon sx={{ fontSize: 36, color: '#b8935f', mb: 1.5 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Custom Cut = Final Sale</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Made to Order = Final Sale</Typography>
               <Typography variant="body2" color="text.secondary">
-                Because every order is cut to the measurements you provide, we&rsquo;re unable to accept returns for
-                correctly-cut orders.
+                Fabric is cut to your yardage and foam and cushions to your sizes, so we can&rsquo;t take returns for a
+                change of mind.
               </Typography>
             </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
             <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, textAlign: 'center' }}>
               <ReportProblemIcon sx={{ fontSize: 36, color: '#b8935f', mb: 1.5 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Defects & Cutting Errors</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Damaged or Wrong? We Fix It</Typography>
               <Typography variant="body2" color="text.secondary">
-                If your order arrives damaged, or doesn’t match the dimensions and grade you ordered, contact us
-                and we’ll correct it at no charge.
+                Tell us within 14 days of delivery and we&rsquo;ll replace, repair or refund it at no cost to you.
               </Typography>
             </Paper>
           </Grid>
         </Grid>
 
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>Shipping</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8, mb: 4 }}>
-          Once your order is cut, it’s packed and shipped from our workshop. Shipping cost and estimated delivery
-          time depend on your order size and destination, and are shown before you complete checkout. If you need
-          a shipping estimate before ordering, reach out to us using the contact details in the footer.
+        {/* ── Shipping ── */}
+        <Typography id="shipping" variant="h5" component="h2" sx={sectionSx}>Shipping</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          We currently ship within Canada only. Every order is cut or made for you, then packed and handed to the
+          carrier, usually within {HANDLING_DAYS} business days of payment. Some items, including fabric, may ship
+          directly from our supplier.
         </Typography>
 
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>Returns & Exchanges</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8, mb: 2 }}>
-          Custom-cut foam can’t be resold, so we’re not able to accept returns or exchanges once an order has been
-          cut to your specified dimensions — please double-check your measurements using our{' '}
-          <Box component="a" href="/how-to-measure" sx={{ color: '#b8935f' }}>How to Measure guide</Box> before
-          submitting your order.
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Shipping costs</Typography>
+        {shipping ? (
+          <>
+            <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 2, overflowX: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Product</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Shipping (CAD)</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {shippingRows(shipping).map((row) => (
+                    <TableRow key={row.product}>
+                      <TableCell>{row.product}</TableCell>
+                      <TableCell>{row.cost}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+            <Typography variant="body1" color="text.secondary" sx={bodySx}>
+              {shipping.fabricOrderFee > 0 &&
+                `The ${money(shipping.fabricOrderFee)} order charge applies once per order, however much fabric and vinyl it includes. `}
+              {shipping.freeShippingOver !== null && `Orders over ${money(shipping.freeShippingOver)} ship free. `}
+              Your exact shipping cost, and any taxes, are shown at checkout before you pay.
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="body1" color="text.secondary" sx={bodySx}>
+            Shipping is calculated from your order and delivery address and shown at checkout before you pay.
+          </Typography>
+        )}
+
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Delivery times</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Orders usually ship within {HANDLING_DAYS} business days of payment
+          {shipping
+            ? ` and are delivered ${shipping.deliveryMinDays}–${shipping.deliveryMaxDays} business days after they ship`
+            : ''}
+          . These are estimates, not guarantees: carriers and suppliers can occasionally be delayed.
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-          The one exception: if your foam arrives damaged in transit, or we made a cutting or grade error on our
-          end, contact us within a reasonable time of delivery with photos of the issue and we’ll arrange a
-          replacement or refund.
+
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>If your order arrives damaged</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Please keep the packaging and contact us within 14 days of delivery with your order number and photos. We
+          will replace or refund the damaged item at no cost to you.
+        </Typography>
+
+        {/* ── Returns ── */}
+        <Typography id="returns" variant="h5" component="h2" sx={sectionSx}>Returns & Exchanges</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Because every order is cut or made to your specifications &mdash; fabric to the yardage you order, foam and
+          cushions to the size, grade and options you choose &mdash; we cannot accept returns or exchanges for a change
+          of mind, including for incorrect measurements or selections you provided. Please order a{' '}
+          <Box component={Link} href="/fabrics" sx={{ color: '#b8935f' }}>free fabric sample</Box> first, and check our{' '}
+          <Box component={Link} href="/how-to-measure" sx={{ color: '#b8935f' }}>How to Measure guide</Box> before you
+          order.
+        </Typography>
+
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Damaged, defective or wrong orders</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          If your order arrives damaged, is defective, or does not match what you ordered (for example the wrong
+          fabric, size, grade or option), contact us within 14 days of delivery with your order number and photos. We
+          will repair or replace the item or give you a full refund, at no cost to you, including return shipping where
+          a return is needed.
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Normal characteristics of materials are not defects: small variations in fabric colour or texture between
+          dye lots, foam softening gradually with use or having a mild odour when first unpacked, and wear from normal
+          use, sunlight or improper cleaning.
+        </Typography>
+
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Refunds</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Refunds are issued to the original payment method. Your bank or card issuer may take several business days
+          to post them.
+        </Typography>
+
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Cancelling an order</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          You can cancel for a full refund until we have started cutting your order or placed it with our supplier.
+          Contact us as soon as possible with your order number; once work has begun, the order can no longer be
+          cancelled.
+        </Typography>
+
+        {/* ── Contact ── */}
+        <Typography id="contact" variant="h5" component="h2" sx={sectionSx}>Contact us</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Email <Box component="a" href={`mailto:${BUSINESS.email}`} sx={{ color: '#b8935f' }}>{BUSINESS.email}</Box> or
+          call <Box component="a" href={`tel:${BUSINESS.phone.replace(/[^\d+]/g, '')}`} sx={{ color: '#b8935f' }}>{BUSINESS.phone}</Box>.
+          These terms are part of our{' '}
+          <Box component={Link} href="/terms" sx={{ color: '#b8935f' }}>Terms of Service</Box>.
         </Typography>
       </Container>
     </Box>
