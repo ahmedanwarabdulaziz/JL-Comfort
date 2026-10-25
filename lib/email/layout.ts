@@ -1,4 +1,5 @@
 // Building blocks shared by every transactional email (orders and sample requests).
+import { SITE_URL } from '@/lib/site';
 
 export interface EmailContent {
   subject: string;
@@ -20,7 +21,7 @@ export const layout = (title: string, body: string) => `<!doctype html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1eb;padding:24px 12px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e1dc">
-<tr><td style="padding:22px 28px;border-bottom:1px solid #e5e1dc;font-size:18px;letter-spacing:2px;font-weight:bold">JL COMFORT</td></tr>
+<tr><td style="padding:18px 28px;border-bottom:1px solid #e5e1dc;font-size:18px;letter-spacing:2px;font-weight:bold"><a href="${SITE_URL}" style="color:#252321;text-decoration:none"><img src="${SITE_URL}/images/logo.png" alt="JL COMFORT" width="168" height="72" style="display:block;border:0;width:168px;height:72px"></a></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:21px;font-weight:normal">${escape(title)}</h1>
 ${body}

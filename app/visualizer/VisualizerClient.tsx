@@ -19,6 +19,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import Link from 'next/link';
+import Image from 'next/image';
 import { FabricItem, VisualizationResult, PreferencesState } from '@/lib/types/fabric';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -86,9 +87,7 @@ function StepProgress({ step }: { step: number }) {
         {/* Logo + nav */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <Typography sx={{ color: TEXT, fontWeight: 700, fontSize: 18, letterSpacing: '-0.5px' }}>
-              JL <span style={{ color: ACCENT }}>Comfort</span>
-            </Typography>
+            <Image src="/images/logo-on-dark.png" alt="JL Comfort" width={948} height={407} style={{ display: 'block', height: 40, width: 'auto' }} />
           </Link>
           <Typography sx={{ color: MUTED, fontSize: 13 }}>
             AI Furniture Visualizer

@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Box, Container, Grid, Typography, Link as MuiLink, Divider } from '@mui/material';
 import Link from 'next/link';
+import Image from 'next/image';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -93,9 +94,7 @@ export default function Footer() {
         <Container maxWidth="xl" sx={{ position: 'relative' }}>
           <Grid container spacing={4}>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', letterSpacing: 2, mb: 2 }}>
-                <span style={{ color: brand.accent }}>JL</span> <span style={{ color: '#fff' }}>COMFORT</span>
-              </Typography>
+              <Image src="/images/logo-on-dark.png" alt="JL Comfort" width={948} height={407} style={{ display: 'block', height: 80, width: 'auto', marginBottom: 16 }} />
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
                 {FOAM_PRODUCTS_LIVE
                   ? 'Premium upholstery fabric, custom foam and bench cushions. Your furniture, your style.'

@@ -18,6 +18,7 @@ import {
   Collapse,
 } from '@mui/material';
 import Link from 'next/link';
+import Image from 'next/image';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -270,14 +271,11 @@ export default function SiteHeader() {
         <Toolbar sx={{ px: { xs: 2, md: 3 }, position: 'relative', gap: 2 }}>
 
           {/* Logo */}
-          <Typography
-            variant="h6"
-            component={Link}
-            href="/"
-            sx={{ flexGrow: 1, fontFamily: 'var(--font-label), sans-serif', fontWeight: 900, letterSpacing: 1, textDecoration: 'none', color: brand.ink, fontSize: '1.4rem' }}
-          >
-            <Box component="span" sx={{ color: brand.accent }}>JL</Box> COMFORT
-          </Typography>
+          <Box component={Link} href="/" aria-label="JL Comfort home" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: 0.75 }}>
+            <Box sx={{ height: { xs: 46, md: 60 }, '& img': { display: 'block', height: '100%', width: 'auto' } }}>
+              <Image src="/images/logo.png" alt="JL Comfort" width={948} height={407} priority />
+            </Box>
+          </Box>
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
@@ -454,9 +452,9 @@ export default function SiteHeader() {
       {/* Mobile drawer */}
       <Drawer anchor="right" open={mobileOpen} onClose={() => setMobileOpen(false)}>
         <Box sx={{ width: 280, bgcolor: brand.ink, color: '#fff', height: '100%', pt: 2 }} role="presentation">
-          <Typography sx={{ px: 2.5, pb: 2, fontWeight: 'bold', letterSpacing: 2, fontSize: '1rem' }}>
-            <span style={{ color: brand.accent }}>JL</span> COMFORT
-          </Typography>
+          <Box sx={{ px: 2.5, pb: 2 }}>
+            <Image src="/images/logo-on-dark.png" alt="JL Comfort" width={948} height={407} style={{ display: 'block', height: 48, width: 'auto' }} />
+          </Box>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
           <List sx={{ pt: 0 }}>
 
