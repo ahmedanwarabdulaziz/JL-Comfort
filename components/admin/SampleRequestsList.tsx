@@ -357,7 +357,7 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
               request.events.map((event) => (
                 <Box key={event.id} sx={{ display: 'flex', gap: 2, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ minWidth: 150, pt: 0.2 }}>{when(event.createdAt)}</Typography>
-                  <Typography variant="body2" color={event.type === 'email_failed' ? 'error' : 'text.primary'}>{event.message}</Typography>
+                  <Typography variant="body2" color={event.type === 'email_failed' || event.type.startsWith('email.') ? 'error' : 'text.primary'}>{event.message}</Typography>
                 </Box>
               ))
             )}
