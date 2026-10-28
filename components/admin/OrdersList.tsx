@@ -103,6 +103,13 @@ export const StatusChip = ({ status }: { status: OrderStatus }) => (
   <Chip size="small" label={ORDER_STATUS_LABELS[status]} color={STATUS_COLORS[status] || 'default'} variant={status === 'closed' ? 'outlined' : 'filled'} />
 );
 
+// The status only shows the latest step, so once an order moves past "Paid" (e.g. to "Sent to
+// supplier") this keeps the payment visible. Not shown on cancelled orders, which may be refunded.
+export const PaidChip = ({ order }: { order: Order }) =>
+  order.paidAt && order.status !== 'paid' && order.status !== 'cancelled' ? (
+    <Chip size="small" label="Paid" color="success" variant="outlined" sx={{ ml: 0.5, fontWeight: 600 }} />
+  ) : null;
+
 function ShipForm({ order, onDone }: { order: Order; onDone: (o: Order, message: string, ok: boolean) => void }) {
   const [carrier, setCarrier] = useState('ups');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -225,7 +232,7 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
   return (
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 6 }}>
-        {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />} {order?.isTest && <TestChip />}
+        {order ? `Order ${order.orderNumber}` : 'Order'} {order && <StatusChip status={order.status} />}{order && <PaidChip order={order} />} {order?.isTest && <TestChip />}
         {order && (order.supplierOrderNumber || order.supplierInvoiceNumber) && (
           <Typography component="span" variant="body2" color="text.secondary">
             Charlotte{' '}
@@ -485,7 +492,7 @@ export default function OrdersList() {
                   <TableCell>{order.shipCity}, {order.shipRegion}</TableCell>
                   <TableCell>{order.items.length} item{order.items.length === 1 ? '' : 's'}</TableCell>
                   <TableCell align="right">{money(order.totalCents)}</TableCell>
-                  <TableCell><StatusChip status={order.status} />{order.isTest && <Box component="span" sx={{ ml: 0.5 }}><TestChip /></Box>}</TableCell>
+                  <TableCell><StatusChip status={order.status} /><PaidChip order={order} />{order.isTest && <Box component="span" sx={{ ml: 0.5 }}><TestChip /></Box>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
