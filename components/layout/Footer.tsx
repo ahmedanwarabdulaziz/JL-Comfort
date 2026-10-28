@@ -32,6 +32,7 @@ const resourceLinks = [
 const companyLinks = [
   { label: 'About Us', href: '/about' },
   { label: 'Shipping & Returns', href: '/shipping-returns' },
+  { label: 'Contact Us', href: '/contact' },
 ];
 
 const legalLinks = [
