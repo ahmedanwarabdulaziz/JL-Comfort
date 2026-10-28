@@ -268,7 +268,7 @@ export default function SiteHeader() {
       }}
     >
       <Container maxWidth="xl" disableGutters>
-        <Toolbar sx={{ px: { xs: 2, md: 3 }, position: 'relative', gap: 2 }}>
+        <Toolbar sx={{ px: { xs: 2, md: 3 }, gap: 2 }}>
 
           {/* Logo */}
           <Box component={Link} href="/" aria-label="JL Comfort home" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', py: 0.75 }}>
@@ -284,7 +284,6 @@ export default function SiteHeader() {
             <Box
               onMouseEnter={handleFabricsEnter}
               onMouseLeave={handleFabricsLeave}
-              sx={{ position: 'relative' }}
             >
               <Button
                 component={Link}
@@ -304,14 +303,15 @@ export default function SiteHeader() {
                 Shop Fabrics
               </Button>
 
-              {/* Mega-menu — rendered inside the sticky AppBar so it overlays the page */}
+              {/* Mega-menu: hangs from the sticky AppBar's bottom edge (the nearest positioned box), so it
+                  opens right under the header whatever its height or scroll position. */}
               {megaOpen && (
                 <Box
                   onMouseEnter={handleMegaEnter}
                   onMouseLeave={handleFabricsLeave}
                   sx={{
-                    position: 'fixed',
-                    top: { xs: 56, sm: 64 }, // AppBar default heights
+                    position: 'absolute',
+                    top: '100%',
                     left: 0,
                     right: 0,
                     zIndex: 1300,
