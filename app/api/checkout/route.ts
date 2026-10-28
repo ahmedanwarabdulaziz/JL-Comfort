@@ -15,7 +15,7 @@ import {
 } from '@/lib/orders/server';
 import { recordMarketingConsent } from '@/lib/marketing/server';
 import { paymentProvider } from '@/lib/payments/provider';
-import { reportError } from '@/lib/alerts/server';
+import { alertCheckoutBlocked, describeCheckoutAttempt, reportError } from '@/lib/alerts/server';
 import { SQUARE_REF_PREFIX, assertSquareConfigured, createSquarePaymentLink } from '@/lib/square/server';
 
 
@@ -58,8 +58,10 @@ async function resolveStripeTaxRates(stripe: Stripe, testMode: boolean, taxRates
 }
 
 export async function POST(req: Request) {
+  let attempt = ''; // who was checking out, for an alert if this fails
   try {
     const { items, origin: clientOrigin, shippingAddress, discountCode, marketingOptIn, attribution, adSignals } = await req.json();
+    attempt = describeCheckoutAttempt(shippingAddress?.email, items);
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items in cart' }, { status: 400 });
@@ -275,13 +277,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error: any) {
     if (error instanceof CheckoutError) {
+      await alertCheckoutBlocked('Continue to secure payment', error.message, attempt);
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error(`${paymentProvider() === 'square' ? 'Square' : 'Stripe'} checkout error:`, error, error?.detail);
     // A connection error's own message is generic; the underlying cause (e.g. an invalid header or a
     // DNS/TLS failure) is on .detail and is what tells us what's actually wrong.
     const cause = error?.type === 'StripeConnectionError' && error.detail ? ` (${error.detail.code || ''} ${error.detail.message || ''})`.replace(/\(\s+/, '(') : '';
-    await reportError('checkout_failed', `Checkout failed (${paymentProvider() === 'square' ? 'Square' : 'Stripe'}): a customer could not pay`, `${error?.message || error}${cause}`);
+    await reportError('checkout_failed', `Checkout failed (${paymentProvider() === 'square' ? 'Square' : 'Stripe'}): a customer could not pay`, `${error?.message || error}${cause}${attempt ? `
+${attempt}` : ''}`);
     return NextResponse.json({ error: `${error.message}${cause}` }, { status: 500 });
   }
 }

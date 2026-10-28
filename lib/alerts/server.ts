@@ -78,3 +78,35 @@ export async function alertNewSampleRequest(request: SampleRequest, supplierStat
     link: `/admin/sample-requests?request=${request.id}`,
   });
 }
+
+/** "jane@x.com · 2 yd D4410 Eve Oyster, 1 × Foam" from a checkout request, for an alert's detail. */
+export function describeCheckoutAttempt(email: unknown, items: unknown): string {
+  const list = Array.isArray(items) ? items : [];
+  const names = list.slice(0, 3).map((item: any) => {
+    const name = String(item?.fabricName || item?.name || item?.productType || 'item');
+    const qty = Number(item?.quantity) || 1;
+    return item?.productType === 'fabric' ? `${qty} yd ${name}` : qty > 1 ? `${qty} × ${name}` : name;
+  });
+  if (list.length > 3) names.push(`+${list.length - 3} more`);
+  return [typeof email === 'string' && email.trim() ? email.trim() : 'no email yet', names.join(', ')].filter(Boolean).join(' · ');
+}
+
+/**
+ * A shopper was stopped at checkout by an error message (shipping quote or "Continue to secure
+ * payment"). The routes calling this are public, so a repeat of the same problem within 10 minutes is
+ * skipped and at most 10 of these go out per 10 minutes -- a bot can't flood the bot.
+ */
+export async function alertCheckoutBlocked(stage: string, reason: string, context?: string) {
+  const detail = [`Customer saw: "${reason}"`, context].filter(Boolean).join('\n');
+  try {
+    if (supabaseAdmin) {
+      const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data } = await supabaseAdmin
+        .from('app_events').select('detail').eq('type', 'checkout_blocked').gte('created_at', since).limit(10);
+      if (data && (data.length >= 10 || data.some((event) => event.detail === detail))) return;
+    }
+  } catch (error) {
+    console.error('Checking recent checkout alerts failed:', error);
+  }
+  await recordAlert({ level: 'warning', type: 'checkout_blocked', icon: '⚠️', title: `Checkout problem (${stage}): a customer was stopped`, detail });
+}
