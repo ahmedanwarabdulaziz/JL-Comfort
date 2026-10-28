@@ -5,19 +5,21 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { getShippingRate } from '@/lib/data/shippingRates';
-import { BUSINESS } from '@/lib/site';
+import { BUSINESS, FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import type { ShippingRate } from '@/lib/types/checkout';
 
 export const metadata: Metadata = {
   title: 'Shipping & Returns',
   alternates: { canonical: '/shipping-returns' },
-  description:
-    'Shipping costs, delivery times and the return policy for upholstery fabric, custom-cut foam and bench cushions shipped across Canada.',
+  description: FOAM_PRODUCTS_LIVE
+    ? 'Shipping costs, delivery times and the return policy for upholstery fabric, custom-cut foam and bench cushions shipped across Canada.'
+    : 'Shipping costs, delivery times and the return policy for upholstery fabric shipped across Canada.',
 };
 
 // Google Merchant Center checks this page against the shipping and return settings entered there, so
 // it must say the same as checkout and the Terms (app/terms/page.tsx, "shipping" and "returns").
 // Shipping costs are read from the same table checkout uses, so an admin price change shows up here too.
+// While only fabric is on sale (FOAM_PRODUCTS_LIVE off), foam and cushions are left out of the wording.
 
 // Turnaround before an order ships; matches the handling time given to Google.
 const HANDLING_DAYS = '3–5';
@@ -30,8 +32,12 @@ function shippingRows(rate: ShippingRate): { product: string; cost: string }[] {
   return [
     { product: 'Upholstery fabric', cost: rate.fabricPerYard > 0 ? `${fee}${money(rate.fabricPerYard)} per yard` : fee ? `${money(rate.fabricOrderFee)} per order` : 'Free' },
     { product: 'Vinyl & faux leather', cost: rate.vinylPerYard > 0 ? `${fee}${money(rate.vinylPerYard)} per yard` : fee ? `${money(rate.fabricOrderFee)} per order` : 'Free' },
-    { product: 'Custom-cut foam', cost: perUnit(rate.foamPerItem, 'piece') },
-    { product: 'Bench cushions', cost: perUnit(rate.benchCushionPerItem, 'cushion') },
+    ...(FOAM_PRODUCTS_LIVE
+      ? [
+          { product: 'Custom-cut foam', cost: perUnit(rate.foamPerItem, 'piece') },
+          { product: 'Bench cushions', cost: perUnit(rate.benchCushionPerItem, 'cushion') },
+        ]
+      : []),
     { product: 'Fabric samples', cost: 'Free' },
   ];
 }
@@ -51,7 +57,7 @@ export default async function ShippingReturnsPage() {
           Shipping & Returns
         </Typography>
         <Typography variant="h6" sx={{ maxWidth: 640, mx: 'auto', fontWeight: 'normal', opacity: 0.9 }}>
-          What to expect after you order fabric, foam or cushions.
+          What to expect after you order {FOAM_PRODUCTS_LIVE ? 'fabric, foam or cushions' : 'fabric'}.
         </Typography>
       </Box>
 
@@ -72,8 +78,8 @@ export default async function ShippingReturnsPage() {
               <AssignmentReturnIcon sx={{ fontSize: 36, color: '#b8935f', mb: 1.5 }} />
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Made to Order = Final Sale</Typography>
               <Typography variant="body2" color="text.secondary">
-                Fabric is cut to your yardage and foam and cushions to your sizes, so we can&rsquo;t take returns for a
-                change of mind.
+                Fabric is cut to your yardage{FOAM_PRODUCTS_LIVE ? ' and foam and cushions to your sizes' : ''}, so we
+                can&rsquo;t take returns for a change of mind.
               </Typography>
             </Paper>
           </Grid>
@@ -148,25 +154,30 @@ export default async function ShippingReturnsPage() {
         {/* ── Returns ── */}
         <Typography id="returns" variant="h5" component="h2" sx={sectionSx}>Returns & Exchanges</Typography>
         <Typography variant="body1" color="text.secondary" sx={bodySx}>
-          Because every order is cut or made to your specifications &mdash; fabric to the yardage you order, foam and
-          cushions to the size, grade and options you choose &mdash; we cannot accept returns or exchanges for a change
-          of mind, including for incorrect measurements or selections you provided. Please order a{' '}
+          Because every order is cut or made to your specifications &mdash; fabric to the yardage you order
+          {FOAM_PRODUCTS_LIVE && ', foam and cushions to the size, grade and options you choose'} &mdash; we cannot accept
+          returns or exchanges for a change of mind, including for incorrect measurements or selections you provided.
+          Please order a{' '}
           <Box component={Link} href="/fabrics" sx={{ color: '#b8935f' }}>free fabric sample</Box> first, and check our{' '}
-          <Box component={Link} href="/how-to-measure" sx={{ color: '#b8935f' }}>How to Measure guide</Box> before you
-          order.
+          {FOAM_PRODUCTS_LIVE ? (
+            <Box component={Link} href="/how-to-measure" sx={{ color: '#b8935f' }}>How to Measure guide</Box>
+          ) : (
+            <Box component={Link} href="/guides/how-much-fabric-do-i-need" sx={{ color: '#b8935f' }}>yardage guide</Box>
+          )}{' '}
+          before you order.
         </Typography>
 
         <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Damaged, defective or wrong orders</Typography>
         <Typography variant="body1" color="text.secondary" sx={bodySx}>
           If your order arrives damaged, is defective, or does not match what you ordered (for example the wrong
-          fabric, size, grade or option), contact us within 14 days of delivery with your order number and photos. We
+          fabric{FOAM_PRODUCTS_LIVE ? ', size, grade or option' : ' or yardage'}), contact us within 14 days of delivery with your order number and photos. We
           will repair or replace the item or give you a full refund, at no cost to you, including return shipping where
           a return is needed.
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={bodySx}>
           Normal characteristics of materials are not defects: small variations in fabric colour or texture between
-          dye lots, foam softening gradually with use or having a mild odour when first unpacked, and wear from normal
-          use, sunlight or improper cleaning.
+          dye lots{FOAM_PRODUCTS_LIVE && ', foam softening gradually with use or having a mild odour when first unpacked'},
+          and wear from normal use, sunlight or improper cleaning.
         </Typography>
 
         <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mb: 1, mt: 3 }}>Refunds</Typography>

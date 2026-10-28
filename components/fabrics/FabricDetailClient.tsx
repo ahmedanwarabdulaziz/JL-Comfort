@@ -154,6 +154,36 @@ export default function FabricDetailClient({
   // This fabric plus its other colourways; each tile opens that colourway's own page.
   const colourways = [{ id: fabric.id, name: fabric.name, imageUrl: fabric.imageUrl }, ...fabric.colorwaySiblings];
 
+  // On phones the colourway grid (up to ~40 swatches) sits below the price and Order buttons rather than
+  // under the image, so shoppers arriving from an ad see the price without scrolling past it.
+  const colourwayPicker = (sx: object) =>
+    colourways.length > 1 && (
+      <Box sx={{ mt: 2.5, ...sx }}>
+        <Typography sx={{ ...labelSx, mb: 1.25 }}>Available colourways</Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
+          {colourways.map((colourwayFabric) => {
+            const current = colourwayFabric.id === fabric.id;
+            return (
+              <Box
+                key={colourwayFabric.id}
+                component={current ? 'div' : Link}
+                href={current ? undefined : '/fabrics/' + colourwayFabric.id}
+                aria-current={current ? 'page' : undefined}
+                sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.accent } }}
+              >
+                <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.accent}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
+                  {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" quality={50} swatchWidth={96} />}
+                </Box>
+                <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: current ? brand.ink : brand.textSecondary, fontWeight: current ? 600 : 400 }}>
+                  {current ? colourway : splitName(colourwayFabric.name, '').colourway}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+
   const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!hasPrice) return;
     const origin = originOf(event.currentTarget);
@@ -249,32 +279,7 @@ export default function FabricDetailClient({
             </Box>
             <Typography sx={{ color: MUTED, fontSize: '0.75rem', mt: 1, fontStyle: 'italic' }}>Colour and scale may not be an exact depiction.</Typography>
 
-            {colourways.length > 1 && (
-              <Box sx={{ mt: 2.5 }}>
-                <Typography sx={{ ...labelSx, mb: 1.25 }}>Available colourways</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 1.25 }}>
-                  {colourways.map((colourwayFabric) => {
-                    const current = colourwayFabric.id === fabric.id;
-                    return (
-                      <Box
-                        key={colourwayFabric.id}
-                        component={current ? 'div' : Link}
-                        href={current ? undefined : '/fabrics/' + colourwayFabric.id}
-                        aria-current={current ? 'page' : undefined}
-                        sx={{ color: 'inherit', textDecoration: 'none', '&:hover .cw': { borderColor: brand.accent } }}
-                      >
-                        <Box className="cw" sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: '#f5f3f0', overflow: 'hidden', border: current ? `2px solid ${brand.accent}` : `1px solid ${LINE}`, transition: 'border-color .2s' }}>
-                          {colourwayFabric.imageUrl && <FabricImage src={colourwayFabric.imageUrl} alt={colourwayFabric.name} sizes="96px" quality={50} swatchWidth={96} />}
-                        </Box>
-                        <Typography sx={{ mt: 0.5, fontSize: '0.72rem', lineHeight: 1.3, color: current ? brand.ink : brand.textSecondary, fontWeight: current ? 600 : 400 }}>
-                          {current ? colourway : splitName(colourwayFabric.name, '').colourway}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-            )}
+            {colourwayPicker({ display: { xs: 'none', md: 'block' } })}
           </Box>
 
           {/* ── Details ───────────────────────────────────────────── */}
@@ -376,6 +381,8 @@ export default function FabricDetailClient({
                 {yards} yard{yards === 1 ? '' : 's'} · ${(fabric.pricePerYard! * yards).toFixed(2)} CAD
               </Typography>
             )}
+
+            {colourwayPicker({ display: { xs: 'block', md: 'none' }, mt: 3.5 })}
 
             <Box sx={{ mt: 3.5 }}>
               <FabricPropertyIcons fabric={fabric} />

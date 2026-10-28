@@ -498,6 +498,9 @@ export default function SiteHeader() {
             <ListItemButton component={Link} href="/faq" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/faq') ? brand.accent : '#fff', py: 1.5 }}>
               <ListItemText primary="FAQ" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
+            <ListItemButton component={Link} href="/contact" onClick={() => setMobileOpen(false)} sx={{ color: isActive('/contact') ? brand.accent : '#fff', py: 1.5 }}>
+              <ListItemText primary="Contact" primaryTypographyProps={{ fontWeight: 600 }} />
+            </ListItemButton>
           </List>
         </Box>
       </Drawer>

@@ -137,7 +137,10 @@ export const getCharlotteFabricsSnapshot = async (): Promise<CharlotteFabricSnap
     // (fabric-search API route) reuse the response instead of re-fetching this ~10MB file on
     // every request. Ignored harmlessly by the browser's native fetch on the client.
     // Added ?v=1 to bust the 30-minute Cloudflare cache and force browsers to pull the latest schema
-    const res = await fetch(`${CATALOG_SNAPSHOT_URL}?v=1`, { next: { revalidate: 1800 } });
+    // Browsers read it through our own domain (app/catalog/charlotte-fabrics.json), where Vercel's
+    // CDN caches it; the rate-limited r2.dev address was far too slow for visitors.
+    const url = typeof window === 'undefined' ? `${CATALOG_SNAPSHOT_URL}?v=1` : '/catalog/charlotte-fabrics.json';
+    const res = await fetch(url, { next: { revalidate: 1800 } });
     if (!res.ok) return [];
     const items = await res.json();
     if (!Array.isArray(items)) return [];
