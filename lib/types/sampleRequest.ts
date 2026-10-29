@@ -59,6 +59,7 @@ export interface SampleRequestInput {
   email: string;
   phone?: string;
   address: SampleRequestAddress;
+  attribution?: unknown; // lib/analytics/attribution.ts readAttribution(); cleaned server-side
 }
 
 export interface SampleSettings {

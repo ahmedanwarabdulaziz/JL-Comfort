@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { cleanAttribution } from '@/lib/orders/server';
 import { alertNewSampleRequest } from '@/lib/alerts/server';
 import { CheckoutError } from '@/lib/checkout/errors';
 import { deliverEmail, getEmailSettings } from '@/lib/email/deliver';
@@ -139,6 +140,13 @@ export async function createSampleRequest(input: SampleRequestInput): Promise<st
   if (itemsError) {
     await db().from('sample_requests').delete().eq('id', row.id);
     throw itemsError;
+  }
+  // Where the requester came from (Admin -> Referrals). Separate and never fatal, like orders: a
+  // request must not fail over reporting data, e.g. before migration 20261030120000 is applied.
+  const attribution = cleanAttribution(input.attribution);
+  if (attribution) {
+    const { error: attributionError } = await db().from('sample_requests').update({ attribution }).eq('id', row.id);
+    if (attributionError) console.error('Could not save sample request attribution:', attributionError.message);
   }
   return row.id;
 }
