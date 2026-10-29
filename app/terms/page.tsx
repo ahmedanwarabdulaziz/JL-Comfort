@@ -186,6 +186,11 @@ const sections: LegalSection[] = [
           from normal use, sunlight, improper cleaning, accidents or misuse. Follow the manufacturer&rsquo;s care
           instructions for your fabric.
         </p>
+        <p>
+          Charlotte fabrics are also covered by Charlotte Fabrics&rsquo; Lifetime Warranty against manufacturing and
+          material defects that make the fabric unusable, on the terms Charlotte publishes. We file warranty claims
+          with Charlotte on your behalf; see <Link href="/shipping-returns#warranty">Shipping &amp; Returns</Link>.
+        </p>
       </>
     ),
   },

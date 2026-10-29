@@ -208,6 +208,17 @@ const sharedGroups: FaqGroup[] = [
           </>
         ),
       },
+      {
+        question: 'Is there a warranty on the fabric?',
+        answer: (
+          <>
+            Yes. Charlotte fabrics come with Charlotte Fabrics&rsquo; Lifetime Warranty against manufacturing and material
+            defects that make the fabric unusable. It doesn&rsquo;t cover misuse, pet damage or improper cleaning. Just
+            contact us with your order number and photos and we&rsquo;ll file the claim with Charlotte for you. See the{' '}
+            <Link href="/shipping-returns#warranty" style={{ color: '#b8935f' }}>warranty details</Link>.
+          </>
+        ),
+      },
     ],
   },
 ];

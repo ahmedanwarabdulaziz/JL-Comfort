@@ -331,10 +331,13 @@ export default function FabricDetailClient({
                 <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.25, color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.8 }}>
                   <li>Sold in 1 yard increments</li>
                   {shipping?.freeShippingOver != null ? (
-                    <li>Free shipping on orders over ${shipping.freeShippingOver.toFixed(0)} CAD</li>
+                    <li style={{ color: brand.accent, fontWeight: 600 }}>Free shipping on orders over ${shipping.freeShippingOver.toFixed(0)} CAD</li>
                   ) : (
                     <li>Shipping and tax calculated at checkout</li>
                   )}
+                  <li>
+                    <Link href="/shipping-returns#warranty" style={{ color: 'inherit' }}>Charlotte Lifetime Warranty</Link> against manufacturing defects
+                  </li>
                   <li>{inStock ? 'In stock' : 'Currently out of stock'}</li>
                 </Box>
               </Box>
