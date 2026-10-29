@@ -198,7 +198,7 @@ export async function sendCustomerSampleConfirmation(request: SampleRequest, set
   return deliver(request, settings, request.email, customerSampleConfirmation(request, settings), 'customer_confirmation', idempotencyKey, request.name);
 }
 
-/** "Charlotte has confirmed your samples" -- sent when its order ref # is first saved, or resent from admin. */
+/** "Charlotte has confirmed your samples" -- sent from admin ("Charlotte confirmed"), and resent the same way. */
 export async function sendCustomerSamplesConfirmed(request: SampleRequest, idempotencyKey?: string) {
   const settings = await getEmailSettings();
   return deliver(request, settings, request.email, customerSamplesConfirmed(request, settings), 'customer_supplier_confirmed', idempotencyKey, request.name);

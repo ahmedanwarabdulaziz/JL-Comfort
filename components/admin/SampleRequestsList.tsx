@@ -216,7 +216,6 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [refs, setRefs] = useState({ orderNumber: '', invoiceNumber: '' });
-  const [notifyCustomer, setNotifyCustomer] = useState(true);
 
   const reload = useCallback(async () => {
     const fresh = await getSampleRequestWithHistory(requestId);
@@ -245,9 +244,10 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
 
   const refsChanged =
     request && (cleanRef(refs.orderNumber) !== (request.supplierOrderNumber || '') || cleanRef(refs.invoiceNumber) !== (request.supplierInvoiceNumber || ''));
-  // Saving Charlotte's order ref # for the first time can email the customer that the samples are confirmed.
-  const canNotifyConfirmed = !!request && !request.supplierOrderNumber && !['shipped', 'delivered', 'cancelled'].includes(request.status);
-  const willNotify = canNotifyConfirmed && notifyCustomer && !!cleanRef(refs.orderNumber);
+  // Charlotte's confirmation email carries no reference, so confirming is a button; once its customer
+  // email has gone out the same button resends it.
+  const confirmedEmailSent = !!request?.events.some((event) => event.type === 'customer_supplier_confirmed');
+  const canConfirm = !!request && !['delivered', 'cancelled'].includes(request.status);
 
   return (
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
@@ -301,22 +301,34 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
                 variant="outlined"
                 sx={{ mt: 0.5 }}
                 disabled={busy || !refsChanged}
-                onClick={() =>
-                  act(
-                    { action: 'set_supplier_refs', supplierOrderNumber: cleanRef(refs.orderNumber), supplierInvoiceNumber: cleanRef(refs.invoiceNumber), notifyCustomer: willNotify },
-                    willNotify ? 'Charlotte references saved, and the customer was emailed that their samples are confirmed.' : 'Charlotte references saved.'
-                  )
-                }
+                onClick={() => act({ action: 'set_supplier_refs', supplierOrderNumber: cleanRef(refs.orderNumber), supplierInvoiceNumber: cleanRef(refs.invoiceNumber) }, 'Charlotte references saved.')}
               >
                 Save
               </Button>
             </Box>
-            {canNotifyConfirmed && (
-              <FormControlLabel
-                sx={{ mt: -2, mb: 2 }}
-                control={<Switch size="small" checked={notifyCustomer} onChange={(e) => setNotifyCustomer(e.target.checked)} />}
-                label={<Typography variant="body2">Email the customer that their samples are confirmed when I save the order ref #</Typography>}
-              />
+
+            {canConfirm && !confirmedEmailSent && !request.trackingNumber && request.supplierEmailedAt && (
+              <Alert
+                severity="info"
+                sx={{ mb: 3, alignItems: 'center' }}
+                action={
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disableElevation
+                    disabled={busy}
+                    onClick={() => {
+                      if (window.confirm(`Email ${request.email} that Charlotte has confirmed their samples?`)) {
+                        act({ action: 'supplier_confirmed' }, 'Marked as confirmed by Charlotte, and the customer was emailed.');
+                      }
+                    }}
+                  >
+                    Charlotte confirmed — email customer
+                  </Button>
+                }
+              >
+                When Charlotte&rsquo;s &ldquo;Sample Request Confirmation&rdquo; arrives, click here to let the customer know their samples ship within 1 business day.
+              </Alert>
             )}
 
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>Shipping</Typography>
@@ -338,8 +350,8 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
               <Button size="small" variant="outlined" disabled={busy} onClick={() => act({ action: 'resend_confirmation' }, 'Confirmation re-sent to the customer.')}>
                 Resend confirmation
               </Button>
-              {request.supplierOrderNumber && (
-                <Button size="small" variant="outlined" disabled={busy} onClick={() => act({ action: 'resend_supplier_confirmed' }, '"Samples confirmed" email re-sent to the customer.')}>
+              {confirmedEmailSent && (
+                <Button size="small" variant="outlined" disabled={busy} onClick={() => act({ action: 'supplier_confirmed' }, '"Samples confirmed" email re-sent to the customer.')}>
                   Resend confirmed email
                 </Button>
               )}
