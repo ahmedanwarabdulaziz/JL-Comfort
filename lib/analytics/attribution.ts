@@ -112,6 +112,7 @@ export function recordVisit() {
     const saved = readAttribution();
     if (!saved) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ firstTouch: touch, lastTouch: touch }));
+      countTaggedArrival(touch);
       return;
     }
     if (touch.source === 'direct' && saved.lastTouch.source !== 'direct') return;
@@ -122,8 +123,42 @@ export function recordVisit() {
       Date.now() - new Date(saved.lastTouch.at).getTime() < 30 * 60_000;
     if (sameArrival) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, lastTouch: touch }));
+    countTaggedArrival(touch);
   } catch {
     // Storage blocked: the order simply won't carry a source.
+  }
+}
+
+const SEEN_SOURCES_KEY = 'jl_referral_sources_v1';
+
+// Counts an arrival from a tagged link (utm_source) for Admin -> Referrals. Only the link's tags and
+// the landing page are sent, plus whether this browser has arrived from that source before, so the
+// report can count unique visitors without any identifier leaving the browser.
+function countTaggedArrival(touch: Touch) {
+  if (!new URLSearchParams(window.location.search).get('utm_source') || !touch.source) return;
+  let firstVisit = true;
+  try {
+    const seen: string[] = JSON.parse(localStorage.getItem(SEEN_SOURCES_KEY) || '[]');
+    firstVisit = !seen.includes(touch.source);
+    if (firstVisit) localStorage.setItem(SEEN_SOURCES_KEY, JSON.stringify([...seen, touch.source].slice(-50)));
+  } catch {
+    // Storage blocked: counted as a first visit.
+  }
+  const body = JSON.stringify({
+    source: touch.source,
+    medium: touch.medium,
+    campaign: touch.campaign,
+    content: touch.content,
+    term: touch.term,
+    landingPage: touch.landingPage,
+    firstVisit,
+  });
+  try {
+    if (!navigator.sendBeacon?.('/api/referral-visit', new Blob([body], { type: 'text/plain' }))) {
+      fetch('/api/referral-visit', { method: 'POST', body, keepalive: true }).catch(() => {});
+    }
+  } catch {
+    // Counting is best-effort.
   }
 }
 

@@ -36,6 +36,7 @@ import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
+import CallSplitIcon from '@mui/icons-material/CallSplit';
 import EmailIcon from '@mui/icons-material/Email';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -148,6 +149,17 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <RemoveShoppingCartIcon />
             </ListItemIcon>
             <ListItemText primary="Abandoned checkouts" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={pathname?.includes('/admin/referrals')}
+            onClick={() => router.push('/admin/referrals')}
+          >
+            <ListItemIcon>
+              <CallSplitIcon />
+            </ListItemIcon>
+            <ListItemText primary="Referrals" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>

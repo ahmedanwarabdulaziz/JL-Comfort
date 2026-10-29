@@ -174,9 +174,15 @@ const sections: LegalSection[] = [
         <h3>How you found us</h3>
         <p>
           We note how you arrived at the Site (for example the website, search engine or ad campaign that referred
-          you, and the first page you visited) in your browser&rsquo;s storage, and save it with your order when you
-          buy. This tells us which of our marketing is working. It contains no information about your activity on
-          other websites.
+          you, and the first page you visited) in your browser&rsquo;s storage, and save it with your order or sample
+          request. This tells us which of our marketing is working. It contains no information about your activity
+          on other websites.
+        </p>
+        <p>
+          When you arrive through one of our tagged links (for example from our sister site jlupholstery.com), we also
+          count the visit: we record only the link&rsquo;s campaign labels, the page you landed on and whether it&rsquo;s
+          the first time this browser has arrived from that link&rsquo;s source. No name, email, IP address or cookie
+          identifier is recorded with it.
         </p>
         <p>
           While analytics or advertising cookies are off, Google&rsquo;s tags operate in a restricted &ldquo;consent mode&rdquo;: they set

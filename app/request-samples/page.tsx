@@ -18,6 +18,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { trackSampleRequest } from '@/lib/analytics/track';
+import { readAttribution } from '@/lib/analytics/attribution';
 import FabricImage from '@/components/ui/FabricImage';
 
 export default function RequestSamplesPage() {
@@ -54,6 +55,7 @@ export default function RequestSamplesPage() {
           email,
           phone,
           address: { line1, line2, city, state, zip, country },
+          attribution: readAttribution(), // where they came from, for Admin -> Referrals
         }),
       });
       const data = await res.json();
