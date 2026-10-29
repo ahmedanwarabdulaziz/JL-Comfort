@@ -8,6 +8,7 @@ import { useCart } from '@/lib/context/CartContext';
 import Link from 'next/link';
 import { trackPurchase } from '@/lib/analytics/track';
 import { effectiveConsent } from '@/lib/consent';
+import { clearPendingCode } from '@/lib/discounts/pendingCode';
 
 // Reloading or revisiting the success page must not count the sale a second time in the ad platforms.
 function reportPurchaseOnce(
@@ -40,9 +41,10 @@ function SuccessContent() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we have a successful session, clear the cart
+    // If we have a successful session, clear the cart (and any code that came in a link, now used)
     if (sessionId) {
       clearCart();
+      clearPendingCode();
     }
   }, [sessionId, clearCart]);
 
