@@ -7,7 +7,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useCart } from '@/lib/context/CartContext';
 import Link from 'next/link';
 import { trackPurchase } from '@/lib/analytics/track';
-import { readConsent } from '@/lib/consent';
+import { effectiveConsent } from '@/lib/consent';
 
 // Reloading or revisiting the success page must not count the sale a second time in the ad platforms.
 function reportPurchaseOnce(
@@ -25,7 +25,7 @@ function reportPurchaseOnce(
     transactionId: data.orderNumber || sessionId,
     value: data.totalCents / 100,
     tax: data.taxCents != null ? data.taxCents / 100 : undefined,
-    sha256Email: readConsent()?.advertising && data.sha256Email ? data.sha256Email : undefined,
+    sha256Email: effectiveConsent().advertising && data.sha256Email ? data.sha256Email : undefined,
   });
 }
 

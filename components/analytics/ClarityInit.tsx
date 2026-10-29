@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import Clarity from '@microsoft/clarity';
-import { onConsentChange, readConsent } from '@/lib/consent';
+import { effectiveConsent, onConsentChange } from '@/lib/consent';
 
 const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
-// Clarity records sessions, so it only starts once the visitor has accepted analytics cookies.
+// Clarity records sessions, so it only starts while analytics cookies are allowed (the visitor's
+// choice, or the regional default -- see lib/consent.ts).
 export default function ClarityInit() {
   useEffect(() => {
     if (!CLARITY_PROJECT_ID) return;
@@ -18,7 +19,7 @@ export default function ClarityInit() {
       }
       if (started) Clarity.consent(analytics);
     };
-    apply(readConsent()?.analytics === true);
+    apply(effectiveConsent().analytics);
     return onConsentChange(({ analytics }) => apply(analytics));
   }, []);
 

@@ -4,16 +4,19 @@ import { useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { GA4_ID, GOOGLE_ADS_ID, META_PIXEL_ID } from '@/lib/analytics/track';
-import { CONSENT_STORAGE_KEY, onConsentChange } from '@/lib/consent';
+import { CONSENT_STORAGE_KEY, REGION_COOKIE, onConsentChange } from '@/lib/consent';
 import { recordVisit } from '@/lib/analytics/attribution';
 
-// Reads the saved cookie choice inside the inline snippets, before any tag fires.
-const READ_CONSENT = `var jlConsent = null; try { jlConsent = JSON.parse(localStorage.getItem('${CONSENT_STORAGE_KEY}')); } catch (e) {}`;
+// Reads the cookie choice inside the inline snippets, before any tag fires: the saved choice, or the
+// regional default until there is one (the same rule as effectiveConsent in lib/consent.ts).
+const READ_CONSENT = `var jlConsent = null; try { jlConsent = JSON.parse(localStorage.getItem('${CONSENT_STORAGE_KEY}')); } catch (e) {}
+if (!jlConsent) jlConsent = { analytics: document.cookie.split('; ').indexOf('${REGION_COOKIE}=open') !== -1, advertising: false };`;
 
 // Loads Google's tag (GA4 + Google Ads) and the Meta Pixel. Each is skipped when its ID isn't set,
 // so nothing loads in development until the IDs are added to the environment.
 //
-// Both start in "denied" mode until the visitor opts in through the cookie banner: Google's consent
+// Both start from the visitor's cookie choice, or the regional default (lib/consent.ts): advertising
+// is denied until the visitor opts in, and so is analytics in Quebec. While denied, Google's consent
 // mode sets no cookies and sends only anonymous, cookieless signals, and the pixel sends nothing.
 // A later choice in the banner is applied on the spot, without a reload.
 export default function AdTracking() {

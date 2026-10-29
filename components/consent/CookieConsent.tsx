@@ -17,7 +17,15 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { brand } from '@/lib/theme';
-import { CONSENT_OPEN_EVENT, ConsentChoices, readConsent, saveConsent } from '@/lib/consent';
+import {
+  CONSENT_OPEN_EVENT,
+  ConsentChoices,
+  ConsentRegion,
+  effectiveConsent,
+  readConsent,
+  readConsentRegion,
+  saveConsent,
+} from '@/lib/consent';
 
 const CATEGORIES: { key: keyof ConsentChoices | 'necessary'; title: string; body: string }[] = [
   {
@@ -56,21 +64,23 @@ const secondaryButtonSx = {
   '&:hover': { borderColor: brand.accent, color: brand.accent, bgcolor: 'transparent' },
 };
 
-// The cookie banner and its preferences dialog. Accepting and rejecting are equally easy, nothing
-// optional is pre-ticked, and the footer's "Cookie settings" link reopens the choices at any time.
+// The cookie banner and its preferences dialog. Accepting and rejecting are equally easy, and the
+// footer's "Cookie settings" link reopens the choices at any time. In Quebec nothing optional is
+// pre-ticked; elsewhere analytics starts on and the banner says so, with a one-click opt-out.
 export default function CookieConsent() {
   const pathname = usePathname();
   const [bannerOpen, setBannerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [region, setRegion] = useState<ConsentRegion>('strict');
   const [choices, setChoices] = useState<ConsentChoices>({ analytics: false, advertising: false });
 
   useEffect(() => {
-    const saved = readConsent();
-    if (saved) setChoices(saved);
-    else setBannerOpen(true);
+    setRegion(readConsentRegion());
+    setChoices(effectiveConsent());
+    if (!readConsent()) setBannerOpen(true);
 
     const openSettings = () => {
-      setChoices(readConsent() || { analytics: false, advertising: false });
+      setChoices(effectiveConsent());
       setDialogOpen(true);
     };
     window.addEventListener(CONSENT_OPEN_EVENT, openSettings);
@@ -110,9 +120,19 @@ export default function CookieConsent() {
             Your privacy, your choice
           </Typography>
           <Typography sx={{ fontSize: '0.88rem', lineHeight: 1.6, color: brand.textSecondary, mb: 2.5 }}>
-            We use essential cookies to run this site. With your permission, we&rsquo;d also like to use
-            analytics and advertising cookies to improve the site and measure our ads. You can change your mind
-            at any time under &ldquo;Cookie settings&rdquo; in the footer. Read our{' '}
+            {region === 'open' ? (
+              <>
+                We use essential cookies to run this site, and analytics cookies (Google Analytics, Microsoft
+                Clarity) to see how it&rsquo;s used and improve it &mdash; you can turn analytics off at any time.
+                With your permission, we&rsquo;d also use advertising cookies to measure our ads.
+              </>
+            ) : (
+              <>
+                We use essential cookies to run this site. With your permission, we&rsquo;d also like to use
+                analytics and advertising cookies to improve the site and measure our ads.
+              </>
+            )}{' '}
+            You can change your mind at any time under &ldquo;Cookie settings&rdquo; in the footer. Read our{' '}
             <Box component={Link} href="/privacy#cookies" sx={{ color: brand.accent }}>
               Privacy Policy
             </Box>
@@ -120,7 +140,7 @@ export default function CookieConsent() {
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             <Button variant="outlined" onClick={() => decide({ analytics: false, advertising: false })} sx={secondaryButtonSx}>
-              Reject all
+              {region === 'open' ? 'Essential only' : 'Reject all'}
             </Button>
             <Button variant="contained" disableElevation onClick={() => decide({ analytics: true, advertising: true })} sx={primaryButtonSx}>
               Accept all
