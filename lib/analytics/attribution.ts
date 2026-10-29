@@ -3,7 +3,7 @@
 //
 // Only campaign parameters, the referring site and the landing page are kept: no identifiers, and
 // it lives in this browser's storage only until it is attached to an order.
-import { readConsent } from '@/lib/consent';
+import { effectiveConsent } from '@/lib/consent';
 
 export interface Touch {
   source?: string; // utm_source, or the referring domain, or "direct"
@@ -145,7 +145,7 @@ export interface AdSignals {
 }
 
 export function collectAdSignals(): AdSignals {
-  const consent = readConsent() || { analytics: false, advertising: false };
+  const consent = effectiveConsent();
   const signals: AdSignals = { consent };
   try {
     if (consent.analytics) {

@@ -114,8 +114,10 @@ const sections: LegalSection[] = [
         <p>
           We collect, use and share personal information with your consent, except where the law allows otherwise.
           When you place an order or request samples, you consent to us using your information to fulfil that
-          request as described in this policy. Analytics and advertising cookies are used only if you opt in through
-          our cookie banner.
+          request as described in this policy. Analytics and advertising cookies are used only if you opt in when you
+          visit from Quebec; elsewhere they are on by default, the cookie banner tells you so when you arrive, and
+          you can turn them off at any time (see{' '}
+          <a href="#cookies">Cookies and similar technologies</a>).
         </p>
         <p>
           You may withdraw your consent at any time, subject to legal or contractual restrictions and reasonable
@@ -133,33 +135,41 @@ const sections: LegalSection[] = [
       <>
         <p>
           Cookies and similar technologies (such as local storage and pixels) are small pieces of data stored on your
-          device. We group them into three categories. Only the first is used without your permission; the other two
-          are off until you opt in.
+          device. We group them into three categories. Strictly necessary cookies are always on. Analytics and
+          advertising cookies are off until you opt in if you visit from Quebec; elsewhere in Canada and outside
+          Canada they are on by default, and you can turn them off with one click (&ldquo;Essential only&rdquo;) in
+          the cookie banner or in <CookieSettingsLink />. Turning them off takes effect immediately.
+        </p>
+        <p>
+          To apply the right default, we use the approximate location our hosting provider derives from your IP
+          address (country and province) and keep only the result (&ldquo;Quebec rules&rdquo; or not) in a cookie on
+          your device. If we can&rsquo;t tell where you are, we apply the Quebec rules.
         </p>
         <h3>Strictly necessary</h3>
         <p>
           These keep your shopping cart and sample list, remember your cookie choice, and protect checkout and our
           admin systems. The Site cannot work properly without them.
         </p>
-        <h3>Analytics (optional)</h3>
+        <h3>Analytics (optional; on by default outside Quebec)</h3>
         <p>
           <strong>Google Analytics</strong> and <strong>Microsoft Clarity</strong> help us understand how visitors use
           the Site, for example which pages are popular and where people run into problems. Clarity may record how
           you move through pages (mouse movements, clicks and scrolling); text you type into forms is masked and not
           recorded.
         </p>
-        <h3>Advertising (optional)</h3>
+        <h3>Advertising (optional; on by default outside Quebec)</h3>
         <p>
           <strong>Google Ads</strong> and the <strong>Meta Pixel</strong> (Facebook and Instagram) tell us whether our
           ads lead to visits, sample requests and purchases, and let these platforms show you more relevant ads. They
           may combine this with information they already hold about you under their own privacy policies.
         </p>
         <p>
-          If you have accepted advertising cookies, when you complete a purchase our server also reports it directly to
+          While advertising cookies are on, when you complete a purchase our server also reports it directly to
           Google and Meta so it is counted even if your browser blocks their tags. This report includes the order
-          value and items and, for Meta, your contact and shipping details in hashed (one-way encrypted) form, your IP
+          value and items, your email address in hashed (one-way encrypted) form for Google and, for Meta, your
+          contact and shipping details in hashed form, your IP
           address and browser type, which Meta uses only to match the purchase to an ad you saw. With analytics
-          consent only, we report the purchase to Google Analytics without any contact details.
+          cookies on but not advertising, we report the purchase to Google Analytics without any contact details.
         </p>
         <h3>How you found us</h3>
         <p>
@@ -169,7 +179,7 @@ const sections: LegalSection[] = [
           other websites.
         </p>
         <p>
-          When you have not opted in, Google&rsquo;s tags operate in a restricted &ldquo;consent mode&rdquo;: they set
+          While analytics or advertising cookies are off, Google&rsquo;s tags operate in a restricted &ldquo;consent mode&rdquo;: they set
           no advertising or analytics cookies and send only limited, cookieless signals that Google uses in aggregate.
           The Meta Pixel sends nothing.
         </p>
@@ -194,7 +204,7 @@ const sections: LegalSection[] = [
           parties, and only as needed for the purposes above:
         </p>
         <ul>
-          <li><strong>Payment processing:</strong> Stripe.</li>
+          <li><strong>Payment processing:</strong> Square and Stripe.</li>
           <li>
             <strong>Fabric suppliers:</strong> when a supplier ships fabric or samples directly to you, we give them
             your name, shipping address and the items ordered.
@@ -203,12 +213,12 @@ const sections: LegalSection[] = [
             <strong>Shipping carriers</strong> such as Canada Post, UPS, FedEx and Purolator, to deliver your order.
           </li>
           <li>
-            <strong>Technology providers</strong> that host and run the Site and our operations: Netlify (website
+            <strong>Technology providers</strong> that host and run the Site and our operations: Vercel (website
             hosting), Supabase and Google Firebase (databases), Cloudflare (file storage) and Resend (email delivery).
           </li>
           <li>
-            <strong>Analytics and advertising partners</strong> (Google, Microsoft and Meta), only if you have opted in
-            to those cookies.
+            <strong>Analytics and advertising partners</strong> (Google, Microsoft and Meta), only as your cookie
+            settings allow.
           </li>
           <li>
             <strong>Professional advisers</strong> such as accountants and lawyers, under a duty of confidentiality.

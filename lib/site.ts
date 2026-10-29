@@ -54,4 +54,4 @@ export const SOCIAL_PROFILES: string[] = [];
 export const businessDetail = (value: string) => (value && !value.startsWith('[') ? value : undefined);
 
 // Shown as "Last updated" on the legal pages. Change it whenever their wording changes.
-export const LEGAL_LAST_UPDATED = 'September 29, 2026';
+export const LEGAL_LAST_UPDATED = 'October 29, 2026';
