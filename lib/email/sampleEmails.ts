@@ -122,16 +122,19 @@ ${p(`<br><a href="${escape(adminUrl)}" style="color:#8d6c4b">Open the request in
   ].join('\n'),
 });
 
-// Sent once Charlotte confirms the request (its receipt gives us an order ref #), so the customer
-// hears from us between "request received" and "shipped".
+// Sent once Charlotte confirms the request (admin: "Charlotte confirmed"), so the customer hears from
+// us between "request received" and "shipped". Names the supplier because the samples arrive in its
+// branding; "within 1 business day" is Charlotte's own promise in its confirmation email.
 export const customerSamplesConfirmed = (request: SampleRequest, settings: EmailSettings): EmailContent => {
   const name = firstName(request.name);
+  const supplier = settings.supplierName || 'our supplier';
   return {
     subject: `Your JL Comfort samples ${request.requestNumber} are confirmed`,
     html: layout(
-      'Your samples are being prepared',
-      `${p(`Hi ${escape(name)}, good news: your sample request <strong>${escape(request.requestNumber)}</strong> has been confirmed
-and your samples are now being prepared. We'll email you a tracking number as soon as they ship.`)}
+      'Your samples are confirmed',
+      `${p(`Hi ${escape(name)}, good news: <strong>${escape(supplier)}</strong> has confirmed your sample request
+<strong>${escape(request.requestNumber)}</strong>. Your samples usually ship <strong>within 1 business day</strong>, directly from their warehouse,
+and we'll email you a tracking number as soon as they're on the way.`)}
 ${label('Your samples')}${samplesTable(request.items)}
 ${label('Shipping to')}${block(addressLines(request))}
 ${p(`<br>Questions? Just reply to this email.`)}
@@ -140,7 +143,7 @@ ${p(`— ${escape(settings.fromName)}`)}`
     text: [
       `Hi ${name},`,
       '',
-      `Good news: your sample request ${request.requestNumber} has been confirmed and your samples are now being prepared. We'll email you a tracking number as soon as they ship.`,
+      `Good news: ${supplier} has confirmed your sample request ${request.requestNumber}. Your samples usually ship within 1 business day, directly from their warehouse, and we'll email you a tracking number as soon as they're on the way.`,
       '',
       'YOUR SAMPLES',
       textSamples(request.items),
