@@ -7,6 +7,7 @@ import {
   normalizeSupplierRef,
   resendSamplesShippedEmail,
   sendCustomerSampleConfirmation,
+  sendCustomerSamplesConfirmed,
   sendSupplierSampleRequest,
   setSampleStatus,
   setSampleSupplierRefs,
@@ -42,11 +43,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         ok = await markSamplesShipped(request.id, carrier, trackingNumber, customUrl);
         break;
       }
-      case 'set_supplier_refs':
+      case 'set_supplier_refs': {
+        const orderNumber = normalizeSupplierRef(body.supplierOrderNumber);
         await setSampleSupplierRefs(request.id, {
-          orderNumber: normalizeSupplierRef(body.supplierOrderNumber) === (request.supplierOrderNumber || '') ? undefined : body.supplierOrderNumber,
+          orderNumber: orderNumber === (request.supplierOrderNumber || '') ? undefined : body.supplierOrderNumber,
           invoiceNumber: normalizeSupplierRef(body.supplierInvoiceNumber) === (request.supplierInvoiceNumber || '') ? undefined : body.supplierInvoiceNumber,
         });
+        // Charlotte's receipt (its order ref #) is the confirmation: tell the customer, once. A later
+        // correction to the ref doesn't email again; "Resend confirmed email" does that on purpose.
+        const firstConfirmation = orderNumber && !request.supplierOrderNumber;
+        if (body.notifyCustomer && firstConfirmation && !['shipped', 'delivered', 'cancelled'].includes(request.status)) {
+          ok = await sendCustomerSamplesConfirmed(request, `${request.id}-supplier-confirmed`);
+        }
+        break;
+      }
+      case 'resend_supplier_confirmed':
+        ok = await sendCustomerSamplesConfirmed(request);
         break;
       case 'resend_supplier': {
         const result = await sendSupplierSampleRequest(request, await getEmailSettings());

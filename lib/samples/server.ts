@@ -5,6 +5,7 @@ import { deliverEmail, getEmailSettings } from '@/lib/email/deliver';
 import { EmailContent } from '@/lib/email/layout';
 import {
   customerSampleConfirmation,
+  customerSamplesConfirmed,
   customerSamplesShipped,
   internalSampleNotification,
   supplierSampleRequest,
@@ -195,6 +196,12 @@ export async function sendSupplierSampleRequest(request: SampleRequest, settings
 
 export async function sendCustomerSampleConfirmation(request: SampleRequest, settings: EmailSettings, idempotencyKey?: string) {
   return deliver(request, settings, request.email, customerSampleConfirmation(request, settings), 'customer_confirmation', idempotencyKey, request.name);
+}
+
+/** "Charlotte has confirmed your samples" -- sent when its order ref # is first saved, or resent from admin. */
+export async function sendCustomerSamplesConfirmed(request: SampleRequest, idempotencyKey?: string) {
+  const settings = await getEmailSettings();
+  return deliver(request, settings, request.email, customerSamplesConfirmed(request, settings), 'customer_supplier_confirmed', idempotencyKey, request.name);
 }
 
 /** Everything that happens after a request is stored. Never throws: failures are logged on the request. */
