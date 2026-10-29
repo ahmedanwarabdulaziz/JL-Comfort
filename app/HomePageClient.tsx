@@ -10,6 +10,7 @@ import { sampleBookCoverUrl } from '@/lib/data/sampleBookCovers';
 import type { HomeCatalog } from '@/lib/data/homeCatalog';
 import FabricImage from '@/components/ui/FabricImage';
 import GuideCards from '@/components/guides/GuideCards';
+import ValueProps from '@/components/layout/ValueProps';
 import { sampleBookHref } from '@/lib/sampleBooks';
 
 const LINE = '#e5e0d9';
@@ -140,6 +141,9 @@ export default function HomePageClient({ catalog }: { catalog: HomeCatalog }) {
           </Box>
         </Container>
       </Box>
+
+      {/* ── WHY BUY FROM US: free shipping, free samples, warranty ── */}
+      <ValueProps variant="band" />
 
       {/* ── COLLECTIONS ── */}
       {catalog.collections.length > 0 && (

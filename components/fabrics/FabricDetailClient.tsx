@@ -32,6 +32,7 @@ import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
 import { trackViewItem } from '@/lib/analytics/track';
 import FabricImage from '@/components/ui/FabricImage';
+import ValueProps from '@/components/layout/ValueProps';
 import { cleanBookName, sampleBookHref } from '@/lib/sampleBooks';
 
 export interface ColorwaySibling {
@@ -335,9 +336,6 @@ export default function FabricDetailClient({
                   ) : (
                     <li>Shipping and tax calculated at checkout</li>
                   )}
-                  <li>
-                    <Link href="/shipping-returns#warranty" style={{ color: 'inherit' }}>Charlotte Lifetime Warranty</Link> against manufacturing defects
-                  </li>
                   <li>{inStock ? 'In stock' : 'Currently out of stock'}</li>
                 </Box>
               </Box>
@@ -384,6 +382,8 @@ export default function FabricDetailClient({
                 {yards} yard{yards === 1 ? '' : 's'} · ${(fabric.pricePerYard! * yards).toFixed(2)} CAD
               </Typography>
             )}
+
+            <ValueProps variant="compact" />
 
             {colourwayPicker({ display: { xs: 'block', md: 'none' }, mt: 3.5 })}
 

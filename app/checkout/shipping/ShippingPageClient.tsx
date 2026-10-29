@@ -27,6 +27,7 @@ import { collectAdSignals, readAttribution } from '@/lib/analytics/attribution';
 import { CHECKOUT_REGIONS } from '@/lib/checkout/regions';
 import { CheckoutQuote } from '@/lib/types/checkout';
 import { MARKETING_CONSENT_TEXT } from '@/lib/marketing/consent';
+import { clearPendingCode, readPendingCode } from '@/lib/discounts/pendingCode';
 
 const PROVINCES = CHECKOUT_REGIONS.CA;
 const formatCents = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -125,7 +126,17 @@ export default function ShippingPageClient() {
   const removeCode = () => {
     setDiscountCode('');
     setCodeInput('');
+    clearPendingCode();
   };
+
+  // A code from a link (?code=JLU25) is applied for the shopper; the quote shows it, or why it doesn't apply.
+  useEffect(() => {
+    const pending = readPendingCode();
+    if (pending) {
+      setCodeInput(pending);
+      setDiscountCode(pending);
+    }
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -268,7 +279,11 @@ export default function ShippingPageClient() {
                   </Box>
                 )}
                 {!form.province && codeInput.trim() && (
-                  <Typography sx={{ fontSize: '0.75rem', color: '#77716b', mt: 0.75 }}>Choose your province first, then apply the code.</Typography>
+                  <Typography sx={{ fontSize: '0.75rem', color: '#77716b', mt: 0.75 }}>
+                    {discountCode
+                      ? `Code ${discountCode} applies as soon as you choose your province.`
+                      : 'Choose your province first, then apply the code.'}
+                  </Typography>
                 )}
                 {codeRejected && <Typography sx={{ fontSize: '0.78rem', color: '#b3261e', mt: 0.75 }}>{quote?.discountError}</Typography>}
                 {!discountCode && quote?.discount && (
