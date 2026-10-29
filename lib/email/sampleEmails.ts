@@ -122,6 +122,38 @@ ${p(`<br><a href="${escape(adminUrl)}" style="color:#8d6c4b">Open the request in
   ].join('\n'),
 });
 
+// Sent once Charlotte confirms the request (its receipt gives us an order ref #), so the customer
+// hears from us between "request received" and "shipped".
+export const customerSamplesConfirmed = (request: SampleRequest, settings: EmailSettings): EmailContent => {
+  const name = firstName(request.name);
+  return {
+    subject: `Your JL Comfort samples ${request.requestNumber} are confirmed`,
+    html: layout(
+      'Your samples are being prepared',
+      `${p(`Hi ${escape(name)}, good news: your sample request <strong>${escape(request.requestNumber)}</strong> has been confirmed
+and your samples are now being prepared. We'll email you a tracking number as soon as they ship.`)}
+${label('Your samples')}${samplesTable(request.items)}
+${label('Shipping to')}${block(addressLines(request))}
+${p(`<br>Questions? Just reply to this email.`)}
+${p(`— ${escape(settings.fromName)}`)}`
+    ),
+    text: [
+      `Hi ${name},`,
+      '',
+      `Good news: your sample request ${request.requestNumber} has been confirmed and your samples are now being prepared. We'll email you a tracking number as soon as they ship.`,
+      '',
+      'YOUR SAMPLES',
+      textSamples(request.items),
+      '',
+      'SHIPPING TO',
+      ...addressLines(request),
+      '',
+      'Questions? Just reply to this email.',
+      `— ${settings.fromName}`,
+    ].join('\n'),
+  };
+};
+
 export const customerSamplesShipped = (request: SampleRequest, settings: EmailSettings): EmailContent => {
   const name = firstName(request.name);
   return {
