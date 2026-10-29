@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { AlertLevel, recordAlert, reportError } from '@/lib/alerts/server';
+import { VERIFIED_SENDING_DOMAINS } from '@/lib/types/order';
 
 // Resend reports what happened to an email after it accepted it: a purchase order, confirmation or
 // sample request that bounces would otherwise fail silently, since the order history only records
@@ -77,6 +78,12 @@ export async function POST(req: Request) {
   if (!kind) return NextResponse.json({ received: true, ignored: event?.type });
 
   const data = event.data || {};
+  // The Resend account also sends the JL Upholstery site's email, and its webhooks report every
+  // email in the account. Only alert on email this site sent, i.e. from a JL Comfort address.
+  const fromDomain = String(data.from || '').match(/@([^>\s]+)>?\s*$/)?.[1]?.toLowerCase() || '';
+  if (!VERIFIED_SENDING_DOMAINS.includes(fromDomain)) {
+    return NextResponse.json({ received: true, ignored: `sent from ${fromDomain || 'an unknown address'}` });
+  }
   const emailId: string = data.email_id || '';
   const subject: string = data.subject || '(no subject)';
   const recipients = [...(data.to || []), ...(data.bcc || [])].join(', ');
