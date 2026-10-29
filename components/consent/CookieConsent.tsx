@@ -66,7 +66,8 @@ const secondaryButtonSx = {
 
 // The cookie banner and its preferences dialog. Accepting and rejecting are equally easy, and the
 // footer's "Cookie settings" link reopens the choices at any time. In Quebec nothing optional is
-// pre-ticked; elsewhere analytics starts on and the banner says so, with a one-click opt-out.
+// pre-ticked; elsewhere analytics and advertising start on and the banner says so, with a one-click
+// opt-out.
 export default function CookieConsent() {
   const pathname = usePathname();
   const [bannerOpen, setBannerOpen] = useState(false);
@@ -122,9 +123,9 @@ export default function CookieConsent() {
           <Typography sx={{ fontSize: '0.88rem', lineHeight: 1.6, color: brand.textSecondary, mb: 2.5 }}>
             {region === 'open' ? (
               <>
-                We use essential cookies to run this site, and analytics cookies (Google Analytics, Microsoft
-                Clarity) to see how it&rsquo;s used and improve it &mdash; you can turn analytics off at any time.
-                With your permission, we&rsquo;d also use advertising cookies to measure our ads.
+                We use essential cookies to run this site, analytics cookies (Google Analytics, Microsoft
+                Clarity) to see how it&rsquo;s used and improve it, and advertising cookies (Google, Meta) to
+                measure our ads and show you relevant ones. You can turn analytics and advertising off at any time.
               </>
             ) : (
               <>
@@ -143,7 +144,7 @@ export default function CookieConsent() {
               {region === 'open' ? 'Essential only' : 'Reject all'}
             </Button>
             <Button variant="contained" disableElevation onClick={() => decide({ analytics: true, advertising: true })} sx={primaryButtonSx}>
-              Accept all
+              {region === 'open' ? 'OK' : 'Accept all'}
             </Button>
             <Button
               onClick={() => setDialogOpen(true)}

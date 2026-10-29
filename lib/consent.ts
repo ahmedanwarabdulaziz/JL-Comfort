@@ -2,8 +2,8 @@
 // needs no consent. Until the visitor chooses, the default depends on where they are:
 //  - Quebec, and anywhere we can't tell: everything optional stays off, since Law 25 requires
 //    tracking that can profile someone to be off by default.
-//  - Elsewhere: analytics is on by default with a clear opt-out in the banner (implied consent
-//    under PIPEDA); advertising stays off until the visitor opts in.
+//  - Elsewhere: analytics and advertising are on by default, with a clear one-click opt-out in the
+//    banner (opt-out consent under PIPEDA and the federal guidance on online behavioural ads).
 // middleware.ts sets REGION_COOKIE from the visitor's location, so the default is known on the
 // very first page view.
 
@@ -18,7 +18,7 @@ export const REGION_COOKIE = 'jl_consent_region';
 export const CONSENT_CHANGE_EVENT = 'jl:consent-change';
 export const CONSENT_OPEN_EVENT = 'jl:consent-open';
 
-// 'open': analytics on by default. 'strict': everything optional off until the visitor opts in.
+// 'open': analytics and advertising on by default. 'strict': everything optional off until the visitor opts in.
 export type ConsentRegion = 'open' | 'strict';
 
 export function readConsentRegion(): ConsentRegion {
@@ -30,7 +30,8 @@ export function readConsentRegion(): ConsentRegion {
 }
 
 export function defaultConsent(): ConsentChoices {
-  return { analytics: readConsentRegion() === 'open', advertising: false };
+  const open = readConsentRegion() === 'open';
+  return { analytics: open, advertising: open };
 }
 
 // The choice the visitor saved, or null if they haven't chosen yet.

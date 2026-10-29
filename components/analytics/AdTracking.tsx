@@ -10,13 +10,13 @@ import { recordVisit } from '@/lib/analytics/attribution';
 // Reads the cookie choice inside the inline snippets, before any tag fires: the saved choice, or the
 // regional default until there is one (the same rule as effectiveConsent in lib/consent.ts).
 const READ_CONSENT = `var jlConsent = null; try { jlConsent = JSON.parse(localStorage.getItem('${CONSENT_STORAGE_KEY}')); } catch (e) {}
-if (!jlConsent) jlConsent = { analytics: document.cookie.split('; ').indexOf('${REGION_COOKIE}=open') !== -1, advertising: false };`;
+if (!jlConsent) { var jlOpen = document.cookie.split('; ').indexOf('${REGION_COOKIE}=open') !== -1; jlConsent = { analytics: jlOpen, advertising: jlOpen }; }`;
 
 // Loads Google's tag (GA4 + Google Ads) and the Meta Pixel. Each is skipped when its ID isn't set,
 // so nothing loads in development until the IDs are added to the environment.
 //
-// Both start from the visitor's cookie choice, or the regional default (lib/consent.ts): advertising
-// is denied until the visitor opts in, and so is analytics in Quebec. While denied, Google's consent
+// Both start from the visitor's cookie choice, or the regional default (lib/consent.ts): granted
+// outside Quebec, denied in Quebec until the visitor opts in. While denied, Google's consent
 // mode sets no cookies and sends only anonymous, cookieless signals, and the pixel sends nothing.
 // A later choice in the banner is applied on the spot, without a reload.
 export default function AdTracking() {

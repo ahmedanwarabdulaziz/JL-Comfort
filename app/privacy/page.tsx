@@ -114,9 +114,9 @@ const sections: LegalSection[] = [
         <p>
           We collect, use and share personal information with your consent, except where the law allows otherwise.
           When you place an order or request samples, you consent to us using your information to fulfil that
-          request as described in this policy. Advertising cookies are used only if you opt in through our cookie
-          banner. Analytics cookies are used only if you opt in when you visit from Quebec; elsewhere they are on
-          by default, the banner tells you so, and you can turn them off at any time (see{' '}
+          request as described in this policy. Analytics and advertising cookies are used only if you opt in when you
+          visit from Quebec; elsewhere they are on by default, the cookie banner tells you so when you arrive, and
+          you can turn them off at any time (see{' '}
           <a href="#cookies">Cookies and similar technologies</a>).
         </p>
         <p>
@@ -135,10 +135,10 @@ const sections: LegalSection[] = [
       <>
         <p>
           Cookies and similar technologies (such as local storage and pixels) are small pieces of data stored on your
-          device. We group them into three categories. Strictly necessary cookies are always on. Advertising cookies
-          are off until you opt in. Analytics cookies are off until you opt in if you visit from Quebec; elsewhere in
-          Canada and outside Canada they are on by default, and you can turn them off with one click in the cookie
-          banner or in <CookieSettingsLink />.
+          device. We group them into three categories. Strictly necessary cookies are always on. Analytics and
+          advertising cookies are off until you opt in if you visit from Quebec; elsewhere in Canada and outside
+          Canada they are on by default, and you can turn them off with one click (&ldquo;Essential only&rdquo;) in
+          the cookie banner or in <CookieSettingsLink />. Turning them off takes effect immediately.
         </p>
         <p>
           To apply the right default, we use the approximate location our hosting provider derives from your IP
@@ -157,16 +157,17 @@ const sections: LegalSection[] = [
           you move through pages (mouse movements, clicks and scrolling); text you type into forms is masked and not
           recorded.
         </p>
-        <h3>Advertising (optional)</h3>
+        <h3>Advertising (optional; on by default outside Quebec)</h3>
         <p>
           <strong>Google Ads</strong> and the <strong>Meta Pixel</strong> (Facebook and Instagram) tell us whether our
           ads lead to visits, sample requests and purchases, and let these platforms show you more relevant ads. They
           may combine this with information they already hold about you under their own privacy policies.
         </p>
         <p>
-          If you have accepted advertising cookies, when you complete a purchase our server also reports it directly to
+          While advertising cookies are on, when you complete a purchase our server also reports it directly to
           Google and Meta so it is counted even if your browser blocks their tags. This report includes the order
-          value and items and, for Meta, your contact and shipping details in hashed (one-way encrypted) form, your IP
+          value and items, your email address in hashed (one-way encrypted) form for Google and, for Meta, your
+          contact and shipping details in hashed form, your IP
           address and browser type, which Meta uses only to match the purchase to an ad you saw. With analytics
           cookies on but not advertising, we report the purchase to Google Analytics without any contact details.
         </p>
