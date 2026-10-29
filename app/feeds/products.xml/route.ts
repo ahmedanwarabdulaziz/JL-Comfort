@@ -41,6 +41,33 @@ interface FabricRow {
   price_tag_id: string | null;
 }
 
+// Custom labels group products for Shopping / Performance Max bidding and reports (Google Ads >
+// product groups / listing groups). Keep the values stable: renaming one splits its history.
+//   0 = price band, 1 = fabric group, 2 = pattern. 3 and 4 are free (planned: best-seller, margin).
+function priceBand(price: number): string {
+  if (price < 80) return 'under-80';
+  if (price < 100) return '80-100';
+  return '100-plus';
+}
+
+function fabricGroup(row: FabricRow, title: string): string {
+  if (isVinylFabric(row)) return 'vinyl';
+  const text = `${title} ${(row.material || []).join(' ')}`.toLowerCase();
+  if (text.includes('crypton') || text.includes('performance')) return 'performance';
+  if (text.includes('velvet')) return 'velvet';
+  if (text.includes('boucl')) return 'boucle';
+  if (text.includes('chenille')) return 'chenille';
+  if (text.includes('linen')) return 'linen';
+  return 'other';
+}
+
+// The page description is trimmed to search-snippet length, which can drop the free-samples line.
+// Shopping allows far more, so always say it here.
+function feedDescription(base: string): string {
+  const samples = base.includes('Free samples') ? '' : ' Free samples available.';
+  return `${base}${samples} Cut to order by the yard and shipped across Canada.`;
+}
+
 // What checkout charges to ship one yard of this fabric (the quantity Google prices), so the listing
 // matches checkout even when vinyl's per-yard rate differs. Omitted if the rate table can't be read:
 // Merchant Center then falls back to the account's shipping settings.
@@ -48,7 +75,12 @@ function shippingXml(row: FabricRow, price: number, rate: ShippingRate | null): 
   if (!rate?.enabled) return '';
   const free = rate.freeShippingOver !== null && price >= rate.freeShippingOver;
   const cost = free ? 0 : rate.fabricOrderFee + (isVinylFabric(row) ? rate.vinylPerYard : rate.fabricPerYard);
-  return `<g:shipping><g:country>CA</g:country><g:service>Standard</g:service><g:price>${cost.toFixed(2)} CAD</g:price></g:shipping>`;
+  // Lets Shopping show "Free shipping over $X" when the order would qualify (Admin > Shipping).
+  const threshold =
+    rate.freeShippingOver !== null && !free
+      ? `<g:free_shipping_threshold><g:country>CA</g:country><g:price_threshold>${rate.freeShippingOver.toFixed(2)} CAD</g:price_threshold></g:free_shipping_threshold>`
+      : '';
+  return `<g:shipping><g:country>CA</g:country><g:service>Standard</g:service><g:price>${cost.toFixed(2)} CAD</g:price></g:shipping>${threshold}`;
 }
 
 export async function GET() {
@@ -87,7 +119,7 @@ export async function GET() {
     const fields: [string, string | null | undefined][] = [
       ['g:id', (row.sku || row.legacy_id).slice(0, 50)],
       ['g:title', title],
-      ['g:description', describeFabric({ name, fiberContent: fiber, durability: row.durability, width: row.width, pricePerYard: price, keywords })],
+      ['g:description', feedDescription(describeFabric({ name, fiberContent: fiber, durability: row.durability, width: row.width, pricePerYard: price, keywords }))],
       ['g:link', `${SITE_URL}/fabrics/${encodeURIComponent(row.legacy_id)}`],
       ['g:image_link', row.image_url],
       ['g:availability', row.availability === 'OutOfStock' ? 'out_of_stock' : 'in_stock'],
@@ -101,6 +133,9 @@ export async function GET() {
       ['g:material', fiber?.slice(0, 200)],
       ['g:unit_pricing_measure', '1 yd'],
       ['g:unit_pricing_base_measure', '1 yd'],
+      ['g:custom_label_0', priceBand(price)],
+      ['g:custom_label_1', fabricGroup(row, title)],
+      ['g:custom_label_2', pattern ? pattern.toLowerCase().slice(0, 100) : 'unspecified'],
     ];
     items.push(
       `<item>${shippingXml(row, price, shippingRate)}${fields
