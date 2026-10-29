@@ -22,6 +22,7 @@ import { cartItemToAnalytics, trackViewCart } from '@/lib/analytics/track';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FabricImage from '@/components/ui/FabricImage';
+import FreeShippingProgress from '@/components/cart/FreeShippingProgress';
 
 
 export default function CheckoutPage() {
@@ -218,7 +219,8 @@ export default function CheckoutPage() {
               Order Total
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+            <FreeShippingProgress subtotal={cartTotal} />
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography color="text.secondary">Subtotal</Typography>
               <Typography>${cartTotal.toFixed(2)} CAD</Typography>

@@ -19,6 +19,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useCart } from '@/lib/context/CartContext';
+import FreeShippingProgress from '@/components/cart/FreeShippingProgress';
 
 export default function CartDrawer() {
   const { items, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, cartTotal } = useCart();
@@ -156,6 +157,7 @@ export default function CartDrawer() {
         {/* Footer */}
         {items.length > 0 && (
           <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
+            <FreeShippingProgress subtotal={cartTotal} />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Typography variant="h6">Subtotal</Typography>
               <Typography variant="h6" fontWeight="bold">

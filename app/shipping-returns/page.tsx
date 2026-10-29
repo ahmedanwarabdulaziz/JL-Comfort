@@ -193,6 +193,24 @@ export default async function ShippingReturnsPage() {
           cancelled.
         </Typography>
 
+        {/* ── Warranty ── Charlotte's own terms: charlottefabrics.com/lifetime-warranty. Claims go through
+            the upholsterer/dealer, which is us, so we file them for the customer. */}
+        <Typography id="warranty" variant="h5" component="h2" sx={sectionSx}>Charlotte Lifetime Warranty</Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          Every Charlotte fabric we sell is backed by Charlotte Fabrics&rsquo; Lifetime Warranty against manufacturing
+          and material defects that make the fabric unusable, when it is used for its intended purpose. The warranty
+          does not cover misuse, negligence, pet damage or improper cleaning, and labour costs are not guaranteed.
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={bodySx}>
+          You don&rsquo;t need to deal with Charlotte yourself: contact us with your order number and photos and we
+          will file the claim for you. If Charlotte approves it, you receive replacement fabric of your choice of equal
+          or lesser value. Full terms are on{' '}
+          <Box component="a" href="https://www.charlottefabrics.com/lifetime-warranty/" target="_blank" rel="noopener noreferrer" sx={{ color: '#b8935f' }}>
+            Charlotte&rsquo;s warranty page
+          </Box>
+          . This is in addition to our 14-day guarantee for damaged, defective or wrong orders above.
+        </Typography>
+
         {/* ── Contact ── */}
         <Typography id="contact" variant="h5" component="h2" sx={sectionSx}>Contact us</Typography>
         <Typography variant="body1" color="text.secondary" sx={bodySx}>
