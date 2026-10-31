@@ -24,6 +24,7 @@ import { useCart } from '@/lib/context/CartContext';
 import { useSampleCart } from '@/lib/context/SampleCartContext';
 import { getShippingRate } from '@/lib/data/shippingRates';
 import { ShippingRate } from '@/lib/types/checkout';
+import { computeShippingCents, toCents } from '@/lib/checkout/pricing';
 import { brand } from '@/lib/theme';
 import { fabricBrand } from '@/lib/seo/fabric';
 import { aboutFabric, yardageGuide } from '@/lib/seo/fabricCopy';
@@ -71,6 +72,7 @@ export interface FabricDetailData {
   availability: 'InStock' | 'OutOfStock';
   pricePerYard: number | null;
   priceTagName: string | null;
+  isVinyl: boolean; // vinyl ships at its own per-yard rate
   colorwaySiblings: ColorwaySibling[];
 }
 
@@ -148,6 +150,30 @@ export default function FabricDetailClient({
   }, []);
 
   const inStock = fabric.availability === 'InStock';
+
+  // Shipping shown up front, with the same maths checkout charges, so the order fee isn't a surprise
+  // at checkout (Clarity showed ad visitors leaving from Shipping & Returns after finding it there).
+  const shipsAt = shipping?.enabled ? shipping : null;
+  const shippingPerYard = shipsAt ? (fabric.isVinyl ? shipsAt.vinylPerYard : shipsAt.fabricPerYard) : 0;
+  const shippingSummary = shipsAt
+    ? [
+        shipsAt.fabricOrderFee > 0 || shippingPerYard > 0
+          ? `Shipping $${shipsAt.fabricOrderFee.toFixed(0)}${shippingPerYard > 0 ? ` + $${shippingPerYard.toFixed(0)}/yd` : ''}`
+          : 'Free shipping',
+        shipsAt.freeShippingOver != null && (shipsAt.fabricOrderFee > 0 || shippingPerYard > 0)
+          ? `free over $${shipsAt.freeShippingOver.toFixed(0)} CAD`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : null;
+  const shippingForYards =
+    shipsAt && fabric.pricePerYard != null
+      ? computeShippingCents(
+          [{ kind: fabric.isVinyl ? 'vinyl' : 'fabric', quantity: yards, amountCents: toCents(fabric.pricePerYard * yards) }],
+          shipsAt
+        ) / 100
+      : null;
   const hasPrice = fabric.pricePerYard != null;
   const alreadySampled = sampleItems.some((i) => i.fabricId === fabric.id);
   const { pattern, colourway } = splitName(fabric.name, fabric.sku);
@@ -331,8 +357,8 @@ export default function FabricDetailClient({
                 </Typography>
                 <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.25, color: brand.textSecondary, fontSize: '0.85rem', lineHeight: 1.8 }}>
                   <li>Sold in 1 yard increments</li>
-                  {shipping?.freeShippingOver != null ? (
-                    <li style={{ color: brand.accent, fontWeight: 600 }}>Free shipping on orders over ${shipping.freeShippingOver.toFixed(0)} CAD</li>
+                  {shippingSummary ? (
+                    <li style={{ color: brand.accent, fontWeight: 600 }}>{shippingSummary}</li>
                   ) : (
                     <li>Shipping and tax calculated at checkout</li>
                   )}
@@ -380,6 +406,7 @@ export default function FabricDetailClient({
             {hasPrice && (
               <Typography sx={{ color: MUTED, fontSize: '0.78rem', textAlign: 'right', mt: 0.75 }}>
                 {yards} yard{yards === 1 ? '' : 's'} · ${(fabric.pricePerYard! * yards).toFixed(2)} CAD
+                {shippingForYards != null && (shippingForYards > 0 ? ` + $${shippingForYards.toFixed(2)} shipping` : ' · ships free')}
               </Typography>
             )}
 
