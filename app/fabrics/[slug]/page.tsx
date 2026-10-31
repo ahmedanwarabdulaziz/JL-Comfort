@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
+import { isVinylFabric } from '@/lib/checkout/serverPricing';
 import FabricDetailClient, { FabricDetailData, ColorwaySibling } from '@/components/fabrics/FabricDetailClient';
 import JsonLd from '@/components/seo/JsonLd';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
@@ -92,6 +93,7 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
     availability: data.availability || 'InStock',
     pricePerYard: price.pricePerYard,
     priceTagName: price.priceTagName,
+    isVinyl: isVinylFabric(data),
     colorwaySiblings,
   };
 });

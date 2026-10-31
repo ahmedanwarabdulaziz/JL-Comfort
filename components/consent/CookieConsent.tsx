@@ -63,6 +63,13 @@ const secondaryButtonSx = {
   fontWeight: 600,
   '&:hover': { borderColor: brand.accent, color: brand.accent, bgcolor: 'transparent' },
 };
+// Banner buttons on phones: one row, still a comfortable 40px tap target.
+const compactButtonSx = {
+  px: { xs: 1.5, md: 2.5 },
+  minHeight: 40,
+  fontSize: { xs: '0.72rem', md: '0.875rem' },
+  whiteSpace: 'nowrap' as const,
+};
 
 // The cookie banner and its preferences dialog. Accepting and rejecting are equally easy, and the
 // footer's "Cookie settings" link reopens the choices at any time. In Quebec nothing optional is
@@ -106,21 +113,33 @@ export default function CookieConsent() {
           sx={{
             position: 'fixed',
             zIndex: 1400,
-            left: { xs: 12, md: 24 },
-            right: { xs: 12, md: 'auto' },
-            bottom: { xs: 12, md: 24 },
+            left: { xs: 0, md: 24 },
+            right: { xs: 0, md: 'auto' },
+            bottom: { xs: 0, md: 24 },
             maxWidth: { md: 520 },
             bgcolor: '#fff',
             color: brand.ink,
             border: `1px solid ${brand.chalkLine}`,
             boxShadow: '0 12px 40px rgba(51,56,79,0.18)',
-            p: { xs: 2.5, md: 3 },
+            px: { xs: 2, md: 3 },
+            pt: { xs: 1.5, md: 3 },
+            pb: { xs: 'calc(12px + env(safe-area-inset-bottom))', md: 3 },
           }}
         >
-          <Typography variant="h6" component="h2" sx={{ fontSize: '1.15rem', mb: 1 }}>
+          {/* Phones get a slim strip: the full panel covered the fabric name and price that ad visitors
+              land on. The same choices, link and wording-by-region apply; only the length differs. */}
+          <Typography sx={{ display: { xs: 'block', md: 'none' }, fontSize: '0.8rem', lineHeight: 1.5, color: brand.textSecondary, mb: 1.25 }}>
+            {region === 'open'
+              ? 'We use cookies to run the site, improve it and measure our ads. You can turn the optional ones off.'
+              : 'We use essential cookies to run the site. May we also use analytics and advertising cookies?'}{' '}
+            <Box component={Link} href="/privacy#cookies" sx={{ color: brand.accent }}>
+              Privacy
+            </Box>
+          </Typography>
+          <Typography variant="h6" component="h2" sx={{ display: { xs: 'none', md: 'block' }, fontSize: '1.15rem', mb: 1 }}>
             Your privacy, your choice
           </Typography>
-          <Typography sx={{ fontSize: '0.88rem', lineHeight: 1.6, color: brand.textSecondary, mb: 2.5 }}>
+          <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: '0.88rem', lineHeight: 1.6, color: brand.textSecondary, mb: 2.5 }}>
             {region === 'open' ? (
               <>
                 We use essential cookies to run this site, analytics cookies (Google Analytics, Microsoft
@@ -139,16 +158,16 @@ export default function CookieConsent() {
             </Box>
             .
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            <Button variant="outlined" onClick={() => decide({ analytics: false, advertising: false })} sx={secondaryButtonSx}>
+          <Box sx={{ display: 'flex', flexWrap: { xs: 'nowrap', md: 'wrap' }, alignItems: 'center', gap: 1 }}>
+            <Button variant="outlined" onClick={() => decide({ analytics: false, advertising: false })} sx={{ ...secondaryButtonSx, ...compactButtonSx }}>
               {region === 'open' ? 'Essential only' : 'Reject all'}
             </Button>
-            <Button variant="contained" disableElevation onClick={() => decide({ analytics: true, advertising: true })} sx={primaryButtonSx}>
+            <Button variant="contained" disableElevation onClick={() => decide({ analytics: true, advertising: true })} sx={{ ...primaryButtonSx, ...compactButtonSx }}>
               {region === 'open' ? 'OK' : 'Accept all'}
             </Button>
             <Button
               onClick={() => setDialogOpen(true)}
-              sx={{ color: brand.ink, textDecoration: 'underline', fontWeight: 600, '&:hover': { color: brand.accent, bgcolor: 'transparent', textDecoration: 'underline' } }}
+              sx={{ ...compactButtonSx, color: brand.ink, textDecoration: 'underline', fontWeight: 600, '&:hover': { color: brand.accent, bgcolor: 'transparent', textDecoration: 'underline' } }}
             >
               Customize
             </Button>
