@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -303,6 +303,48 @@ function SidebarContent({
   );
 }
 
+const toAnalyticsItem = (fabric: CharlotteFabricSnapshotItem): AnalyticsItem => ({
+  id: fabric.sku || fabric.id,
+  name: fabric.name,
+  category: 'Fabric',
+  price: fabric.pricePerYard ?? 0,
+  quantity: 1,
+});
+
+// ─── Results grid ────────────────────────────────────────────────────────────
+// Memoized so a tick or keystroke doesn't redraw every card before the checkbox or search box can
+// update; the page gives it deferred values, so new results render in the background.
+const FabricGrid = memo(function FabricGrid({
+  fabrics,
+  colourwaysByGroup,
+  listName,
+}: {
+  fabrics: CharlotteFabricSnapshotItem[];
+  colourwaysByGroup: Map<string, CardColourway[]>;
+  listName: string;
+}) {
+  return (
+    <Box
+      sx={{
+        mt: 3,
+        display: 'grid',
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+        columnGap: { xs: 2, md: 3 },
+        rowGap: { xs: 3.5, md: 5 },
+      }}
+    >
+      {fabrics.map((fabric) => (
+        <FabricCard
+          key={fabric.id}
+          fabric={fabric}
+          colourways={fabric.colorwayGroup ? colourwaysByGroup.get(fabric.colorwayGroup) : undefined}
+          onSelect={() => trackSelectItem(listName, toAnalyticsItem(fabric))}
+        />
+      ))}
+    </Box>
+  );
+});
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 const emptyFilters = (): Record<FilterKey, string[]> =>
   Object.fromEntries(FILTER_KEYS.map((key) => [key, []])) as unknown as Record<FilterKey, string[]>;
@@ -344,13 +386,35 @@ export default function FabricsShopClient() {
     setLoading(true);
     setError(null);
     getCharlotteFabricsSnapshot()
-      .then(setAllFabrics)
+      // A transition, so a tap made while the catalog is first drawn isn't kept waiting.
+      .then((items) =>
+        startTransition(() => {
+          setAllFabrics(items);
+          setLoading(false);
+        })
+      )
       .catch((err) => {
         console.error('Error loading fabric catalog:', err);
         setError('Failed to load fabrics. Please try again.');
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   }, []);
+
+  // The controls show each change at once; the results below catch up from these deferred copies.
+  const deferredFilters = useDeferredValue(filters);
+  const deferredSearch = useDeferredValue(search);
+  const deferredSampleBook = useDeferredValue(sampleBook);
+  const deferredGroupId = useDeferredValue(groupId);
+  const deferredNewOnly = useDeferredValue(newOnly);
+  const deferredSort = useDeferredValue(sort);
+  const deferredVisibleCount = useDeferredValue(visibleCount);
+  const resultsStale =
+    filters !== deferredFilters ||
+    search !== deferredSearch ||
+    sampleBook !== deferredSampleBook ||
+    groupId !== deferredGroupId ||
+    newOnly !== deferredNewOnly ||
+    sort !== deferredSort;
 
   // Options for every filter group: fixed lists for colour/pattern/material, the rest from the data.
   const options = useMemo(() => {
@@ -415,10 +479,10 @@ export default function FabricsShopClient() {
   }, [allFabrics]);
 
   const filtered = useMemo(() => {
-    const filtersObj: CharlotteFabricFilters = { ...filters, search, sampleBook: sampleBook || undefined, groupId: groupId || undefined };
+    const filtersObj: CharlotteFabricFilters = { ...deferredFilters, search: deferredSearch, sampleBook: deferredSampleBook || undefined, groupId: deferredGroupId || undefined };
     const matched = filterFabrics(allFabrics, filtersObj);
-    return sortFabrics(newOnly ? matched.filter((f) => f.isNew) : matched, sort);
-  }, [allFabrics, filters, search, sampleBook, groupId, sort, newOnly]);
+    return sortFabrics(deferredNewOnly ? matched.filter((f) => f.isNew) : matched, deferredSort);
+  }, [allFabrics, deferredFilters, deferredSearch, deferredSampleBook, deferredGroupId, deferredSort, deferredNewOnly]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -433,27 +497,18 @@ export default function FabricsShopClient() {
     return () => clearTimeout(timer);
   }, [search, loading, filtered.length]);
 
-  const listName = groupId ? `Group: ${groupName || groupId}` : sampleBook ? `Sample book: ${sampleBook}` : search.trim() ? 'Search results' : 'All fabrics';
-  const toAnalyticsItem = (fabric: CharlotteFabricSnapshotItem): AnalyticsItem => ({
-    id: fabric.sku || fabric.id,
-    name: fabric.name,
-    category: 'Fabric',
-    price: fabric.pricePerYard ?? 0,
-    quantity: 1,
-  });
+  const listName = deferredGroupId ? `Group: ${groupName || deferredGroupId}` : deferredSampleBook ? `Sample book: ${deferredSampleBook}` : deferredSearch.trim() ? 'Search results' : 'All fabrics';
   useEffect(() => {
     if (loading || filtered.length === 0) return;
     const timer = setTimeout(() => trackViewItemList(listName, filtered.slice(0, 20).map(toAnalyticsItem)), 1500);
     return () => clearTimeout(timer);
-    // toAnalyticsItem is a pure mapping; re-running on its identity would re-report every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, loading, listName]);
 
   const bookLabel = sampleBook ? cleanBookName(sampleBook) : '';
   // A curated group link carries its own name; a sample book falls back to its cleaned name.
   const collectionLabel = groupId ? groupName || 'Group' : bookLabel;
-  const visibleFabrics = filtered.slice(0, visibleCount);
-  const hasMore = filtered.length > visibleCount;
+  const visibleFabrics = useMemo(() => filtered.slice(0, deferredVisibleCount), [filtered, deferredVisibleCount]);
+  const hasMore = filtered.length > deferredVisibleCount;
   const activeCount =
     FILTER_KEYS.reduce((acc, key) => acc + filters[key].length, 0) +
     (search ? 1 : 0) +
@@ -590,24 +645,10 @@ export default function FabricsShopClient() {
 
             {!loading && !error && visibleFabrics.length > 0 && (
               <>
-                <Box
-                  sx={{
-                    mt: 3,
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
-                    columnGap: { xs: 2, md: 3 },
-                    rowGap: { xs: 3.5, md: 5 },
-                  }}
-                >
-                  {visibleFabrics.map((fabric) => (
-                    <FabricCard
-                      key={fabric.id}
-                      fabric={fabric}
-                      colourways={fabric.colorwayGroup ? colourwaysByGroup.get(fabric.colorwayGroup) : undefined}
-                      onSelect={() => trackSelectItem(listName, toAnalyticsItem(fabric))}
-                    />
-                  ))}
-                </Box>
+                {/* Dims only if the new results take a moment, so a slow phone still shows the tap landed. */}
+                <div style={{ opacity: resultsStale ? 0.6 : 1, transition: resultsStale ? 'opacity .15s .1s' : 'none' }}>
+                  <FabricGrid fabrics={visibleFabrics} colourwaysByGroup={colourwaysByGroup} listName={listName} />
+                </div>
 
                 <Box sx={{ textAlign: 'center', mt: 7 }}>
                   <Typography sx={{ color: MUTED, fontSize: '0.8rem', mb: 1.5 }}>
