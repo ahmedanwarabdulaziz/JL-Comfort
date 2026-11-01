@@ -42,6 +42,20 @@ const clarityTag = (key: string, value: string) => {
   if (typeof window !== 'undefined' && window.clarity) window.clarity('set', key, value);
 };
 
+// For events fired by a tap on the page: lets the browser show the tap's result before the tags run.
+// The timer covers a hidden tab, where animation frames don't fire. Not for events followed by a
+// full page load (checkout, payment), which send straight away so they can't be lost.
+const afterPaint = (send: () => void) => {
+  let sent = false;
+  const run = () => {
+    if (sent) return;
+    sent = true;
+    send();
+  };
+  requestAnimationFrame(() => setTimeout(run, 0));
+  setTimeout(run, 200);
+};
+
 const round = (n: number) => Math.round(n * 100) / 100;
 const totalOf = (items: AnalyticsItem[]) => round(items.reduce((sum, i) => sum + i.price * i.quantity, 0));
 
@@ -78,10 +92,12 @@ export function trackViewItem(item: AnalyticsItem) {
 
 export function trackAddToCart(item: AnalyticsItem) {
   const value = totalOf([item]);
-  gtag('event', 'add_to_cart', { currency: CURRENCY, value, items: toGaItems([item]) });
-  fbq('track', 'AddToCart', { ...toMetaParams([item], value), content_name: item.name });
-  clarityEvent('add_to_cart');
-  clarityTag('added_to_cart', 'yes');
+  afterPaint(() => {
+    gtag('event', 'add_to_cart', { currency: CURRENCY, value, items: toGaItems([item]) });
+    fbq('track', 'AddToCart', { ...toMetaParams([item], value), content_name: item.name });
+    clarityEvent('add_to_cart');
+    clarityTag('added_to_cart', 'yes');
+  });
 }
 
 export function trackBeginCheckout(items: AnalyticsItem[]) {
@@ -143,7 +159,7 @@ export function trackViewItemList(listName: string, items: AnalyticsItem[]) {
 }
 
 export function trackSelectItem(listName: string, item: AnalyticsItem) {
-  gtag('event', 'select_item', { item_list_name: listName, items: toGaItems([item]) });
+  afterPaint(() => gtag('event', 'select_item', { item_list_name: listName, items: toGaItems([item]) }));
 }
 
 export function trackSearch(term: string, resultCount: number) {
@@ -154,7 +170,7 @@ export function trackSearch(term: string, resultCount: number) {
 }
 
 export function trackFilter(filterName: string, value: string) {
-  gtag('event', 'filter_fabrics', { filter_name: filterName, filter_value: value });
+  afterPaint(() => gtag('event', 'filter_fabrics', { filter_name: filterName, filter_value: value }));
 }
 
 export function trackRemoveFromCart(item: AnalyticsItem) {
@@ -183,7 +199,9 @@ export function trackAddPaymentInfo(items: AnalyticsItem[]) {
 }
 
 export function trackAddSample(fabricId: string, name: string) {
-  gtag('event', 'add_sample', { item_id: fabricId, item_name: name });
-  fbq('trackCustom', 'AddSample', { content_ids: [fabricId], content_name: name });
-  clarityEvent('add_sample');
+  afterPaint(() => {
+    gtag('event', 'add_sample', { item_id: fabricId, item_name: name });
+    fbq('trackCustom', 'AddSample', { content_ids: [fabricId], content_name: name });
+    clarityEvent('add_sample');
+  });
 }
