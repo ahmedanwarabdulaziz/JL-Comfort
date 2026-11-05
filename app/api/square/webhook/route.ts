@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { markOrderPaid, sendNewOrderEmails } from '@/lib/orders/server';
 import { reportPurchaseServerSide } from '@/lib/analytics/serverConversions';
 import { reportError } from '@/lib/alerts/server';
-import { SQUARE_REF_PREFIX, getSquarePayment, isSquareWebhookConfigured, verifySquareWebhook } from '@/lib/square/server';
+import { SQUARE_REF_PREFIX, getSquarePayment, isOtherMerchantError, isSquareWebhookConfigured, verifySquareWebhook } from '@/lib/square/server';
 
 // Square's counterpart to /api/stripe/webhook: it marks an order paid even if the shopper never
 // makes it back to /success. Subscribe in the Square developer dashboard (Webhooks -> Subscriptions)
@@ -51,6 +51,12 @@ export async function POST(req: Request) {
       await reportPurchaseServerSide(orderId);
     }
   } catch (error) {
+    // "Send test event" in Square's console uses a sample order from another merchant. The signature
+    // was valid and there's nothing of ours to confirm, so answer 200 rather than alert and retry.
+    if (isOtherMerchantError(error)) {
+      console.warn(`Square webhook ignored order ${payment.order_id}: it belongs to another merchant.`);
+      return NextResponse.json({ received: true, ignored: 'order belongs to another merchant' });
+    }
     // A 500 makes Square retry later; markOrderPaid's status guard keeps a retry from double-sending.
     console.error(`Square webhook failed for order ${orderId || payment.order_id}:`, error);
     await reportError('webhook_failed', 'Square webhook failed', error, orderId ? `/admin/orders?order=${orderId}` : undefined);
