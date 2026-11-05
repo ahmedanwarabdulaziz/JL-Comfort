@@ -34,6 +34,10 @@ export const isSquareConfigured = (testMode: boolean) => !!accountFor(testMode);
 
 export class SquareError extends Error {}
 
+/** Square refused because the order isn't this account's, as with the sample order in a console test event. */
+export const isOtherMerchantError = (error: unknown) =>
+  error instanceof SquareError && /\(403\):.*different merchant/i.test(error.message);
+
 function requireAccount(testMode: boolean): SquareAccount {
   const account = accountFor(testMode);
   if (!account) {
