@@ -5,6 +5,7 @@ import { Box, Typography } from '@mui/material';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { brand } from '@/lib/theme';
 import FabricImage from '@/components/ui/FabricImage';
+import FavouriteButton from './FavouriteButton';
 
 export interface CardColourway {
   id: string;
@@ -29,7 +30,7 @@ export default function FabricCard({
   colourways,
   onSelect,
 }: {
-  fabric: Pick<CharlotteFabricSnapshotItem, 'id' | 'name' | 'imageUrl' | 'isNew' | 'pricePerYard'>;
+  fabric: Pick<CharlotteFabricSnapshotItem, 'id' | 'name' | 'sku' | 'imageUrl' | 'isNew' | 'pricePerYard'>;
   colourways?: CardColourway[];
   onSelect?: () => void; // analytics: the shopper opened this fabric from a list
 }) {
@@ -38,7 +39,12 @@ export default function FabricCard({
   const swatches = others.slice(0, MAX_SWATCHES);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {/* Beside the link, not inside it, so a tap saves the fabric instead of opening it. */}
+      <FavouriteButton
+        item={{ fabricId: fabric.id, name: fabric.name, sku: fabric.sku, imageUrl: fabric.imageUrl, pricePerYard: fabric.pricePerYard }}
+        sx={{ position: 'absolute', top: 6, right: 6, zIndex: 1, bgcolor: 'rgba(255,255,255,0.88)', '&:hover': { bgcolor: '#fff', color: '#9b1b30' } }}
+      />
       <Box
         component={Link}
         href={`/fabrics/${fabric.id}`}

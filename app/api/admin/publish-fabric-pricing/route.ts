@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
         origin: data.origin || '',
         features: data.features || '',
         performance: data.performance || '',
+        // Master-spreadsheet tags behind the shop's Features filter (Pet Friendly, Greenguard Gold...).
+        properties: data.properties || [],
         availability: data.availability || 'InStock',
         status: data.status || 'active',
         firstSeenAt: data.first_seen_at,

@@ -198,6 +198,15 @@ export function trackAddPaymentInfo(items: AnalyticsItem[]) {
   clarityTag('reached_payment', 'yes');
 }
 
+export function trackAddToWishlist(item: AnalyticsItem) {
+  const value = totalOf([item]);
+  afterPaint(() => {
+    gtag('event', 'add_to_wishlist', { currency: CURRENCY, value, items: toGaItems([item]) });
+    fbq('track', 'AddToWishlist', { ...toMetaParams([item], value), content_name: item.name });
+    clarityEvent('add_to_wishlist');
+  });
+}
+
 export function trackAddSample(fabricId: string, name: string) {
   afterPaint(() => {
     gtag('event', 'add_sample', { item_id: fabricId, item_name: name });

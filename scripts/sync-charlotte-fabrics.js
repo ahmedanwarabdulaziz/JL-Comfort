@@ -294,6 +294,8 @@ async function publishSnapshot(supabase) {
       origin: data.origin || '',
       features: data.features || '',
       performance: data.performance || '',
+      // Master-spreadsheet tags behind the shop's Features filter (Pet Friendly, Greenguard Gold...).
+      properties: data.properties || [],
       // Raw specs catch-all is dropped from the public snapshot — every field the gallery UI
       // actually reads is already flattened above, and specs roughly doubles the payload size
       // (this file is ~10MB with it; every visitor's browser and every fabric-search API call

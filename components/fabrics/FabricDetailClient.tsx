@@ -32,6 +32,7 @@ import { fabricKeywords } from '@/lib/collections/definitions';
 import FabricPropertyIcons from './FabricPropertyIcons';
 import { originOf } from '@/components/layout/HeaderIconWithNotice';
 import { trackViewItem } from '@/lib/analytics/track';
+import FavouriteButton from './FavouriteButton';
 import FabricImage from '@/components/ui/FabricImage';
 import ValueProps from '@/components/layout/ValueProps';
 import { cleanBookName, sampleBookHref } from '@/lib/sampleBooks';
@@ -312,7 +313,14 @@ export default function FabricDetailClient({
           {/* ── Details ───────────────────────────────────────────── */}
           <Box sx={{ maxWidth: 520 }}>
             {/* Stacked title: house, pattern, colour, collection */}
-            <Typography sx={{ ...labelSx, color: brand.accent, mb: 1 }}>{fabricBrand()}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography sx={{ ...labelSx, color: brand.accent }}>{fabricBrand()}</Typography>
+              <FavouriteButton
+                size="medium"
+                item={{ fabricId: fabric.id, name: fabric.name, sku: fabric.sku, imageUrl: fabric.imageUrl, pricePerYard: fabric.pricePerYard }}
+                sx={{ mr: -1 }}
+              />
+            </Box>
             {/* One heading carries what people search: "D2215 Sky – Grey Textured Upholstery Fabric". */}
             <Typography component="h1" variant="h1" sx={{ fontSize: { xs: '2.1rem', md: '2.8rem' }, lineHeight: 1.08, color: brand.ink }}>
               {pattern && (
