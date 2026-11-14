@@ -23,6 +23,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import SampleIconButton from '@/components/samples/SampleIconButton';
+import FavouritesIconButton from '@/components/fabrics/FavouritesIconButton';
 import CartIconButton from '@/components/cart/CartIconButton';
 import { brand } from '@/lib/theme';
 import CornerTag from '@/components/ui/CornerTag';
@@ -434,12 +435,14 @@ export default function SiteHeader() {
             <Button component={Link} href="/about" sx={navLinkSx(isActive('/about'))}>Inspiration</Button>
             <Button component={Link} href="/guides" sx={navLinkSx(isActive('/guides') || isActive('/faq'))}>Resources</Button>
 
-            <SampleIconButton sx={{ ml: 2 }} />
+            <FavouritesIconButton sx={{ ml: 2 }} />
+            <SampleIconButton sx={{ ml: 0.5 }} />
             <CartIconButton sx={{ ml: 0.5 }} />
           </Box>
 
           {/* Mobile controls */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
+            <FavouritesIconButton sx={{ color: '#555' }} />
             <SampleIconButton sx={{ color: '#555' }} />
             <CartIconButton sx={{ color: '#555' }} />
             <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#555' }}>

@@ -28,18 +28,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { CharlotteFabricSnapshotItem, CharlotteFabricFilters } from '@/lib/types/charlotteFabric';
 import { getCharlotteFabricsSnapshot, filterFabrics } from '@/lib/data/charlotteFabricCatalog';
+import { FabricFacetOption } from '@/lib/data/charlotteFabricFacets';
 import {
-  CHARLOTTE_FABRIC_COLORS,
-  CHARLOTTE_FABRIC_PATTERNS,
-  CHARLOTTE_FABRIC_MATERIALS,
-  FabricFacetOption,
-} from '@/lib/data/charlotteFabricFacets';
+  FACET_KEYS,
+  FACET_OPTIONS,
+  FACET_TITLES,
+  FacetKey,
+  facetOptionLabel,
+  fabricFacetValues,
+  matchesFacets,
+} from '@/lib/data/charlotteFacetMatching';
 import { brand } from '@/lib/theme';
 import FabricCard, { CardColourway } from './FabricCard';
 import { AnalyticsItem, trackFilter, trackSearch, trackSelectItem, trackViewItemList } from '@/lib/analytics/track';
 import { cleanBookName } from './SampleBookCover';
 
-const PAGE_SIZE = 32;
+const PAGE_SIZE = 48; // same page size as charlottefabrics.com
 const SIDEBAR_WIDTH = 272;
 const HEADER_OFFSET = 89; // sticky site header (65px) + breathing room
 const LINE = '#e5e0d9';
@@ -63,40 +67,10 @@ export const COLOR_DOT: Record<string, string> = {
   'white-ivory': '#F0EDE5',
 };
 
-type FilterKey =
-  | 'color'
-  | 'pattern'
-  | 'material'
-  | 'application'
-  | 'market'
-  | 'features'
-  | 'performance'
-  | 'fiberContent'
-  | 'durability'
-  | 'patternDirection';
-
-const FILTER_KEYS: FilterKey[] = ['color', 'pattern', 'material', 'application', 'market', 'features', 'performance', 'fiberContent', 'durability', 'patternDirection'];
-
-const SECTION_TITLES: Record<FilterKey, string> = {
-  color: 'Colour',
-  pattern: 'Pattern',
-  material: 'Material',
-  application: 'Use',
-  market: 'Market',
-  features: 'Features',
-  performance: 'Performance',
-  fiberContent: 'Content',
-  durability: 'Rub count',
-  patternDirection: 'Pattern direction',
-};
-
-const STATIC_OPTIONS: Partial<Record<FilterKey, FabricFacetOption[]>> = {
-  color: CHARLOTTE_FABRIC_COLORS,
-  pattern: CHARLOTTE_FABRIC_PATTERNS,
-  material: CHARLOTTE_FABRIC_MATERIALS,
-};
-
-const optionLabel = (key: FilterKey, value: string) => STATIC_OPTIONS[key]?.find((o) => o.value === value)?.label || value;
+type FilterKey = FacetKey;
+const FILTER_KEYS = FACET_KEYS;
+const SECTION_TITLES = FACET_TITLES;
+const optionLabel = facetOptionLabel;
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'name';
 const SORTS: Record<SortKey, string> = {
@@ -203,7 +177,8 @@ function SidebarContent({
   options: Record<FilterKey, FabricFacetOption[]>;
   counts: Record<FilterKey, Record<string, number>>;
 }) {
-  const sections = FILTER_KEYS.filter((key) => options[key].length > 0);
+  // A group with nothing to offer for the fabrics shown is hidden, unless something in it is ticked.
+  const sections = FILTER_KEYS.filter((key) => filters[key].length > 0 || options[key].some((opt) => (counts[key][opt.value] ?? 0) > 0));
   const [openKey, setOpenKey] = useState<FilterKey | null>(() => sections.find((key) => filters[key].length > 0) || 'color');
 
   const renderOptions = (key: FilterKey) => {
@@ -416,55 +391,7 @@ export default function FabricsShopClient() {
     newOnly !== deferredNewOnly ||
     sort !== deferredSort;
 
-  // Options for every filter group: fixed lists for colour/pattern/material, the rest from the data.
-  const options = useMemo(() => {
-    const extract = (key: keyof CharlotteFabricSnapshotItem) => {
-      const set = new Set<string>();
-      allFabrics.forEach((f) => {
-        const val = f[key];
-        if (Array.isArray(val)) val.forEach((v) => v && set.add(v));
-        else if (typeof val === 'string' && val) set.add(val);
-      });
-      return Array.from(set).sort().map((v) => ({ value: v, label: v }));
-    };
-    return {
-      color: CHARLOTTE_FABRIC_COLORS,
-      pattern: CHARLOTTE_FABRIC_PATTERNS,
-      material: CHARLOTTE_FABRIC_MATERIALS,
-      application: extract('applications'),
-      market: extract('markets'),
-      features: extract('features'),
-      performance: extract('performance'),
-      fiberContent: extract('fiberContent'),
-      durability: extract('durability'),
-      patternDirection: extract('patternDirection'),
-    } as Record<FilterKey, FabricFacetOption[]>;
-  }, [allFabrics]);
-
-  // How many fabrics carry each option (catalog-wide).
-  const counts = useMemo(() => {
-    const fieldFor: Record<FilterKey, keyof CharlotteFabricSnapshotItem> = {
-      color: 'color',
-      pattern: 'pattern',
-      material: 'material',
-      application: 'applications',
-      market: 'markets',
-      features: 'features',
-      performance: 'performance',
-      fiberContent: 'fiberContent',
-      durability: 'durability',
-      patternDirection: 'patternDirection',
-    };
-    const result = Object.fromEntries(FILTER_KEYS.map((key) => [key, {} as Record<string, number>])) as Record<FilterKey, Record<string, number>>;
-    for (const f of allFabrics) {
-      for (const key of FILTER_KEYS) {
-        const val = f[fieldFor[key]];
-        const values = Array.isArray(val) ? val : typeof val === 'string' && val ? [val] : [];
-        for (const v of values) result[key][v] = (result[key][v] || 0) + 1;
-      }
-    }
-    return result;
-  }, [allFabrics]);
+  const options: Record<FilterKey, FabricFacetOption[]> = FACET_OPTIONS;
 
   // Colourway thumbnails for each card, from fabrics sharing a colourway group.
   const colourwaysByGroup = useMemo(() => {
@@ -479,10 +406,23 @@ export default function FabricsShopClient() {
   }, [allFabrics]);
 
   const filtered = useMemo(() => {
-    const filtersObj: CharlotteFabricFilters = { ...deferredFilters, search: deferredSearch, sampleBook: deferredSampleBook || undefined, groupId: deferredGroupId || undefined };
-    const matched = filterFabrics(allFabrics, filtersObj);
-    return sortFabrics(deferredNewOnly ? matched.filter((f) => f.isNew) : matched, deferredSort);
+    const filtersObj: CharlotteFabricFilters = { search: deferredSearch, sampleBook: deferredSampleBook || undefined, groupId: deferredGroupId || undefined };
+    const matched = filterFabrics(allFabrics, filtersObj).filter((f) => matchesFacets(f, deferredFilters) && (!deferredNewOnly || f.isNew));
+    return sortFabrics(matched, deferredSort);
   }, [allFabrics, deferredFilters, deferredSearch, deferredSampleBook, deferredGroupId, deferredSort, deferredNewOnly]);
+
+  // Like Charlotte's filters, each count is how many of the fabrics now shown also carry that option
+  // (every ticked option must match), so options that would leave nothing drop out of the list.
+  const counts = useMemo(() => {
+    const result = Object.fromEntries(FILTER_KEYS.map((key) => [key, {} as Record<string, number>])) as Record<FilterKey, Record<string, number>>;
+    for (const f of filtered) {
+      const values = fabricFacetValues(f);
+      for (const key of FILTER_KEYS) {
+        for (const v of values[key]) result[key][v] = (result[key][v] || 0) + 1;
+      }
+    }
+    return result;
+  }, [filtered]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
