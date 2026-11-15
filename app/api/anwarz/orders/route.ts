@@ -1,5 +1,5 @@
 import { CheckoutError } from '@/lib/checkout/errors';
-import { anwarzOrder, anwarzRoute, db, rowToOrder } from '@/lib/anwarz/api';
+import { anwarzOrder, anwarzRoute, db, rowToOrder, samplesBeforeOrders } from '@/lib/anwarz/api';
 import { OrderStatus } from '@/lib/types/order';
 
 export const dynamic = 'force-dynamic';
@@ -24,5 +24,7 @@ export const GET = anwarzRoute(async (request) => {
   if (params.get('test') !== '1') query = query.eq('is_test', false);
   const { data, error } = await query;
   if (error) throw error;
-  return { orders: (data || []).map((row) => anwarzOrder(rowToOrder({ ...row, order_events: [] }))) };
+  const orders = (data || []).map((row) => rowToOrder({ ...row, order_events: [] }));
+  const before = await samplesBeforeOrders(orders);
+  return { orders: orders.map((o) => anwarzOrder(o, false, before.get(o.id))) };
 });
