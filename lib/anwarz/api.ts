@@ -47,31 +47,53 @@ export function db() {
 export interface SampleBefore {
   requestNumber: string;
   createdAt: string;
-  matchedBy: 'email' | 'postal code';
+  matchedBy: 'email' | 'name' | 'phone' | 'postal code';
 }
 
 const normEmail = (v: string | null | undefined) => (v || '').trim().toLowerCase();
 const normZip = (v: string | null | undefined) => (v || '').replace(/\s+/g, '').toUpperCase();
+/** "Isabelle  Bilodeau", "isabelle bilodeau", "Isabèlle Bilodeau" → "isabelle bilodeau". */
+export const normName = (v: string | null | undefined) =>
+  (v || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z؀-ۿ ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+/** The last 10 digits, so "+1 (514) 755-7513" and "5147557513" match. */
+const normPhone = (v: string | null | undefined) => (v || '').replace(/\D/g, '').slice(-10);
 
 /**
- * For each order: the sample requests the same customer made before ordering (same email, or the
- * same postal code), so the app can show "came from samples". There are few sample requests, so
- * they are matched here rather than in SQL.
+ * For each order: the sample requests the same customer made before ordering, so the app can show
+ * "came from samples". People often use another email for samples, so a request matches by email,
+ * full name (2+ words, ignoring case and accents), phone, or postal code. There are few sample
+ * requests, so they are matched here rather than in SQL.
  */
 export async function samplesBeforeOrders(orders: Order[]): Promise<Map<string, SampleBefore[]>> {
   const result = new Map<string, SampleBefore[]>();
   if (!orders.length) return result;
-  const { data, error } = await db().from('sample_requests').select('request_number, email, address_zip, created_at').order('created_at').limit(5000);
+  const { data, error } = await db().from('sample_requests').select('request_number, name, email, phone, address_zip, created_at').order('created_at').limit(5000);
   if (error) throw error;
   for (const order of orders) {
     const email = normEmail(order.customerEmail);
+    const name = normName(order.customerName);
+    const phone = normPhone(order.customerPhone);
     const zip = normZip(order.shipPostalCode);
     const found: SampleBefore[] = [];
     for (const s of data || []) {
       if (new Date(s.created_at).getTime() >= order.createdAt.getTime()) continue;
-      const byEmail = email && normEmail(s.email) === email;
-      const byZip = zip && normZip(s.address_zip) === zip;
-      if (byEmail || byZip) found.push({ requestNumber: s.request_number, createdAt: s.created_at, matchedBy: byEmail ? 'email' : 'postal code' });
+      const matchedBy: SampleBefore['matchedBy'] | null =
+        email && normEmail(s.email) === email
+          ? 'email'
+          : name.includes(' ') && normName(s.name) === name
+            ? 'name'
+            : phone.length >= 7 && normPhone(s.phone) === phone
+              ? 'phone'
+              : zip && normZip(s.address_zip) === zip
+                ? 'postal code'
+                : null;
+      if (matchedBy) found.push({ requestNumber: s.request_number, createdAt: s.created_at, matchedBy });
     }
     result.set(order.id, found);
   }
