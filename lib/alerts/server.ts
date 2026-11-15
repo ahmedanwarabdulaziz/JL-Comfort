@@ -3,6 +3,7 @@ import { SITE_URL } from '@/lib/site';
 import { Order } from '@/lib/types/order';
 import { SampleRequest } from '@/lib/types/sampleRequest';
 import { escapeHtml, sendTelegram } from '@/lib/alerts/telegram';
+import { notifyAnwarz } from '@/lib/anwarz/notify';
 
 // Instant alerts: each one is saved in app_events (listed on the admin Dashboard) and sent to the
 // JL Comfort Telegram bot. Server-only. Nothing here ever throws -- an alert failing must never
@@ -66,6 +67,12 @@ export async function alertNewOrder(order: Order, supplierStatus: string) {
     link: `/admin/orders?order=${order.id}`,
     isTest: order.isTest,
   });
+  await notifyAnwarz({
+    kind: 'order',
+    id: order.id,
+    title: `${order.isTest ? '🧪 TEST ' : ''}🛋 New order ${order.orderNumber} · ${formatMoney(order.totalCents, order.currency)}`,
+    detail: detail.split('\n').slice(0, 2).join('\n'),
+  });
 }
 
 export async function alertNewSampleRequest(request: SampleRequest, supplierStatus: string) {
@@ -76,6 +83,12 @@ export async function alertNewSampleRequest(request: SampleRequest, supplierStat
     title: `New sample request ${request.requestNumber}`,
     detail: `${request.items.length} sample${request.items.length === 1 ? '' : 's'} · ${request.name} · ${request.address.city}, ${request.address.state}\nSupplier: ${supplierStatus}`,
     link: `/admin/sample-requests?request=${request.id}`,
+  });
+  await notifyAnwarz({
+    kind: 'sample',
+    id: request.id,
+    title: `🧵 New sample request ${request.requestNumber}`,
+    detail: `${request.items.length} sample${request.items.length === 1 ? '' : 's'} · ${request.name} · ${request.address.city}, ${request.address.state}`,
   });
 }
 
