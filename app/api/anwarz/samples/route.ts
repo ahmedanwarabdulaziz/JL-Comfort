@@ -14,10 +14,10 @@ export const GET = anwarzRoute(async (request) => {
   const limit = Math.min(Math.max(Number(params.get('limit')) || 100, 1), 300);
   const { data, error } = await db()
     .from('sample_requests')
-    .select('*, sample_request_items(*)')
+    .select('*, sample_request_items(*), sample_request_events(id, type, created_at)')
     .in('status', statuses.length ? statuses : LISTED)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return { samples: (data || []).map((row) => anwarzSample(rowToSampleRequest({ ...row, sample_request_events: [] }))) };
+  return { samples: (data || []).map((row) => anwarzSample(rowToSampleRequest({ ...row, sample_request_events: (row.sample_request_events || []).filter((e: { type: string }) => e.type === 'supplier_confirmed') }))) };
 });
