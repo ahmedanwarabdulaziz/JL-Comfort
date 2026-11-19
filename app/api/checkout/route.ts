@@ -15,6 +15,7 @@ import {
 } from '@/lib/orders/server';
 import { recordMarketingConsent } from '@/lib/marketing/server';
 import { paymentProvider } from '@/lib/payments/provider';
+import { guardPublicForm } from '@/lib/security/guard';
 import { alertCheckoutBlocked, describeCheckoutAttempt, reportError } from '@/lib/alerts/server';
 import { SQUARE_REF_PREFIX, assertSquareConfigured, createSquarePaymentLink } from '@/lib/square/server';
 
@@ -58,6 +59,8 @@ async function resolveStripeTaxRates(stripe: Stripe, testMode: boolean, taxRates
 }
 
 export async function POST(req: Request) {
+  const refused = guardPublicForm(req, 'checkout', 20, 10 * 60_000);
+  if (refused) return refused;
   let attempt = ''; // who was checking out, for an alert if this fails
   try {
     const { items, origin: clientOrigin, shippingAddress, discountCode, marketingOptIn, attribution, adSignals } = await req.json();
