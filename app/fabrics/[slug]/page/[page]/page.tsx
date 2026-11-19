@@ -5,6 +5,14 @@ import { collectionMetadata, renderCollection } from '@/lib/collections/page';
 
 // Page 2, 3, ... of a collection: /fabrics/velvet/page/2. Page 1 lives at /fabrics/velvet.
 export const revalidate = 1800;
+// Without this, Next 14 never caches a page whose URL has a [param]: revalidate is ignored and every
+// view (each scraper hit included) renders on a server function. An empty list builds nothing ahead of
+// time; each page is rendered on its first visit, then served from cache for `revalidate` seconds.
+export function generateStaticParams() {
+  return [];
+}
+// Public data only; see app/fabrics/[slug]/page.tsx for why this is needed to actually cache.
+export const fetchCache = 'force-cache';
 
 const parsePage = (value: string) => (/^\d+$/.test(value) ? Number(value) : NaN);
 
