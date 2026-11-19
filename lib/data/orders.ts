@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { SampleForMatching } from '@/lib/orders/customerSource';
 import { EmailSettings, Order, OrderStatus, rowToEmailSettings, rowToOrder } from '@/lib/types/order';
 import { CHECKOUT_ORDER_SELECT, CheckoutOrderRow, rowToCheckoutOrderRow } from '@/lib/analytics/abandonedCheckouts';
 
@@ -15,6 +16,14 @@ export const getOrders = async (statuses?: OrderStatus[]): Promise<Order[]> => {
     throw error;
   }
   return (data || []).map(rowToOrder);
+};
+
+// Every sample request (only the matching fields), to tag orders whose customer requested samples first.
+export const getSamplesForMatching = async (): Promise<SampleForMatching[]> => {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('sample_requests').select('request_number, name, email, phone, address_zip, created_at').order('created_at').limit(5000);
+  if (error) throw error;
+  return (data || []) as SampleForMatching[];
 };
 
 export const getOrderWithHistory = async (id: string): Promise<Order | null> => {
