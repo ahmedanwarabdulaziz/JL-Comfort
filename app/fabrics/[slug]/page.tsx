@@ -33,7 +33,7 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
   // than sequentially, since each is a separate network round-trip to Supabase.
   const [{ data, error }, priceTags] = await Promise.all([
     supabase.from('charlotte_fabrics').select('*').eq('legacy_id', slug).maybeSingle(),
-    getFabricPriceTags(),
+    getFabricPriceTags(supabase),
   ]);
   if (error) throw error;
   if (!data || data.status !== 'active') return null;

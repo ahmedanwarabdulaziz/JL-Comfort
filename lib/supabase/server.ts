@@ -16,7 +16,10 @@ export const isSupabaseConfigured = (): boolean => {
 let publicClient: SupabaseClient | undefined;
 export function createSupabasePublicClient() {
   if (!isSupabaseConfigured()) return undefined;
-  publicClient ??= createClient(supabaseUrl!, supabaseAnonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+  publicClient ??= createClient(supabaseUrl!, supabaseAnonKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, next: { revalidate: 1800 } }) },
+  });
   return publicClient;
 }
 
