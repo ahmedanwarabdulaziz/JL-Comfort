@@ -142,6 +142,20 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton
+            selected={pathname?.includes('/sample-requests')}
+            onClick={() => {
+              router.push('/admin/sample-requests');
+              setSelectedView('sample-requests');
+            }}
+          >
+            <ListItemIcon>
+              <LocalShippingIcon />
+            </ListItemIcon>
+            <ListItemText primary="Sample Requests" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
             selected={pathname?.includes('/admin/abandoned-checkouts')}
             onClick={() => router.push('/admin/abandoned-checkouts')}
           >
@@ -337,20 +351,6 @@ export default function AdminLayout({ children }: AdminLayoutProps = {}) {
               <CloudSyncIcon />
             </ListItemIcon>
             <ListItemText primary="Fabric Catalog Sync" />
-          </ListItemButton>
-        </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton
-            selected={pathname?.includes('/sample-requests')}
-            onClick={() => {
-              router.push('/admin/sample-requests');
-              setSelectedView('sample-requests');
-            }}
-          >
-            <ListItemIcon>
-              <LocalShippingIcon />
-            </ListItemIcon>
-            <ListItemText primary="Sample Requests" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
