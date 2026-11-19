@@ -7,6 +7,7 @@ import {
   resendShippedEmail,
   sendCustomerConfirmation,
   sendSupplierPurchaseOrder,
+  setOrderEmailEnquiry,
   setOrderStatus,
   setSupplierRefs,
 } from '@/lib/orders/server';
@@ -24,6 +25,14 @@ export async function runOrderAction(order: Order, body: Record<string, unknown>
   if (order.status === 'pending_payment' || order.status === 'expired') throw new CheckoutError('This order was never paid.');
 
   switch (body.action) {
+    // "This customer emailed us before ordering" -- only a person reading the inbox can know it.
+    case 'set_email_enquiry': {
+      const value = !!body.value;
+      if (value === order.emailEnquiry) return true;
+      await setOrderEmailEnquiry(order.id, value);
+      await logOrderEvent(order.id, 'source', value ? 'Tagged: customer emailed an enquiry before ordering' : 'Untagged: email enquiry');
+      return true;
+    }
     case 'ship': {
       const trackingNumber = String(body.trackingNumber || '').trim();
       const carrier = String(body.carrier || '').trim();

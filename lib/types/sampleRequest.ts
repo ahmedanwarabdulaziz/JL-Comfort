@@ -5,11 +5,12 @@ export interface SampleRequestItem {
   imageUrl: string;
 }
 
-export type SampleRequestStatus = 'pending' | 'sent_to_supplier' | 'shipped' | 'delivered' | 'cancelled' | 'problem';
+export type SampleRequestStatus = 'pending' | 'sent_to_supplier' | 'supplier_confirmed' | 'shipped' | 'delivered' | 'cancelled' | 'problem';
 
 export const SAMPLE_STATUS_LABELS: Record<SampleRequestStatus, string> = {
   pending: 'Received',
   sent_to_supplier: 'Sent to supplier',
+  supplier_confirmed: 'Confirmed by supplier',
   shipped: 'Shipped',
   delivered: 'Delivered',
   cancelled: 'Cancelled',

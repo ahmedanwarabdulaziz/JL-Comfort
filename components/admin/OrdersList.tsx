@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -33,7 +35,21 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
-import { getOrderWithHistory, getOrders, runOrderAction } from '@/lib/data/orders';
+import { getOrderWithHistory, getOrders, getSamplesForMatching, runOrderAction } from '@/lib/data/orders';
+import {
+  CHANNEL_COLORS,
+  CHANNEL_LABELS,
+  CUSTOMER_PATH_LABELS,
+  Channel,
+  CustomerPath,
+  SampleBefore,
+  SampleForMatching,
+  channelOf,
+  creditedTouch,
+  customerPath,
+  matchSamplesBefore,
+  returnTouch,
+} from '@/lib/orders/customerSource';
 import { CARRIERS, ORDER_STATUS_LABELS, Order, OrderStatus, OrderTouch } from '@/lib/types/order';
 
 // "google / cpc · spring-sale" -- how a marketing touch reads in the order's Source panel.
@@ -44,23 +60,57 @@ function describeTouch(touch?: OrderTouch): string {
   return [channel, touch.campaign && `campaign “${touch.campaign}”`, touch.term && `keyword “${touch.term}”`, clickId].filter(Boolean).join(' · ');
 }
 
-function OrderSource({ order }: { order: Order }) {
+const PATH_STYLES: Record<CustomerPath, { bgcolor: string; color: string }> = {
+  samples: { bgcolor: '#7b1fa2', color: '#fff' },
+  email_enquiry: { bgcolor: '#0277bd', color: '#fff' },
+  direct: { bgcolor: '#eceff1', color: '#37474f' },
+};
+
+const PathChip = ({ path, samples }: { path: CustomerPath; samples?: SampleBefore[] }) => (
+  <Chip
+    size="small"
+    label={path === 'samples' && samples?.length ? `Samples first · ${samples.map((s) => s.requestNumber).join(', ')}` : CUSTOMER_PATH_LABELS[path]}
+    sx={{ ...PATH_STYLES[path], fontWeight: 600 }}
+  />
+);
+
+const ChannelChip = ({ channel }: { channel: Channel }) => (
+  <Chip size="small" variant="outlined" label={CHANNEL_LABELS[channel]} sx={{ borderColor: CHANNEL_COLORS[channel], color: CHANNEL_COLORS[channel], fontWeight: 600 }} />
+);
+
+function OrderSource({ order, samplesBefore, busy, onEmailEnquiry }: { order: Order; samplesBefore: SampleBefore[]; busy: boolean; onEmailEnquiry: (value: boolean) => void }) {
   const { attribution, adSignals } = order;
-  const first = attribution?.firstTouch;
-  const last = attribution?.lastTouch;
-  const sameVisit = !first || !last || (first.source === last.source && first.landingPage === last.landingPage && first.campaign === last.campaign);
+  const path = customerPath(samplesBefore, order.emailEnquiry);
+  const found = creditedTouch(attribution);
+  const cameBack = returnTouch(attribution);
   return (
     <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-      <Typography variant="overline" color="text.secondary">Source</Typography>
+      <Typography variant="overline" color="text.secondary">Where this customer came from</Typography>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+        <PathChip path={path} />
+        <ChannelChip channel={channelOf(found)} />
+        {cameBack && <Typography variant="caption" color="text.secondary">came back via {CHANNEL_LABELS[channelOf(cameBack)]}</Typography>}
+      </Box>
+      {samplesBefore.length > 0 && (
+        <Typography variant="body2" sx={{ mb: 0.5 }}>
+          <strong>Requested samples first:</strong>{' '}
+          {samplesBefore.map((s) => `${s.requestNumber} (${new Date(s.createdAt).toLocaleDateString('en-CA', { dateStyle: 'medium' })}, same ${s.matchedBy})`).join(' · ')}
+        </Typography>
+      )}
+      <FormControlLabel
+        sx={{ mb: 0.5 }}
+        control={<Checkbox size="small" checked={order.emailEnquiry} disabled={busy} onChange={(e) => onEmailEnquiry(e.target.checked)} />}
+        label={<Typography variant="body2">This customer emailed us (enquiry) before ordering</Typography>}
+      />
+      <Typography variant="overline" color="text.secondary" sx={{ display: 'block' }}>Website visit</Typography>
       {!attribution ? (
         <Typography variant="body2" color="text.secondary">Not recorded for this order.</Typography>
       ) : (
         <>
-          <Typography variant="body2"><strong>{sameVisit ? 'Came from' : 'Last came from'}:</strong> {describeTouch(last || first)}</Typography>
-          {!sameVisit && first && <Typography variant="body2"><strong>First found us via:</strong> {describeTouch(first)}</Typography>}
-          {(last || first)?.landingPage && (
-            <Typography variant="body2" color="text.secondary">Landing page: {(last || first)!.landingPage}</Typography>
-          )}
+          <Typography variant="body2"><strong>Found us via:</strong> {describeTouch(found)}</Typography>
+          {found?.landingPage && <Typography variant="body2" color="text.secondary">Landing page: {found.landingPage}</Typography>}
+          {found?.referrer && <Typography variant="body2" color="text.secondary">Referring page: {found.referrer}</Typography>}
+          {cameBack && <Typography variant="body2" sx={{ mt: 0.5 }}><strong>Came back via:</strong> {describeTouch(cameBack)}</Typography>}
         </>
       )}
       {adSignals && (
@@ -201,7 +251,7 @@ function SupplierRefsField({ order, busy, onSave }: { order: Order; busy: boolea
   );
 }
 
-function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose: () => void; onChanged: () => void }) {
+function OrderDetail({ orderId, samples, onClose, onChanged }: { orderId: string; samples: SampleForMatching[]; onClose: () => void; onChanged: () => void }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -271,7 +321,12 @@ function OrderDetail({ orderId, onClose, onChanged }: { orderId: string; onClose
               </Box>
             </Box>
 
-            <OrderSource order={order} />
+            <OrderSource
+              order={order}
+              samplesBefore={matchSamplesBefore(order, samples)}
+              busy={busy}
+              onEmailEnquiry={(value) => act({ action: 'set_email_enquiry', value }, value ? 'Tagged as an email enquiry.' : 'Email enquiry tag removed.')}
+            />
 
             <TableContainer component={Paper} variant="outlined" sx={{ mb: 1 }}>
               <Table size="small">
@@ -404,19 +459,41 @@ export default function OrdersList() {
   const [error, setError] = useState('');
   const [openOrderId, setOpenOrderId] = useState<string | null>(searchParams?.get('order') || null);
   const [search, setSearch] = useState('');
+  const [samples, setSamples] = useState<SampleForMatching[]>([]);
+  const [pathFilter, setPathFilter] = useState<CustomerPath | null>(null);
+
+  const sourceOf = useMemo(() => {
+    const map = new Map<string, { samplesBefore: SampleBefore[]; path: CustomerPath; channel: Channel }>();
+    for (const o of orders) {
+      const samplesBefore = matchSamplesBefore(o, samples);
+      map.set(o.id, { samplesBefore, path: customerPath(samplesBefore, o.emailEnquiry), channel: channelOf(creditedTouch(o.attribution)) });
+    }
+    return map;
+  }, [orders, samples]);
 
   const term = search.trim().toLowerCase().replace(/^#\s*/, '');
-  const visibleOrders = term
+  const searched = term
     ? orders.filter((o) =>
         [o.orderNumber, o.supplierOrderNumber, o.supplierInvoiceNumber, o.customerName, o.customerEmail, o.trackingNumber, o.shipCity]
           .some((field) => (field || '').toLowerCase().includes(term))
       )
     : orders;
+  const visibleOrders = pathFilter ? searched.filter((o) => sourceOf.get(o.id)?.path === pathFilter) : searched;
+
+  // Counts for the summary bar: real (non-test) paid orders in the current view and search.
+  const counted = searched.filter((o) => !o.isTest && o.paidAt);
+  const pathCounts = (Object.keys(CUSTOMER_PATH_LABELS) as CustomerPath[]).map((p) => ({ p, n: counted.filter((o) => sourceOf.get(o.id)?.path === p).length }));
+  const channelCounts = (Object.keys(CHANNEL_LABELS) as Channel[])
+    .map((c) => ({ c, n: counted.filter((o) => sourceOf.get(o.id)?.channel === c).length }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setOrders(await getOrders(FILTERS[filter].statuses));
+      const [loaded, sampleRows] = await Promise.all([getOrders(FILTERS[filter].statuses), getSamplesForMatching().catch(() => [])]);
+      setOrders(loaded);
+      setSamples(sampleRows);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to load orders.');
@@ -452,6 +529,31 @@ export default function OrdersList() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {!loading && counted.length > 0 && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="body2" fontWeight={600} sx={{ minWidth: 110 }}>Customers via</Typography>
+            {pathCounts.map(({ p, n }) => (
+              <Chip
+                key={p}
+                size="small"
+                label={`${CUSTOMER_PATH_LABELS[p]}: ${n}`}
+                onClick={() => setPathFilter(pathFilter === p ? null : p)}
+                sx={{ ...(pathFilter === p || !pathFilter ? PATH_STYLES[p] : {}), fontWeight: 600 }}
+              />
+            ))}
+            {pathFilter && <Button size="small" onClick={() => setPathFilter(null)}>Show all</Button>}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="body2" fontWeight={600} sx={{ minWidth: 110 }}>Website visit</Typography>
+            {channelCounts.map(({ c, n }) => (
+              <Chip key={c} size="small" variant="outlined" label={`${CHANNEL_LABELS[c]}: ${n}`} sx={{ borderColor: CHANNEL_COLORS[c], color: CHANNEL_COLORS[c] }} />
+            ))}
+          </Box>
+          <Typography variant="caption" color="text.secondary">Paid orders in this view (test orders not counted). Click a chip to show only those orders.</Typography>
+        </Paper>
+      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
       ) : visibleOrders.length === 0 ? (
@@ -467,6 +569,7 @@ export default function OrdersList() {
                 <TableCell>Charlotte</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Customer</TableCell>
+                <TableCell>Source</TableCell>
                 <TableCell>Ship to</TableCell>
                 <TableCell>Items</TableCell>
                 <TableCell align="right">Total</TableCell>
@@ -475,7 +578,12 @@ export default function OrdersList() {
             </TableHead>
             <TableBody>
               {visibleOrders.map((order) => (
-                <TableRow key={order.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpenOrderId(order.id)}>
+                <TableRow
+                  key={order.id}
+                  hover
+                  sx={{ cursor: 'pointer', ...(sourceOf.get(order.id)?.path === 'samples' ? { bgcolor: 'rgba(123, 31, 162, 0.06)', boxShadow: 'inset 4px 0 0 #7b1fa2' } : {}) }}
+                  onClick={() => setOpenOrderId(order.id)}
+                >
                   <TableCell><strong>{order.orderNumber}</strong></TableCell>
                   <TableCell>
                     {order.supplierOrderNumber || order.supplierInvoiceNumber ? (
@@ -489,6 +597,14 @@ export default function OrdersList() {
                   </TableCell>
                   <TableCell>{order.createdAt.toLocaleDateString('en-CA', { dateStyle: 'medium' })}</TableCell>
                   <TableCell>{order.customerName}<br /><Typography variant="caption" color="text.secondary">{order.customerEmail}</Typography></TableCell>
+                  <TableCell>
+                    {sourceOf.get(order.id) && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                        <PathChip path={sourceOf.get(order.id)!.path} samples={sourceOf.get(order.id)!.samplesBefore} />
+                        <ChannelChip channel={sourceOf.get(order.id)!.channel} />
+                      </Box>
+                    )}
+                  </TableCell>
                   <TableCell>{order.shipCity}, {order.shipRegion}</TableCell>
                   <TableCell>{order.items.length} item{order.items.length === 1 ? '' : 's'}</TableCell>
                   <TableCell align="right">{money(order.totalCents)}</TableCell>
@@ -500,7 +616,7 @@ export default function OrdersList() {
         </TableContainer>
       )}
 
-      {openOrderId && <OrderDetail orderId={openOrderId} onClose={() => setOpenOrderId(null)} onChanged={load} />}
+      {openOrderId && <OrderDetail orderId={openOrderId} samples={samples} onClose={() => setOpenOrderId(null)} onChanged={load} />}
     </Box>
   );
 }

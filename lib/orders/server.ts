@@ -180,6 +180,11 @@ export async function logOrderEvent(orderId: string, type: string, message: stri
   if (error) console.error('Error logging order event:', error);
 }
 
+export async function setOrderEmailEnquiry(orderId: string, value: boolean) {
+  const { error } = await db().from('orders').update({ email_enquiry: value }).eq('id', orderId);
+  if (error) throw error;
+}
+
 export async function setOrderStatus(orderId: string, status: OrderStatus, extra: Record<string, unknown> = {}) {
   const { error } = await db()
     .from('orders')

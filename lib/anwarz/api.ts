@@ -3,6 +3,16 @@ import { NextResponse } from 'next/server';
 import { CheckoutError } from '@/lib/checkout/errors';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { CARRIERS, Order, ORDER_STATUS_LABELS, rowToOrder } from '@/lib/types/order';
+import {
+  CHANNEL_LABELS,
+  CUSTOMER_PATH_LABELS,
+  SampleBefore,
+  SampleForMatching,
+  channelOf,
+  creditedTouch,
+  customerPath,
+  matchSamplesBefore,
+} from '@/lib/orders/customerSource';
 import { SAMPLE_STATUS_LABELS, SampleRequest, rowToSampleRequest } from '@/lib/types/sampleRequest';
 
 // The Anwarz app (North Via Marketing's control center) manages JL Comfort orders and sample requests
@@ -44,30 +54,11 @@ export function db() {
   return supabaseAdmin;
 }
 
-export interface SampleBefore {
-  requestNumber: string;
-  createdAt: string;
-  matchedBy: 'email' | 'name' | 'phone' | 'postal code';
-}
-
-const normEmail = (v: string | null | undefined) => (v || '').trim().toLowerCase();
-const normZip = (v: string | null | undefined) => (v || '').replace(/\s+/g, '').toUpperCase();
-/** "Isabelle  Bilodeau", "isabelle bilodeau", "Isabèlle Bilodeau" → "isabelle bilodeau". */
-export const normName = (v: string | null | undefined) =>
-  (v || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z؀-ۿ ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-/** The last 10 digits, so "+1 (514) 755-7513" and "5147557513" match. */
-const normPhone = (v: string | null | undefined) => (v || '').replace(/\D/g, '').slice(-10);
+export type { SampleBefore };
 
 /**
  * For each order: the sample requests the same customer made before ordering, so the app can show
- * "came from samples". People often use another email for samples, so a request matches by email,
- * full name (2+ words, ignoring case and accents), phone, or postal code. There are few sample
+ * "came from samples" (matching rules in lib/orders/customerSource.ts). There are few sample
  * requests, so they are matched here rather than in SQL.
  */
 export async function samplesBeforeOrders(orders: Order[]): Promise<Map<string, SampleBefore[]>> {
@@ -75,28 +66,7 @@ export async function samplesBeforeOrders(orders: Order[]): Promise<Map<string, 
   if (!orders.length) return result;
   const { data, error } = await db().from('sample_requests').select('request_number, name, email, phone, address_zip, created_at').order('created_at').limit(5000);
   if (error) throw error;
-  for (const order of orders) {
-    const email = normEmail(order.customerEmail);
-    const name = normName(order.customerName);
-    const phone = normPhone(order.customerPhone);
-    const zip = normZip(order.shipPostalCode);
-    const found: SampleBefore[] = [];
-    for (const s of data || []) {
-      if (new Date(s.created_at).getTime() >= order.createdAt.getTime()) continue;
-      const matchedBy: SampleBefore['matchedBy'] | null =
-        email && normEmail(s.email) === email
-          ? 'email'
-          : name.includes(' ') && normName(s.name) === name
-            ? 'name'
-            : phone.length >= 7 && normPhone(s.phone) === phone
-              ? 'phone'
-              : zip && normZip(s.address_zip) === zip
-                ? 'postal code'
-                : null;
-      if (matchedBy) found.push({ requestNumber: s.request_number, createdAt: s.created_at, matchedBy });
-    }
-    result.set(order.id, found);
-  }
+  for (const order of orders) result.set(order.id, matchSamplesBefore(order, (data || []) as SampleForMatching[]));
   return result;
 }
 
@@ -105,7 +75,6 @@ export function anwarzOrder(order: Order, full = false, samplesBefore: SampleBef
   const { stripeCheckoutSessionId, stripePaymentIntentId, attribution, adSignals, events, items, ...rest } = order;
   void stripeCheckoutSessionId;
   void stripePaymentIntentId;
-  void attribution;
   void adSignals;
   return {
     ...rest,
@@ -113,6 +82,9 @@ export function anwarzOrder(order: Order, full = false, samplesBefore: SampleBef
     itemCount: items.reduce((n, i) => n + i.quantity, 0),
     items,
     samplesBefore,
+    // Path to the order (samples / email enquiry / direct) and the visit channel, as plain labels.
+    customerPath: CUSTOMER_PATH_LABELS[customerPath(samplesBefore, order.emailEnquiry)],
+    channel: CHANNEL_LABELS[channelOf(creditedTouch(attribution))],
     ...(full ? { events: [...events].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) } : {}),
   };
 }
