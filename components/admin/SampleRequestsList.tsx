@@ -47,15 +47,16 @@ import { CARRIERS } from '@/lib/types/order';
 import { SAMPLE_STATUS_LABELS, SampleRequest, SampleRequestStatus, SampleSettings } from '@/lib/types/sampleRequest';
 
 const FILTERS: Record<string, { label: string; statuses?: SampleRequestStatus[] }> = {
-  open: { label: 'Open', statuses: ['pending', 'sent_to_supplier', 'shipped', 'problem'] },
+  open: { label: 'Open', statuses: ['pending', 'sent_to_supplier', 'supplier_confirmed', 'shipped', 'problem'] },
   delivered: { label: 'Delivered', statuses: ['delivered'] },
   cancelled: { label: 'Cancelled', statuses: ['cancelled'] },
   all: { label: 'All' },
 };
 
-const STATUS_COLORS: Record<SampleRequestStatus, 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info'> = {
+const STATUS_COLORS: Record<SampleRequestStatus, 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'> = {
   pending: 'warning',
   sent_to_supplier: 'info',
+  supplier_confirmed: 'secondary',
   shipped: 'primary',
   delivered: 'success',
   cancelled: 'default',
@@ -339,7 +340,7 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
             ) : !request.supplierEmailedAt ? (
               <Alert severity="warning" sx={{ mb: 2 }}>This request has not been sent to Charlotte yet. Check the history below, then use &quot;Send to Charlotte&quot;.</Alert>
             ) : null}
-            {!request.trackingNumber && ['pending', 'sent_to_supplier', 'problem'].includes(request.status) && (
+            {!request.trackingNumber && ['pending', 'sent_to_supplier', 'supplier_confirmed', 'problem'].includes(request.status) && (
               <ShipForm request={request} onDone={async (ok, text) => { await reload(); setMessage({ ok, text }); onChanged(); }} />
             )}
 
@@ -375,7 +376,7 @@ function RequestDetail({ requestId, onClose, onChanged }: { requestId: string; o
                     }
                   }}
                 >
-                  {(['delivered', 'problem', 'cancelled', 'sent_to_supplier', 'pending'] as SampleRequestStatus[])
+                  {(['delivered', 'problem', 'cancelled', 'supplier_confirmed', 'sent_to_supplier', 'pending'] as SampleRequestStatus[])
                     .filter((s) => s !== request.status)
                     .map((s) => <MenuItem key={s} value={s}>{SAMPLE_STATUS_LABELS[s]}</MenuItem>)}
                 </Select>

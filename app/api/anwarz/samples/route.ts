@@ -4,7 +4,7 @@ import { SampleRequestStatus } from '@/lib/types/sampleRequest';
 
 export const dynamic = 'force-dynamic';
 
-const LISTED: SampleRequestStatus[] = ['pending', 'sent_to_supplier', 'shipped', 'delivered', 'cancelled', 'problem'];
+const LISTED: SampleRequestStatus[] = ['pending', 'sent_to_supplier', 'supplier_confirmed', 'shipped', 'delivered', 'cancelled', 'problem'];
 
 /** Sample requests, newest first. GET ?status=pending,sent_to_supplier &limit=100 */
 export const GET = anwarzRoute(async (request) => {
