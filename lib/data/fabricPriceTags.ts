@@ -10,10 +10,12 @@ const rowToFabricPriceTag = (row: any): FabricPriceTag => ({
   updatedAt: new Date(row.updated_at),
 });
 
-export const getFabricPriceTags = async (): Promise<FabricPriceTag[]> => {
-  if (!supabase) return [];
+// `db` defaults to the uncached client (checkout and the admin panel need live prices). Cached pages
+// pass createSupabasePublicClient() instead: a no-store fetch would make the whole page dynamic.
+export const getFabricPriceTags = async (db: Pick<NonNullable<typeof supabase>, 'from'> | undefined = supabase): Promise<FabricPriceTag[]> => {
+  if (!db) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('fabric_price_tags')
     .select('*')
     .order('sort_order', { ascending: true });

@@ -45,7 +45,13 @@ async function buildIndex(): Promise<CatalogIndex> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return { comboCounts: {}, books: [] };
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  // The fetch needs an explicit cache setting: Next 14 treats a fetch carrying an Authorization
+  // header (Supabase always sends one) as uncached, and that one fetch made every fabric and
+  // collection page that shows combo links fully dynamic -- revalidate was silently ignored.
+  const db = createClient(url, key, {
+    auth: { persistSession: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, next: { revalidate: 1800 } }) },
+  });
 
   const [rows, tags] = await Promise.all([
     fetchAllRows<any>(() =>

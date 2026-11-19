@@ -5,6 +5,12 @@ import { collectionMetadata, renderCollection } from '@/lib/collections/page';
 
 // Page 2, 3, ... of a sample book. Page 1 lives at /sample-books/<slug>.
 export const revalidate = 1800;
+// Without this, Next 14 never caches a page whose URL has a [param]: revalidate is ignored and every
+// view (each scraper hit included) renders on a server function. An empty list builds nothing ahead of
+// time; each page is rendered on its first visit, then served from cache for `revalidate` seconds.
+export function generateStaticParams() {
+  return [];
+}
 
 const parsePage = (value: string) => (/^\d+$/.test(value) ? Number(value) : NaN);
 

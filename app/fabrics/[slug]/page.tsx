@@ -17,6 +17,16 @@ import { collectionMetadata, renderCollection } from '@/lib/collections/page';
 // ISR — matches the R2 catalog snapshot's own cache window (lib/data/charlotteFabricCatalog.ts),
 // so a fabric page is never wildly stale relative to the rest of the site's fabric data.
 export const revalidate = 1800;
+// Without this, Next 14 never caches a page whose URL has a [param]: revalidate is ignored and every
+// view (each scraper hit included) renders on a server function. An empty list builds nothing ahead of
+// time; each page is rendered on its first visit, then served from cache for `revalidate` seconds.
+export function generateStaticParams() {
+  return [];
+}
+// Every read on this page is public catalogue data. Supabase fetches carry an Authorization header,
+// which Next 14 won't cache by default; an uncached fetch during a revalidation would turn that
+// render dynamic again. (Checkout still reads live prices, through its own uncached client.)
+export const fetchCache = 'force-cache';
 
 // cache() dedupes this across generateMetadata and the page component within one request — without
 // it, each page view reads the database twice (once for the title/description, once for the render).
@@ -33,7 +43,7 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
   // than sequentially, since each is a separate network round-trip to Supabase.
   const [{ data, error }, priceTags] = await Promise.all([
     supabase.from('charlotte_fabrics').select('*').eq('legacy_id', slug).maybeSingle(),
-    getFabricPriceTags(),
+    getFabricPriceTags(supabase),
   ]);
   if (error) throw error;
   if (!data || data.status !== 'active') return null;
