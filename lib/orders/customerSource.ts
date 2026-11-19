@@ -82,12 +82,13 @@ export const customerPath = (samplesBefore: SampleBefore[], emailEnquiry: boolea
 
 // --- 2. visit channel ---------------------------------------------------------------------------
 
-export type Channel = 'google_ads' | 'paid_social' | 'other_ads' | 'organic_search' | 'ai' | 'social' | 'email' | 'referral' | 'direct' | 'unknown';
+export type Channel = 'google_ads' | 'paid_social' | 'other_ads' | 'google_free_listing' | 'organic_search' |'ai' | 'social' | 'email' | 'referral' | 'direct' | 'unknown';
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
   google_ads: 'Google Ads',
   paid_social: 'Facebook/Instagram ads',
   other_ads: 'Other ads',
+  google_free_listing: 'Google Shopping (free)',
   organic_search: 'Organic search',
   ai: 'AI assistant',
   social: 'Social media',
@@ -102,22 +103,42 @@ const AI_SITES = ['chatgpt', 'openai', 'perplexity', 'gemini.google', 'bard.goog
 const SEARCH = ['google', 'bing', 'duckduckgo', 'yahoo', 'ecosia', 'baidu', 'yandex', 'brave'];
 const SOCIAL = ['facebook', 'instagram', 'pinterest', 'tiktok', 'linkedin', 't.co', 'twitter', 'x.com', 'youtube', 'reddit'];
 
-/** The touch that gets the credit: the last real visit, or the first if that's all there is. */
+/**
+ * The touch that gets the credit: the visit where the customer first found us. Before Nov 19 2026 the
+ * site re-read the referrer on every page, so an ad visitor who opened a second page had their "last
+ * touch" overwritten as "google / organic"; the first touch was always right. A later visit only gets
+ * the credit when the first one is missing.
+ */
 export const creditedTouch = (attribution: OrderAttribution | null | undefined): OrderTouch | undefined =>
-  attribution?.lastTouch?.source ? attribution.lastTouch : attribution?.firstTouch;
+  attribution?.firstTouch?.source ? attribution.firstTouch : attribution?.lastTouch;
+
+/** The later visit that led to the order, when it was a different channel (e.g. found via an ad, came back by search). */
+export function returnTouch(attribution: OrderAttribution | null | undefined): OrderTouch | undefined {
+  const first = attribution?.firstTouch;
+  const last = attribution?.lastTouch;
+  if (!first?.source || !last?.source || channelOf(first) === channelOf(last)) return undefined;
+  // The old bug's footprint: a "visit" minutes after landing, from the same site (source "google" vs
+  // referrer "google.com"), with the click id gone -- that was the same visit, not a return.
+  const site = (t: OrderTouch) => (t.source || '').toLowerCase().replace(/\.(com|ca)$/, '').replace(/^www\./, '');
+  if (site(first) === site(last) && first.at && last.at && new Date(last.at).getTime() - new Date(first.at).getTime() < 30 * 60_000) return undefined;
+  return last;
+}
 
 export function channelOf(touch: OrderTouch | undefined): Channel {
   if (!touch || !touch.source) return 'unknown';
   const source = touch.source.toLowerCase();
   const medium = (touch.medium || '').toLowerCase();
   const referrer = (touch.referrer || '').toLowerCase();
+  const landing = (touch.landingPage || '').toLowerCase();
   const has = (list: string[]) => list.some((s) => source.includes(s) || referrer.includes(s));
 
   if (has(AI_SITES)) return 'ai';
-  if (touch.gclid || touch.gbraid || touch.wbraid || (source.includes('google') && /cpc|ppc|paid/.test(medium))) return 'google_ads';
+  if (touch.gclid || touch.gbraid || touch.wbraid || /[?&](gclid|gbraid|wbraid|gad_source)=/.test(landing) || (source.includes('google') && /cpc|ppc|paid/.test(medium))) return 'google_ads';
   if (touch.fbclid || medium === 'paid_social') return 'paid_social';
   if (touch.msclkid || /cpc|ppc|paid|display/.test(medium)) return 'other_ads';
   if (medium === 'email' || source.includes('mail')) return 'email';
+  // Merchant Center tags its unpaid product listings with srsltid.
+  if (medium === 'free_listing' || (source.includes('google') && /[?&]srsltid=/.test(landing))) return 'google_free_listing';
   if (medium === 'organic' || (has(SEARCH) && !medium)) return 'organic_search';
   if (medium === 'social' || has(SOCIAL)) return 'social';
   if (source === 'direct') return 'direct';
@@ -128,6 +149,7 @@ export const CHANNEL_COLORS: Record<Channel, string> = {
   google_ads: '#1a73e8',
   paid_social: '#1877f2',
   other_ads: '#5c6bc0',
+  google_free_listing: '#f9a825',
   organic_search: '#188038',
   ai: '#8e24aa',
   social: '#e91e63',

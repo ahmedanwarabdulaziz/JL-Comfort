@@ -22,7 +22,10 @@ const NONE = '—';
 const norm = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : NONE);
 
 function touchOf(attribution: any): { source: string; campaign: string; content: string } | null {
-  const touch = attribution?.lastTouch?.source ? attribution.lastTouch : attribution?.firstTouch;
+  // The tagged visit that brought them: last touch if it carries a campaign link, else the first.
+  // (Before Nov 19 2026 opening a second page overwrote the last touch with an untagged one.)
+  const last = attribution?.lastTouch;
+  const touch = last?.source && (last.campaign || last.content) ? last : attribution?.firstTouch?.source ? attribution.firstTouch : last;
   if (!touch?.source) return null;
   return { source: norm(touch.source), campaign: norm(touch.campaign), content: norm(touch.content) };
 }

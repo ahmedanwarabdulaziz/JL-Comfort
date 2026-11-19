@@ -48,6 +48,7 @@ import {
   creditedTouch,
   customerPath,
   matchSamplesBefore,
+  returnTouch,
 } from '@/lib/orders/customerSource';
 import { CARRIERS, ORDER_STATUS_LABELS, Order, OrderStatus, OrderTouch } from '@/lib/types/order';
 
@@ -80,15 +81,15 @@ const ChannelChip = ({ channel }: { channel: Channel }) => (
 function OrderSource({ order, samplesBefore, busy, onEmailEnquiry }: { order: Order; samplesBefore: SampleBefore[]; busy: boolean; onEmailEnquiry: (value: boolean) => void }) {
   const { attribution, adSignals } = order;
   const path = customerPath(samplesBefore, order.emailEnquiry);
-  const first = attribution?.firstTouch;
-  const last = attribution?.lastTouch;
-  const sameVisit = !first || !last || (first.source === last.source && first.landingPage === last.landingPage && first.campaign === last.campaign);
+  const found = creditedTouch(attribution);
+  const cameBack = returnTouch(attribution);
   return (
     <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
       <Typography variant="overline" color="text.secondary">Where this customer came from</Typography>
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
         <PathChip path={path} />
-        <ChannelChip channel={channelOf(creditedTouch(attribution))} />
+        <ChannelChip channel={channelOf(found)} />
+        {cameBack && <Typography variant="caption" color="text.secondary">came back via {CHANNEL_LABELS[channelOf(cameBack)]}</Typography>}
       </Box>
       {samplesBefore.length > 0 && (
         <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -106,11 +107,10 @@ function OrderSource({ order, samplesBefore, busy, onEmailEnquiry }: { order: Or
         <Typography variant="body2" color="text.secondary">Not recorded for this order.</Typography>
       ) : (
         <>
-          <Typography variant="body2"><strong>{sameVisit ? 'Came from' : 'Last came from'}:</strong> {describeTouch(last || first)}</Typography>
-          {!sameVisit && first && <Typography variant="body2"><strong>First found us via:</strong> {describeTouch(first)}</Typography>}
-          {(last || first)?.landingPage && (
-            <Typography variant="body2" color="text.secondary">Landing page: {(last || first)!.landingPage}</Typography>
-          )}
+          <Typography variant="body2"><strong>Found us via:</strong> {describeTouch(found)}</Typography>
+          {found?.landingPage && <Typography variant="body2" color="text.secondary">Landing page: {found.landingPage}</Typography>}
+          {found?.referrer && <Typography variant="body2" color="text.secondary">Referring page: {found.referrer}</Typography>}
+          {cameBack && <Typography variant="body2" sx={{ mt: 0.5 }}><strong>Came back via:</strong> {describeTouch(cameBack)}</Typography>}
         </>
       )}
       {adSignals && (

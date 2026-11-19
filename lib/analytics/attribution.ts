@@ -63,9 +63,13 @@ function currentTouch(): Touch | null {
     touch.campaign = clip(params.get('utm_campaign'));
     touch.term = clip(params.get('utm_term'));
     touch.content = clip(params.get('utm_content'));
-  } else if (touch.gclid || touch.gbraid || touch.wbraid) {
+  } else if (touch.gclid || touch.gbraid || touch.wbraid || params.get('gad_source')) {
     touch.source = 'google';
     touch.medium = 'cpc';
+  } else if (params.get('srsltid')) {
+    // Merchant Center auto-tagging: an unpaid Google product listing (Shopping tab / free listing).
+    touch.source = 'google';
+    touch.medium = 'free_listing';
   } else if (touch.fbclid) {
     touch.source = referrerHost.includes('instagram') ? 'instagram' : 'facebook';
     touch.medium = 'paid_social';
@@ -105,7 +109,26 @@ export function readAttribution(): Attribution | null {
 // Called on every page view. The first visit is kept as the first touch; the latest visit that
 // arrived from outside the site becomes the last touch -- except that a plain "direct" return
 // visit never overwrites a real campaign, the usual last-non-direct-click rule.
+// Only the page a visitor lands on says where they came from. After that, moving between pages
+// (client-side navigation) or reloading keeps document.referrer pointing at Google/the ad site but
+// the URL no longer has the ad's click id or utm tags -- reading it again turned every Google Ads
+// visitor who opened a second page into "google / organic". So each page load is read once, and
+// reloads / back-forward loads not at all.
+let landingHandled = false;
+
+function isFreshNavigation() {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return !nav || nav.type === 'navigate' || nav.type === 'prerender';
+  } catch {
+    return true;
+  }
+}
+
 export function recordVisit() {
+  if (landingHandled) return;
+  landingHandled = true;
+  if (!isFreshNavigation()) return;
   try {
     const touch = currentTouch();
     if (!touch) return;
