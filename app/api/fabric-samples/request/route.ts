@@ -3,10 +3,14 @@ import { CheckoutError } from '@/lib/checkout/errors';
 import { createSampleRequest, getSampleRequest, sendNewSampleRequestEmails } from '@/lib/samples/server';
 import { SampleRequestInput } from '@/lib/types/sampleRequest';
 import { reportError } from '@/lib/alerts/server';
+import { guardPublicForm } from '@/lib/security/guard';
 
 // Public: stores a free sample request (limits from Admin → Sample Requests are enforced in
 // createSampleRequest), then emails the supplier, the customer and the internal copy.
 export async function POST(request: NextRequest) {
+  // Each request emails Charlotte, so floods are stopped before anything is stored or sent.
+  const refused = guardPublicForm(request, 'samples', 5, 60 * 60_000);
+  if (refused) return refused;
   let body: SampleRequestInput;
   try {
     body = await request.json();

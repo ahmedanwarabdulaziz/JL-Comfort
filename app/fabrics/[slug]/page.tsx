@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
 import { isVinylFabric } from '@/lib/checkout/serverPricing';
@@ -21,7 +21,7 @@ export const revalidate = 1800;
 // cache() dedupes this across generateMetadata and the page component within one request — without
 // it, each page view reads the database twice (once for the title/description, once for the render).
 const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | null> => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   // Distinct from "fabric not found" below: this means the server itself is misconfigured
   // (NEXT_PUBLIC_SUPABASE_URL/ANON_KEY missing/invalid), which should surface as a real error
   // rather than silently rendering the same 404 a customer would see for a genuinely unknown SKU.
