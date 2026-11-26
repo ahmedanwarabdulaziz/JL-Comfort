@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from '@/components/ui/Link';
+import { PROVINCES, formatPostalCode } from '@/lib/canadianAddress';
 import {
   Box,
   Container,
@@ -9,6 +10,7 @@ import {
   Grid,
   Paper,
   TextField,
+  MenuItem,
   Button,
   Stack,
   IconButton,
@@ -33,13 +35,14 @@ export default function RequestSamplesPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
-  const [country, setCountry] = useState('');
+  const [zipTouched, setZipTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const canSubmit =
-    settings.requestsEnabled && !overLimit && items.length > 0 && name.trim() && email.trim() && line1.trim() && city.trim() && state.trim() && zip.trim() && country.trim();
+    settings.requestsEnabled && !overLimit && items.length > 0 && name.trim() && email.trim() && line1.trim() && city.trim() && state && formatPostalCode(zip);
+  const zipError = zipTouched && !!zip.trim() && !formatPostalCode(zip);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -54,7 +57,7 @@ export default function RequestSamplesPage() {
           name,
           email,
           phone,
-          address: { line1, line2, city, state, zip, country },
+          address: { line1, line2, city, state, zip: formatPostalCode(zip) || zip, country: 'Canada' },
           attribution: readAttribution(), // where they came from, for Admin -> Referrals
         }),
       });
@@ -167,19 +170,37 @@ export default function RequestSamplesPage() {
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Stack spacing={2}>
-              <TextField label="Full Name" value={name} onChange={(e) => setName(e.target.value)} required fullWidth size="small" />
-              <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required fullWidth size="small" />
-              <TextField label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth size="small" />
-              <TextField label="Address Line 1" value={line1} onChange={(e) => setLine1(e.target.value)} required fullWidth size="small" />
-              <TextField label="Address Line 2 (optional)" value={line2} onChange={(e) => setLine2(e.target.value)} fullWidth size="small" />
-              <Stack direction="row" spacing={2}>
-                <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} required fullWidth size="small" />
-                <TextField label="State/Province" value={state} onChange={(e) => setState(e.target.value)} required fullWidth size="small" />
+              <TextField label="Full Name" value={name} onChange={(e) => setName(e.target.value)} required fullWidth size="small" autoComplete="name" />
+              <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required fullWidth size="small" autoComplete="email" />
+              <TextField label="Phone (optional)" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth size="small" autoComplete="tel" />
+              <TextField label="Address" value={line1} onChange={(e) => setLine1(e.target.value)} required fullWidth size="small" autoComplete="address-line1" />
+              <TextField label="Apartment, suite, or unit (optional)" value={line2} onChange={(e) => setLine2(e.target.value)} fullWidth size="small" autoComplete="address-line2" />
+              <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} required fullWidth size="small" autoComplete="address-level2" />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField select label="Province or territory" value={state} onChange={(e) => setState(e.target.value)} required fullWidth size="small">
+                  {PROVINCES.map(([code, provinceName]) => (
+                    <MenuItem key={code} value={code}>{provinceName}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Postal code"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  onBlur={() => {
+                    setZipTouched(true);
+                    setZip((value) => formatPostalCode(value) || value);
+                  }}
+                  error={zipError}
+                  helperText={zipError ? 'Enter a Canadian postal code, like L9T 8L2' : undefined}
+                  required
+                  fullWidth
+                  size="small"
+                  autoComplete="postal-code"
+                />
               </Stack>
-              <Stack direction="row" spacing={2}>
-                <TextField label="ZIP/Postal Code" value={zip} onChange={(e) => setZip(e.target.value)} required fullWidth size="small" />
-                <TextField label="Country" value={country} onChange={(e) => setCountry(e.target.value)} required fullWidth size="small" />
-              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                Samples are mailed within Canada only.
+              </Typography>
 
               {error && (
                 <Typography variant="body2" color="error">

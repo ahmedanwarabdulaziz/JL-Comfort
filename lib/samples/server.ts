@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { findFabricsByAnyId } from '@/lib/fabricIds';
+import { formatPostalCode, isCanada, provinceCode } from '@/lib/canadianAddress';
 import { cleanAttribution } from '@/lib/orders/server';
 import { alertNewSampleRequest } from '@/lib/alerts/server';
 import { CheckoutError } from '@/lib/checkout/errors';
@@ -81,6 +82,12 @@ export async function createSampleRequest(input: SampleRequestInput): Promise<st
   if (!address.line1?.trim() || !address.city?.trim() || !address.state?.trim() || !address.zip?.trim() || !address.country?.trim()) {
     throw new CheckoutError('A complete shipping address is required.');
   }
+  // Samples are mailed within Canada only. Province and postal code are stored in one format.
+  if (!isCanada(address.country)) throw new CheckoutError('Free samples are mailed within Canada only.');
+  const province = provinceCode(address.state);
+  if (!province) throw new CheckoutError('Please choose a Canadian province or territory.');
+  const postalCode = formatPostalCode(address.zip);
+  if (!postalCode) throw new CheckoutError('Please enter a Canadian postal code, like L9T 8L2.');
 
   // The list may name a fabric by uuid or by slug (lib/fabricIds.ts). Nothing on it is dropped: an
   // entry we can't find stops the request, so a shopper never gets fewer samples than they chose.
@@ -122,9 +129,9 @@ export async function createSampleRequest(input: SampleRequestInput): Promise<st
       address_line1: address.line1.trim(),
       address_line2: address.line2?.trim() || null,
       address_city: address.city.trim(),
-      address_state: address.state.trim(),
-      address_zip: address.zip.trim().toUpperCase(),
-      address_country: address.country.trim(),
+      address_state: province,
+      address_zip: postalCode,
+      address_country: 'Canada',
       status: 'pending',
     })
     .select('id')
