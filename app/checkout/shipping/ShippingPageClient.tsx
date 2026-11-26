@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useCart } from '@/lib/context/CartContext';
 import { cartItemToAnalytics, trackAddPaymentInfo, trackAddShippingInfo, trackBeginCheckout } from '@/lib/analytics/track';
 import { collectAdSignals, readAttribution } from '@/lib/analytics/attribution';

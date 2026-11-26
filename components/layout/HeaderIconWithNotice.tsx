@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { keyframes } from '@emotion/react';
 import { Badge, Box, ClickAwayListener, Fade, IconButton, Paper, Popper, Tooltip } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';

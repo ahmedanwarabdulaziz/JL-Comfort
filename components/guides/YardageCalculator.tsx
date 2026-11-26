@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Button, MenuItem, TextField, Typography } from '@mui/material';
 import { brand } from '@/lib/theme';
 import { BASE_YARDAGE, wholeYards, yardageFactor } from '@/lib/seo/fabricCopy';

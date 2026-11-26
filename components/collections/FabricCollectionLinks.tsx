@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Container, Typography } from '@mui/material';
 import { brand } from '@/lib/theme';
 

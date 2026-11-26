@@ -19,7 +19,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { useCart } from '@/lib/context/CartContext';
 import { cartItemToAnalytics, trackViewCart } from '@/lib/analytics/track';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FabricImage from '@/components/ui/FabricImage';
 import FreeShippingProgress from '@/components/cart/FreeShippingProgress';

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { usePathname } from 'next/navigation';
 import { Box, Button, Divider, Drawer, IconButton, LinearProgress, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';

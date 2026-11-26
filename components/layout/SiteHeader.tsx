@@ -17,7 +17,7 @@ import {
   Container,
   Collapse,
 } from '@mui/material';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import Image from 'next/image';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';

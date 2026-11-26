@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import {
   Box,
   Container,

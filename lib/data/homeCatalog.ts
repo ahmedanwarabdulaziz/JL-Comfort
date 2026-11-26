@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
-import { supabase } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 
 // Small, cached summaries of the fabric catalog for the homepage: the collections (sample books) to
@@ -56,7 +57,7 @@ const GROUP_PHOTO_COUNT = 7; // cover + edge strip, matching SampleBookCover's e
  * Isolated in its own try/catch: show_on_homepage / cover_image_url / is_featured are later
  * migrations, so a site that hasn't run them yet still gets the rest of the homepage.
  */
-async function loadHomeGroups(client: NonNullable<typeof supabase>): Promise<HomeGroup[]> {
+async function loadHomeGroups(client: SupabaseClient): Promise<HomeGroup[]> {
   try {
     const { data: groups, error: groupsError } = await client
       .from('fabric_groups')
@@ -103,8 +104,8 @@ async function loadHomeGroups(client: NonNullable<typeof supabase>): Promise<Hom
 }
 
 async function loadHomeCatalog(): Promise<HomeCatalog> {
-  if (!supabase) return { collections: [], materials: [], groups: [] };
-  const client = supabase;
+  const client = createSupabasePublicClient();
+  if (!client) return { collections: [], materials: [], groups: [] };
 
   const rows = await fetchAllRows<any>(() =>
     client

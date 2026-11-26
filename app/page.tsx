@@ -7,15 +7,12 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 };
 
-// Rendered per request; the catalog summary itself is cached for 30 minutes (lib/data/homeCatalog.ts),
-// so a visit doesn't page through the fabric table.
-export const dynamic = 'force-dynamic';
+// Served from cache and rebuilt at most every 30 minutes. A failed rebuild is deliberately not
+// caught: Next then keeps serving the last good page instead of caching an empty one.
+export const revalidate = 1800;
 
 export default async function HomePage() {
-  const catalog = await getHomeCatalog().catch((error) => {
-    console.error('Homepage catalog summary failed:', error);
-    return { collections: [], materials: [], groups: [] };
-  });
+  const catalog = await getHomeCatalog();
 
   return <HomePageClient catalog={catalog} />;
 }

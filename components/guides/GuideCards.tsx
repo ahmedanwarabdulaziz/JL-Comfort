@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Typography } from '@mui/material';
 import { brand } from '@/lib/brand';
 import { getGuide, guideHref } from '@/lib/guides';

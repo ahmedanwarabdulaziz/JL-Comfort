@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Container, Typography, Paper, Grid, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { getShippingRate } from '@/lib/data/shippingRates';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { BUSINESS, FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import type { ShippingRate } from '@/lib/types/checkout';
 
@@ -20,6 +21,10 @@ export const metadata: Metadata = {
 // it must say the same as checkout and the Terms (app/terms/page.tsx, "shipping" and "returns").
 // Shipping costs are read from the same table checkout uses, so an admin price change shows up here too.
 // While only fabric is on sale (FOAM_PRODUCTS_LIVE off), foam and cushions are left out of the wording.
+
+// Served from cache and rebuilt at most every 30 minutes, so an admin rate change takes that long to
+// show here (checkout always reads the live rate).
+export const revalidate = 1800;
 
 // Turnaround before an order ships; matches the handling time given to Google.
 const HANDLING_DAYS = '3–5';
@@ -46,7 +51,7 @@ const sectionSx = { fontWeight: 'bold', mb: 2, mt: 5, scrollMarginTop: 96 };
 const bodySx = { lineHeight: 1.8, mb: 2 };
 
 export default async function ShippingReturnsPage() {
-  const rate = await getShippingRate('CA').catch(() => null);
+  const rate = await getShippingRate('CA', createSupabasePublicClient()).catch(() => null);
   const shipping = rate?.enabled ? rate : null;
 
   return (

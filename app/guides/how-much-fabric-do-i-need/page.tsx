@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Container, Typography } from '@mui/material';
 import JsonLd from '@/components/seo/JsonLd';
 import YardageCalculator from '@/components/guides/YardageCalculator';
