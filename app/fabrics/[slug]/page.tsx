@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { isUuid } from '@/lib/fabricIds';
 import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
@@ -75,7 +76,8 @@ const loadFabricDetail = cache(async (slug: string): Promise<FabricDetailData | 
   }
 
   return {
-    id: data.id,
+    // The slug, like every product card -- favourites, samples and the cart save this (lib/fabricIds.ts).
+    id: data.legacy_id,
     name: data.name || '',
     sku: data.sku || '',
     imageUrl: data.image_url || '',
@@ -204,6 +206,14 @@ function productJsonLd(fabric: FabricDetailData, slug: string) {
 export default async function FabricDetailPage({ params }: { params: { slug: string } }) {
   const collection = getCollection(params.slug);
   if (collection) return renderCollection(collection, 1);
+
+  // Links saved before 2026-11 can carry the database uuid: send them to the real address.
+  if (isUuid(params.slug)) {
+    const { data, error } = (await createSupabasePublicClient()?.from('charlotte_fabrics').select('legacy_id').eq('id', params.slug).maybeSingle()) ?? {};
+    if (error) throw error;
+    if (data?.legacy_id) permanentRedirect(`/fabrics/${data.legacy_id}`);
+    notFound();
+  }
 
   // A thrown error here (server misconfiguration) propagates to Next's error boundary as a real
   // 500 — intentionally not caught, so it stays visible in the logs instead of masquerading as a

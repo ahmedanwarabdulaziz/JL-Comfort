@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { findFabricsByAnyId } from '@/lib/fabricIds';
 import { cleanAttribution } from '@/lib/orders/server';
 import { alertNewSampleRequest } from '@/lib/alerts/server';
 import { CheckoutError } from '@/lib/checkout/errors';
@@ -29,7 +30,6 @@ const db = () => {
   return supabaseAdmin;
 };
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function getSampleSettings(): Promise<SampleSettings> {
@@ -82,10 +82,23 @@ export async function createSampleRequest(input: SampleRequestInput): Promise<st
     throw new CheckoutError('A complete shipping address is required.');
   }
 
-  const fabricIds = Array.from(
-    new Set((Array.isArray(input.items) ? input.items : []).map((item) => String(item?.fabricId || '')).filter((id) => UUID_PATTERN.test(id)))
+  // The list may name a fabric by uuid or by slug (lib/fabricIds.ts). Nothing on it is dropped: an
+  // entry we can't find stops the request, so a shopper never gets fewer samples than they chose.
+  const sentIds = Array.from(
+    new Set((Array.isArray(input.items) ? input.items : []).map((item) => String(item?.fabricId || '')).filter(Boolean))
   );
-  if (fabricIds.length === 0) throw new CheckoutError('At least one fabric sample is required.');
+  if (sentIds.length === 0) throw new CheckoutError('At least one fabric sample is required.');
+  const unavailable = 'One of the fabrics in your sample list is no longer available. Please remove it and try again.';
+  if (sentIds.length > 50) throw new CheckoutError(unavailable);
+  const found = await findFabricsByAnyId<{ id: string; legacy_id: string | null; name: string; sku: string; image_url: string | null; status: string }>(
+    db(),
+    sentIds,
+    'id, legacy_id, name, sku, image_url, status'
+  );
+  const matches = sentIds.map((id) => found.get(id));
+  if (matches.some((fabric) => !fabric || fabric.status !== 'active')) throw new CheckoutError(unavailable);
+  const byId = new Map(matches.map((fabric) => [fabric!.id, fabric!]));
+  const fabricIds = Array.from(byId.keys());
   if (fabricIds.length > settings.maxPerRequest) {
     throw new CheckoutError(`You can request up to ${settings.maxPerRequest} samples at a time.`);
   }
@@ -98,17 +111,6 @@ export async function createSampleRequest(input: SampleRequestInput): Promise<st
         ? `You've reached the limit of ${settings.maxPerCustomer} free samples every ${settings.periodDays} days. Please contact us if you need more.`
         : `You can request ${remaining} more free sample${remaining === 1 ? '' : 's'} right now (limit ${settings.maxPerCustomer} every ${settings.periodDays} days). Please remove ${fabricIds.length - remaining} from your list.`
     );
-  }
-
-  const { data: fabrics, error: fabricsError } = await db()
-    .from('charlotte_fabrics')
-    .select('id, name, sku, image_url, status')
-    .in('id', fabricIds);
-  if (fabricsError) throw fabricsError;
-  const byId = new Map((fabrics || []).filter((f: any) => f.status === 'active').map((f: any) => [f.id, f]));
-  const missing = fabricIds.filter((id) => !byId.has(id));
-  if (missing.length > 0) {
-    throw new CheckoutError('One of the fabrics in your sample list is no longer available. Please remove it and try again.');
   }
 
   const { data: row, error } = await db()
