@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import LegalPage, { LegalSection } from '@/components/legal/LegalPage';
 import CookieSettingsLink from '@/components/consent/CookieSettingsLink';
 import { BUSINESS, LEGAL_LAST_UPDATED, SITE_NAME, SITE_URL } from '@/lib/site';

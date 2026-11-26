@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import { Box, Container, Typography, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export const metadata: Metadata = {

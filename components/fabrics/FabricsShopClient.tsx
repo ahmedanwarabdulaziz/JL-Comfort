@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useSearchParams } from 'next/navigation';
 import {
   Box,

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { FOAM_PAGES, FOAM_PRODUCTS_LIVE, SITE_URL } from '@/lib/site';
 import { COLLECTIONS } from '@/lib/collections/definitions';
@@ -31,11 +31,9 @@ const STATIC_PAGES: { path: string; priority: number; changeFrequency: MetadataR
 ];
 
 async function fabricEntries(): Promise<MetadataRoute.Sitemap> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return [];
-  // A plain anon client: the sitemap has no visitor, so there are no session cookies to carry.
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  // A cached, cookie-free client: one uncached fetch would rebuild the sitemap on every request.
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return [];
   type Row = {
     legacy_id: string;
     updated_at: string | null;
@@ -51,7 +49,7 @@ async function fabricEntries(): Promise<MetadataRoute.Sitemap> {
         .select('legacy_id, updated_at, image_url, manual_retail_price, retail_price, price_tag_id')
         .eq('status', 'active')
     ),
-    getFabricPriceTags(),
+    getFabricPriceTags(supabase),
   ]);
   const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
   // Only fabrics a customer can actually buy: a page with no photo and "Price on request" looks thin

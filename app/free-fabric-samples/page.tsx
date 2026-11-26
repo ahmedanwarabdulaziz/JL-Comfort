@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Container, Typography } from '@mui/material';
 import JsonLd from '@/components/seo/JsonLd';
 import { brand } from '@/lib/brand';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { getSampleSettings } from '@/lib/data/sampleRequests';
 import { DEFAULT_SAMPLE_SETTINGS } from '@/lib/types/sampleRequest';
 
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: { type: 'website', siteName: SITE_NAME, locale: 'en_CA', title, description, url },
 };
 
-// The sample limits are edited in the admin, so read them per request (cached briefly).
+// The sample limits are edited in the admin, so the page is rebuilt hourly.
 export const revalidate = 3600;
 
 const pSx = { color: brand.textSecondary, fontSize: '1rem', lineHeight: 1.8, mb: 2 };
@@ -30,7 +31,7 @@ const h2Sx = { fontFamily: 'var(--font-display), serif', fontSize: { xs: '1.45re
 const linkSx = { color: brand.accent };
 
 export default async function FreeSamplesPage() {
-  const settings = await getSampleSettings().catch(() => DEFAULT_SAMPLE_SETTINGS);
+  const settings = await getSampleSettings(createSupabasePublicClient()).catch(() => DEFAULT_SAMPLE_SETTINGS);
 
   const steps = [
     { title: 'Find fabrics you like', body: 'Browse the shop, a collection or a Charlotte sample book.' },

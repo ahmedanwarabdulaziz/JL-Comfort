@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Box, Container, Typography, Grid, Paper } from '@mui/material';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { BUSINESS, FOAM_PRODUCTS_LIVE } from '@/lib/site';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';

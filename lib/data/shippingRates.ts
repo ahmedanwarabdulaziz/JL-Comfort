@@ -26,10 +26,15 @@ export const getShippingRates = async (): Promise<ShippingRate[]> => {
   return (data || []).map(rowToShippingRate);
 };
 
-export const getShippingRate = async (country: string): Promise<ShippingRate | null> => {
-  if (!supabase) return null;
+// `db` defaults to the uncached client (checkout needs live rates). Cached pages pass
+// createSupabasePublicClient(): a no-store fetch would make the whole page dynamic.
+export const getShippingRate = async (
+  country: string,
+  db: Pick<NonNullable<typeof supabase>, 'from'> | undefined = supabase
+): Promise<ShippingRate | null> => {
+  if (!db) return null;
 
-  const { data, error } = await supabase.from('shipping_rates').select('*').eq('country', country).maybeSingle();
+  const { data, error } = await db.from('shipping_rates').select('*').eq('country', country).maybeSingle();
   if (error) {
     console.error('Error fetching shipping rate:', error);
     throw error;

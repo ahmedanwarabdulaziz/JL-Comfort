@@ -52,9 +52,12 @@ export const runSampleRequestAction = async (id: string, body: Record<string, un
 };
 
 /** Public: the storefront reads the limits to cap the sample cart. */
-export const getSampleSettings = async (): Promise<SampleSettings> => {
-  if (!supabase) return DEFAULT_SAMPLE_SETTINGS;
-  const { data, error } = await supabase.from('sample_settings').select('*').eq('id', true).maybeSingle();
+// Cached pages pass createSupabasePublicClient(), so reading this doesn't make them dynamic.
+export const getSampleSettings = async (
+  db: Pick<NonNullable<typeof supabase>, 'from'> | undefined = supabase
+): Promise<SampleSettings> => {
+  if (!db) return DEFAULT_SAMPLE_SETTINGS;
+  const { data, error } = await db.from('sample_settings').select('*').eq('id', true).maybeSingle();
   if (error) {
     console.error('Error fetching sample settings:', error);
     return DEFAULT_SAMPLE_SETTINGS;

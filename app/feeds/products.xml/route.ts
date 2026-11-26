@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createSupabasePublicClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import { resolveEffectivePrice } from '@/lib/data/charlotteFabricPricing';
 import { getFabricPriceTags } from '@/lib/data/fabricPriceTags';
@@ -15,8 +15,9 @@ import type { ShippingRate } from '@/lib/types/checkout';
 //   https://<your domain>/feeds/products.xml
 // Each product's id matches the id the Google and Meta pixels report (SKU), so ads, remarketing
 // and conversions line up with the catalog.
-// Rendered per request (the price-tag lookup is uncached); the CDN caches it for an hour via Cache-Control below.
-export const dynamic = 'force-dynamic';
+// Built ahead and rebuilt at most hourly (ISR). The file is over 10 MB, too big for the CDN to cache a
+// server function's response, so every fetch used to rebuild it from the whole catalog.
+export const revalidate = 3600;
 
 const GOOGLE_CATEGORY = 'Arts & Entertainment > Hobbies & Creative Arts > Arts & Crafts > Art & Crafting Materials > Textiles > Fabric';
 
@@ -84,10 +85,8 @@ function shippingXml(row: FabricRow, price: number, rate: ShippingRate | null): 
 }
 
 export async function GET() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return new Response('Catalog not configured', { status: 503 });
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return new Response('Catalog not configured', { status: 503 });
 
   const [rows, priceTags] = await Promise.all([
     fetchAllRows<FabricRow>(() =>
@@ -96,9 +95,9 @@ export async function GET() {
         .select('legacy_id, name, sku, image_url, fiber_content, durability, width, color, material, pattern, construction_type, availability, manual_retail_price, retail_price, price_tag_id')
         .eq('status', 'active')
     ),
-    getFabricPriceTags(),
+    getFabricPriceTags(supabase),
   ]);
-  const shippingRate = await getShippingRate('CA').catch(() => null);
+  const shippingRate = await getShippingRate('CA', supabase).catch(() => null);
   const priceTagsById = new Map(priceTags.map((tag) => [tag.id, { name: tag.name, pricePerYard: tag.pricePerYard }]));
 
   const items: string[] = [];
@@ -145,6 +144,9 @@ export async function GET() {
     );
   }
 
+  // Throwing keeps the last good copy: caching an empty feed would pull every product from Shopping.
+  if (items.length === 0) throw new Error('Product feed: no products to list');
+
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
 <channel>
@@ -158,7 +160,6 @@ ${items.join('\n')}
   return new Response(body, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
 }

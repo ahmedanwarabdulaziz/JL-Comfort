@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useCart } from '@/lib/context/CartContext';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { trackPurchase } from '@/lib/analytics/track';
 import { effectiveConsent } from '@/lib/consent';
 import { clearPendingCode } from '@/lib/discounts/pendingCode';

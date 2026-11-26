@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Box, Container, Grid, Typography, Link as MuiLink, Divider } from '@mui/material';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import Image from 'next/image';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';

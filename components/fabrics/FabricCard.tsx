@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Box, Typography } from '@mui/material';
 import { CharlotteFabricSnapshotItem } from '@/lib/types/charlotteFabric';
 import { brand } from '@/lib/theme';
