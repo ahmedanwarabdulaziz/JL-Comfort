@@ -21,6 +21,12 @@ function sleep(ms) {
 
 /** Fetches a URL as text, retrying on network errors, 5xx, and 429. Returns null if all attempts fail. */
 async function fetchWithRetry(url, options = {}) {
+  return (await fetchPage(url, options)).html;
+}
+
+/** Like fetchWithRetry, but also reports the HTTP status (0 = network error), so callers can tell
+ *  "this page doesn't exist" (404) from "the site didn't answer". */
+async function fetchPage(url, options = {}) {
   const headers = {
     'User-Agent': USER_AGENT,
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -33,18 +39,18 @@ async function fetchWithRetry(url, options = {}) {
     try {
       const res = await fetch(url, { ...options, headers });
       if (res.ok) {
-        return options.method === 'HEAD' ? '' : await res.text();
+        return { status: res.status, html: options.method === 'HEAD' ? '' : await res.text() };
       }
       const retryable = res.status >= 500 || res.status === 429;
       if (!retryable || attempt === RETRY_DELAYS_MS.length) {
-        return null;
+        return { status: res.status, html: null };
       }
     } catch {
-      if (attempt === RETRY_DELAYS_MS.length) return null;
+      if (attempt === RETRY_DELAYS_MS.length) return { status: 0, html: null };
     }
     await sleep(RETRY_DELAYS_MS[attempt]);
   }
-  return null;
+  return { status: 0, html: null };
 }
 
 /** HEAD-checks an image URL, retrying on network errors/5xx/429. */
@@ -145,6 +151,7 @@ function validateProductPage(html) {
 
 module.exports = {
   fetchWithRetry,
+  fetchPage,
   checkImageOk,
   extractProductLinks,
   validateListingPage,

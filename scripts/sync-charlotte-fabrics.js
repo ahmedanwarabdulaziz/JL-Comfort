@@ -22,13 +22,17 @@
  *                               group are crawled, for fast smoke-testing without doing a
  *                               full crawl.
  *
- * Product discovery is always a full, unfiltered pagination pass through the catalog listing
- * (crawlFullCatalog) — this is the authoritative "every product that exists" list, independent
- * of CF_SYNC_FACET_GROUPS/CF_SYNC_LIMIT_FACETS and independent of whether the curated facet
- * value lists in lib/charlotteFabricFacets.js happen to cover every product's tags. Because
- * discovery is always complete, every run (even a facet-limited one) safely marks genuinely
- * removed products "inactive" — unless the discovery pass itself hit a structural warning
- * (site markup changed), in which case that step is skipped for that run.
+ * Discovery is always a full, unfiltered pagination pass through the catalog listing
+ * (crawlFullCatalog), independent of CF_SYNC_FACET_GROUPS/CF_SYNC_LIMIT_FACETS. The listing does
+ * NOT contain everything the supplier sells (on 2026-11-26 it left out 1,349 fabrics that still had
+ * in-stock pages), so every active product it omits is also checked at its own address. A product
+ * is marked "inactive" only when that page answers 404/410, and never more than MAX_REMOVAL_SHARE
+ * of the active catalog in one run.
+ *
+ *   CF_SYNC_DRY_RUN=1             - report what a sync would add and retire; writes nothing.
+ *   CF_SYNC_ALLOW_LARGE_REMOVAL=1 - retire products even above MAX_REMOVAL_SHARE.
+ *
+ * NOTE: CF_SYNC_LIMIT_FACETS does not make a run small -- every product is still written.
  */
 
 const zlib = require('zlib');
@@ -42,6 +46,7 @@ const {
 } = require('./lib/charlotteFabricFacets');
 const {
   fetchWithRetry,
+  fetchPage,
   checkImageOk,
   extractProductLinks,
   validateListingPage,
@@ -56,7 +61,9 @@ const MAX_PAGES_PER_FACET = 250; // safety cap against an infinite loop; catalog
 const PAGE_SIZE = 48; // Charlotte Fabrics renders 48 products/page; a short page means "last page"
 const PRODUCT_CONCURRENCY = 6; // Phase B fetches this many product pages in parallel
 const PROGRESS_CHECKPOINT_INTERVAL = 10; // write live progress every N completed products
-const DEACTIVATE_CHUNK_SIZE = 500; // keep any single PostgREST request reasonably sized
+const DEACTIVATE_CHUNK_SIZE = 200; // ids travel in the URL, so keep each request short
+const MAX_REMOVAL_SHARE = 0.05; // retiring more than this in one run is treated as a bad crawl
+const MAX_ERROR_SHARE = 0.05; // above this the run is reported as failed
 const SNAPSHOT_R2_KEY = 'catalog/charlotte-fabrics.json'; // public storefront reads this instead of querying the DB per visitor
 const SNAPSHOT_CACHE_CONTROL = 'public, max-age=1800'; // 30 min — lets R2/Cloudflare's CDN and browsers cache it between syncs
 
@@ -141,33 +148,97 @@ async function crawlFacetValue(paramName, facetValue, totals) {
  * every product currently in the catalog — independent of whether the curated facet value lists
  * in charlotteFabricFacets.js happen to cover every product's color/pattern/material. A product
  * missing from those lists would otherwise never be discovered by the facet crawl below.
+ * `complete` is true only if the end of the catalog was actually reached.
  */
 async function crawlFullCatalog(totals) {
+  let complete = false;
   const productUrls = [];
   const seen = new Set();
   let page = 1;
   while (page <= MAX_PAGES_PER_FACET) {
     const url = page > 1 ? `${BASE_URL}page/${page}/` : BASE_URL;
-    const html = await fetchWithRetry(url);
+    const { status, html } = await fetchPage(url);
     await sleep(REQUEST_DELAY_MS);
-    if (!html) break;
+    if (!html) {
+      // A 404 after the first page is the end of the list; anything else is a failed fetch.
+      complete = status === 404 && page > 1;
+      if (!complete) console.warn(`Discovery stopped early: ${url} answered ${status || 'nothing'}.`);
+      break;
+    }
     if (!validateListingPage(html)) {
       totals.structuralWarnings += 1;
       console.warn(`Structural warning: unexpected listing page layout at ${url} — site markup may have changed.`);
       break;
     }
     const links = extractProductLinks(html);
-    if (links.length === 0) break;
+    if (links.length === 0) {
+      complete = page > 1;
+      break;
+    }
     for (const link of links) {
       if (!seen.has(link)) {
         seen.add(link);
         productUrls.push(link);
       }
     }
-    if (links.length < PAGE_SIZE) break;
+    if (links.length < PAGE_SIZE) {
+      complete = true;
+      break;
+    }
     page += 1;
   }
-  return productUrls;
+  return { productUrls, complete };
+}
+
+const productUrlFor = (id) => `https://www.charlottefabrics.com/shop/${id}/`;
+const isGone = (status) => status === 404 || status === 410;
+
+/** Which products to retire: those whose own page is gone, unless there are suspiciously many. */
+function planRemoval(activeIds, goneIds) {
+  const gone = activeIds.filter((id) => goneIds.has(id));
+  const allowLarge = process.env.CF_SYNC_ALLOW_LARGE_REMOVAL === '1';
+  if (!allowLarge && gone.length > activeIds.length * MAX_REMOVAL_SHARE) {
+    return { ids: [], skipped: `${gone.length} of ${activeIds.length} active product pages are gone, over the ${MAX_REMOVAL_SHARE * 100}% limit` };
+  }
+  return { ids: gone, skipped: null };
+}
+
+/** Reads the catalog and a few product pages and prints what a real run would change. No writes. */
+async function dryRun(supabase) {
+  const totals = { structuralWarnings: 0 };
+  console.log('DRY RUN: nothing will be written.');
+  const { productUrls, complete } = await crawlFullCatalog(totals);
+  const found = new Map(productUrls.map((url) => [slugFromProductUrl(url), url]));
+  const rows = await fetchAllRows(() => supabase.from('charlotte_fabrics').select('id, legacy_id, status'));
+  const known = new Map(rows.map((row) => [row.legacy_id, row.status]));
+  const activeIds = rows.filter((row) => row.status === 'active').map((row) => row.legacy_id);
+  const added = [...found.keys()].filter((id) => !known.has(id));
+  const returning = [...found.keys()].filter((id) => known.has(id) && known.get(id) !== 'active');
+  const unlisted = activeIds.filter((id) => !found.has(id));
+
+  console.log(`Supplier lists ${found.size} products (${complete ? 'complete' : 'INCOMPLETE'}); database has ${activeIds.length} active.`);
+  console.log(`Would add ${added.length} new: ${added.slice(0, 10).join(', ')}`);
+  console.log(`Would reactivate ${returning.length}.`);
+  const checked = unlisted.filter((_, i) => i % Math.max(1, Math.ceil(unlisted.length / 40)) === 0);
+  let gone = 0;
+  for (const id of checked) {
+    const { status } = await fetchPage(productUrlFor(id));
+    await sleep(REQUEST_DELAY_MS);
+    if (isGone(status)) gone += 1;
+  }
+  console.log(`${unlisted.length} active products are not in the listing; a real run checks each one's own page.`);
+  console.log(`Spot check: ${gone} of ${checked.length} of those pages are gone (only gone pages are retired).`);
+
+  let parsed = 0;
+  const sample = productUrls.filter((_, i) => i % Math.max(1, Math.floor(productUrls.length / 5)) === 0).slice(0, 5);
+  for (const url of sample) {
+    const html = await fetchWithRetry(url);
+    await sleep(REQUEST_DELAY_MS);
+    const jsonLd = html ? parseJsonLd(html) : null;
+    if (jsonLd?.name && jsonLd?.imageUrl) parsed += 1;
+  }
+  console.log(`Product pages that parse correctly: ${parsed} of ${sample.length}.`);
+  if (!complete || parsed < sample.length) process.exitCode = 1;
 }
 
 const ALL_FACET_GROUP_KEYS = ['color', 'pattern', 'material'];
@@ -353,6 +424,11 @@ async function main() {
     return;
   }
 
+  if (process.env.CF_SYNC_DRY_RUN === '1') {
+    await dryRun(supabase);
+    return;
+  }
+
   const limitFacets = process.env.CF_SYNC_LIMIT_FACETS
     ? parseInt(process.env.CF_SYNC_LIMIT_FACETS, 10)
     : undefined;
@@ -389,21 +465,30 @@ async function main() {
 
   try {
     console.log('Discovering full catalog (unfiltered pagination)...');
-    const structuralWarningsBeforeDiscovery = totals.structuralWarnings;
-    const allProductUrls = await crawlFullCatalog(totals);
-    const isFullRun = totals.structuralWarnings === structuralWarningsBeforeDiscovery;
+    const { productUrls: allProductUrls, complete: isFullRun } = await crawlFullCatalog(totals);
+    if (allProductUrls.length === 0) throw new Error('Discovery found no products');
     console.log(
-      `Discovered ${allProductUrls.length} unique products via full catalog pagination${isFullRun ? '' : ' (INCOMPLETE — structural warning encountered, coverage not guaranteed)'}.`
+      `Discovered ${allProductUrls.length} unique products via full catalog pagination${isFullRun ? '' : ' (INCOMPLETE — did not reach the end of the catalog)'}.`
     );
     await updateRun(supabase, runId, { phase: 'crawling-facets', last_updated_at: new Date().toISOString() });
 
     console.log('Phase A: crawling selected facets for tags...');
     const tagsByProduct = await crawlAllFacets(limitFacets, selectedGroups, totals);
 
+    // Active products the listing leaves out are checked at their own address (see top of file).
+    const activeRows = await fetchAllRows(() =>
+      supabase.from('charlotte_fabrics').select('id, legacy_id, product_url').eq('status', 'active')
+    );
+    const listedIds = new Set(allProductUrls.map(slugFromProductUrl));
+    const unlistedUrls = activeRows
+      .filter((row) => !listedIds.has(row.legacy_id))
+      .map((row) => row.product_url || productUrlFor(row.legacy_id));
+    console.log(`${unlistedUrls.length} active product(s) are not in the listing — checking their own pages.`);
+
     // Merge: every product the full-catalog pass found gets processed, tagged with whatever
     // the facet crawl matched this run — empty tags (not dropped) if nothing matched.
     let untaggedCount = 0;
-    const entries = allProductUrls.map((url) => {
+    const entries = [...allProductUrls, ...unlistedUrls].map((url) => {
       const tags = tagsByProduct.get(url);
       if (!tags) untaggedCount += 1;
       return [url, tags || { color: new Set(), pattern: new Set(), material: new Set() }];
@@ -417,85 +502,93 @@ async function main() {
     await updateRun(supabase, runId, { phase: 'fetching-products', discovered: entries.length, last_updated_at: new Date().toISOString() });
 
     console.log(`Phase B: fetching product pages for specs (${PRODUCT_CONCURRENCY} at a time)...`);
-    const seenIds = new Set();
+    const goneIds = new Set();
     let nextIndex = 0;
     let completed = 0;
 
     const processOne = async (productUrl, tags) => {
       const id = slugFromProductUrl(productUrl);
-      seenIds.add(id);
 
       try {
-        const html = await fetchWithRetry(productUrl);
+        const { status, html } = await fetchPage(productUrl);
         await sleep(REQUEST_DELAY_MS);
-        if (!html) throw new Error('empty response fetching product page');
-        if (!validateProductPage(html)) {
-          totals.structuralWarnings += 1;
-          throw new Error('unexpected product page layout — site markup may have changed');
-        }
-
-        const jsonLd = parseJsonLd(html);
-        const specs = parseSpecTable(html);
-        const flattened = flattenSpecs(specs);
-        const imageUrl = jsonLd?.imageUrl || '';
-        const imageOk = await checkImageOk(imageUrl);
-        if (!imageOk) totals.brokenImages += 1;
-
-        const { data: existing, error: fetchError } = await supabase
-          .from('charlotte_fabrics')
-          .select('color, pattern, material')
-          .eq('legacy_id', id)
-          .maybeSingle();
-        if (fetchError) throw fetchError;
-
-        const nowIso = new Date().toISOString();
-
-        // Merge (never overwrite) facet tags, so a partial run — e.g. material-only — can't
-        // wipe out color/pattern tags a previous phase already found for this product.
-        const mergeTags = (existingValues, newSet) =>
-          Array.from(new Set([...(existingValues || []), ...newSet]));
-
-        const data = {
-          legacy_id: id,
-          name: jsonLd?.name || '',
-          sku: jsonLd?.sku || '',
-          product_url: productUrl,
-          image_url: imageUrl,
-          image_ok: imageOk,
-          color: mergeTags(existing?.color, tags.color),
-          pattern: mergeTags(existing?.pattern, tags.pattern),
-          material: mergeTags(existing?.material, tags.material),
-          applications: flattened.applications,
-          markets: flattened.markets,
-          fiber_content: flattened.fiberContent,
-          durability: flattened.durability,
-          width: flattened.width,
-          repeat: flattened.repeat,
-          pattern_direction: flattened.patternDirection,
-          cleanability: flattened.cleanability,
-          flammability: flattened.flammability,
-          origin: flattened.origin,
-          features: flattened.features,
-          performance: flattened.performance,
-          specs,
-          availability: jsonLd?.availability || 'InStock',
-          status: 'active',
-          last_seen_at: nowIso,
-          last_checked_at: nowIso,
-        };
-
-        if (existing) {
-          const { error: updateError } = await supabase.from('charlotte_fabrics').update(data).eq('legacy_id', id);
-          if (updateError) throw updateError;
-          totals.updated += 1;
+        if (isGone(status)) {
+          goneIds.add(id); // retired below, if there aren't suspiciously many
         } else {
-          const { error: insertError } = await supabase
+          if (!html) throw new Error('empty response fetching product page');
+          if (!validateProductPage(html)) {
+            totals.structuralWarnings += 1;
+            throw new Error('unexpected product page layout — site markup may have changed');
+          }
+
+          const jsonLd = parseJsonLd(html);
+          // Without these the update below would blank a good row: keep what we have instead.
+          if (!jsonLd?.name || !jsonLd?.imageUrl) throw new Error('product page has no name or photo');
+          const specs = parseSpecTable(html);
+          const flattened = flattenSpecs(specs);
+          const imageUrl = jsonLd.imageUrl;
+          const imageOk = await checkImageOk(imageUrl);
+          if (!imageOk) totals.brokenImages += 1;
+
+          const { data: existing, error: fetchError } = await supabase
             .from('charlotte_fabrics')
-            .insert({ ...data, first_seen_at: nowIso });
-          if (insertError) throw insertError;
-          totals.added += 1;
+            .select('color, pattern, material')
+            .eq('legacy_id', id)
+            .maybeSingle();
+          if (fetchError) throw fetchError;
+
+          const nowIso = new Date().toISOString();
+
+          // Merge (never overwrite) facet tags, so a partial run — e.g. material-only — can't
+          // wipe out color/pattern tags a previous phase already found for this product.
+          const mergeTags = (existingValues, newSet) =>
+            Array.from(new Set([...(existingValues || []), ...newSet]));
+
+          const data = {
+            legacy_id: id,
+            name: jsonLd?.name || '',
+            sku: jsonLd?.sku || '',
+            product_url: productUrl,
+            image_url: imageUrl,
+            image_ok: imageOk,
+            color: mergeTags(existing?.color, tags.color),
+            pattern: mergeTags(existing?.pattern, tags.pattern),
+            material: mergeTags(existing?.material, tags.material),
+            // A page without a spec table leaves the stored specs alone.
+            ...(Object.keys(specs).length > 0 && {
+              applications: flattened.applications,
+              markets: flattened.markets,
+              fiber_content: flattened.fiberContent,
+              durability: flattened.durability,
+              width: flattened.width,
+              repeat: flattened.repeat,
+              pattern_direction: flattened.patternDirection,
+              cleanability: flattened.cleanability,
+              flammability: flattened.flammability,
+              origin: flattened.origin,
+              features: flattened.features,
+              performance: flattened.performance,
+              specs,
+            }),
+            availability: jsonLd?.availability || 'InStock',
+            status: 'active',
+            last_seen_at: nowIso,
+            last_checked_at: nowIso,
+          };
+
+          if (existing) {
+            const { error: updateError } = await supabase.from('charlotte_fabrics').update(data).eq('legacy_id', id);
+            if (updateError) throw updateError;
+            totals.updated += 1;
+          } else {
+            const { error: insertError } = await supabase
+              .from('charlotte_fabrics')
+              .insert({ ...data, first_seen_at: nowIso });
+            if (insertError) throw insertError;
+            totals.added += 1;
+          }
+          totals.scanned += 1;
         }
-        totals.scanned += 1;
       } catch (err) {
         totals.errors += 1;
         errorLog.push(`${id}: ${err.message}`);
@@ -527,44 +620,45 @@ async function main() {
 
     await Promise.all(Array.from({ length: PRODUCT_CONCURRENCY }, () => worker()));
 
-    if (isFullRun) {
-      console.log('Full catalog coverage confirmed — diffing against previously active products...');
-      await updateRun(supabase, runId, { phase: 'diffing', last_updated_at: new Date().toISOString() });
+    await updateRun(supabase, runId, { phase: 'diffing', last_updated_at: new Date().toISOString() });
+    const removal = planRemoval(activeRows.map((row) => row.legacy_id), goneIds);
+    const problems = [];
+    if (!isFullRun) problems.push('discovery did not reach the end of the catalog: new products may be missing');
+    if (removal.skipped) problems.push(`no products retired: ${removal.skipped}`);
 
-      const activeRows = await fetchAllRows(() =>
-        supabase.from('charlotte_fabrics').select('legacy_id').eq('status', 'active')
-      );
-
-      const missingIds = activeRows
-        .map((row) => row.legacy_id)
-        .filter((legacyId) => !seenIds.has(legacyId));
-
-      for (let i = 0; i < missingIds.length; i += DEACTIVATE_CHUNK_SIZE) {
-        const idsChunk = missingIds.slice(i, i + DEACTIVATE_CHUNK_SIZE);
-        const { error: deactivateError } = await supabase
-          .from('charlotte_fabrics')
-          .update({ status: 'inactive' })
-          .in('legacy_id', idsChunk);
-        if (deactivateError) throw deactivateError;
-        totals.deactivated += idsChunk.length;
-      }
-    } else {
-      console.log('Full-catalog discovery hit a structural warning — skipping inactive-marking step (coverage not guaranteed this run).');
+    for (let i = 0; i < removal.ids.length; i += DEACTIVATE_CHUNK_SIZE) {
+      const idsChunk = removal.ids.slice(i, i + DEACTIVATE_CHUNK_SIZE);
+      const { error: deactivateError } = await supabase
+        .from('charlotte_fabrics')
+        .update({ status: 'inactive' })
+        .in('legacy_id', idsChunk);
+      if (deactivateError) throw deactivateError;
+      totals.deactivated += idsChunk.length;
     }
 
     try {
-      await publishSnapshot(supabase);
+      const { published } = await publishSnapshot(supabase);
+      if (!published) problems.push('snapshot not published: R2 is not configured');
     } catch (err) {
       console.error('Failed to publish catalog snapshot to R2:', err.message);
-      errorLog.push(`snapshot-publish: ${err.message}`);
+      problems.push(`snapshot-publish: ${err.message}`);
     }
 
+    if (totals.errors > entries.length * MAX_ERROR_SHARE) {
+      problems.push(`${totals.errors} of ${entries.length} products failed`);
+    }
+
+    // Anything that left the shop out of date must show as a failed run, not a quiet success.
+    if (problems.length > 0) {
+      console.error(`Sync finished with problems: ${problems.join('; ')}`);
+      process.exitCode = 1;
+    }
     await updateRun(supabase, runId, {
       finished_at: new Date().toISOString(),
-      status: 'success',
+      status: problems.length > 0 ? 'failed' : 'success',
       phase: 'done',
       ...totalsToColumns(totals),
-      error_log: errorLog,
+      error_log: [...problems, ...errorLog],
       last_updated_at: new Date().toISOString(),
     });
 
@@ -590,4 +684,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { publishSnapshot };
+module.exports = { publishSnapshot, main };

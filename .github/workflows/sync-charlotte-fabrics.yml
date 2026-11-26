@@ -13,6 +13,16 @@ on:
           - color
           - pattern
           - material
+      dry_run:
+        description: 'Only report what a sync would add and remove (writes nothing)'
+        required: false
+        default: false
+        type: boolean
+      allow_large_removal:
+        description: 'Let this run retire more than 5% of fabrics (check a dry run first)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   sync:
@@ -25,14 +35,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run Charlotte Fabrics sync
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CF_SYNC_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          CF_SYNC_ALLOW_LARGE_REMOVAL: ${{ inputs.allow_large_removal && '1' || '' }}
           CF_SYNC_FACET_GROUPS: ${{ inputs.facet_groups == 'all' && 'color,pattern,material' || inputs.facet_groups }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
