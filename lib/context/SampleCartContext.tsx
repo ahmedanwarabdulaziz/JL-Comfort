@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_SAMPLE_SETTINGS, SampleRequestItem, SampleSettings } from '@/lib/types/sampleRequest';
 import { getSampleSettings } from '@/lib/data/sampleRequests';
+import { useUpgradeSavedIds } from '@/lib/context/useUpgradeSavedIds';
 import { trackAddSample } from '@/lib/analytics/track';
 
 /** Where the "add sample" click happened, so the header can animate the swatch flying to its icon. */
@@ -61,6 +62,8 @@ export const SampleCartProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem('jl_comfort_sample_cart', JSON.stringify(items));
     }
   }, [items, isMounted]);
+
+  useUpgradeSavedIds(items, setItems);
 
   const addSample = (item: SampleRequestItem, origin: SampleOrigin | null = null) => {
     if (items.some((i) => i.fabricId === item.fabricId) || items.length >= settings.maxPerRequest) return;

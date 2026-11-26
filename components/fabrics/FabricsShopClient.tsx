@@ -242,7 +242,7 @@ function SidebarContent({
       <TextField
         size="small"
         fullWidth
-        placeholder="Search name or pattern #"
+        placeholder="Search colour, type or pattern #"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         InputProps={{

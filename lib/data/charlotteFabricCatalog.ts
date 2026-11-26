@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { fabricSearchMatcher } from '@/lib/fabricSearch';
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows';
 import {
   CharlotteFabric,
@@ -164,7 +165,7 @@ export const filterFabrics = <T extends CharlotteFabric>(
   fabrics: T[],
   filters: CharlotteFabricFilters
 ): T[] => {
-  const search = filters.search?.trim().toLowerCase();
+  const matchesSearch = fabricSearchMatcher(filters.search || '');
 
   return fabrics.filter((fabric) => {
     if (filters.color?.length && !filters.color.some(c => fabric.color.includes(c))) return false;
@@ -188,11 +189,7 @@ export const filterFabrics = <T extends CharlotteFabric>(
     }
     if (filters.groupId && !(fabric.groupIds || []).includes(filters.groupId)) return false;
     if (filters.sampleBook && !(fabric.sampleBooks || []).some((b) => b.trim() === filters.sampleBook)) return false;
-    if (search) {
-      const haystack = `${fabric.name} ${fabric.sku}`.toLowerCase();
-      if (!haystack.includes(search)) return false;
-    }
-    return true;
+    return matchesSearch(fabric);
   });
 };
 

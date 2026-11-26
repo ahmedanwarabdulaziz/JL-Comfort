@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useUpgradeSavedIds } from '@/lib/context/useUpgradeSavedIds';
 import { trackAddToWishlist } from '@/lib/analytics/track';
 import type { AddOrigin } from '@/components/layout/HeaderIconWithNotice';
 
@@ -58,6 +59,8 @@ export const FavouritesProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Storage full or blocked: the list still works for this visit.
     }
   }, [items, loaded]);
+
+  useUpgradeSavedIds(items, setItems);
 
   const isFavourite = useCallback((fabricId: string) => items.some((i) => i.fabricId === fabricId), [items]);
 
