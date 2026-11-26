@@ -43,6 +43,23 @@ function readEnv(name: string): string | undefined {
   return match ? env[match] : undefined;
 }
 
+// What kinds of characters a value holds, without the value: how many ASCII letters/digits and
+// underscores, and each other character by code point with its count (e.g. "U+2022 x99" for a key
+// copied while still masked as bullets). Positions are never reported.
+function charMix(value: string): string {
+  const chars = Array.from(value);
+  const alnum = chars.filter((char) => /[A-Za-z0-9]/.test(char)).length;
+  const underscores = chars.filter((char) => char === '_').length;
+  const others = new Map<string, number>();
+  for (const char of chars) {
+    if (/[A-Za-z0-9_]/.test(char)) continue;
+    const code = 'U+' + char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0');
+    others.set(code, (others.get(code) || 0) + 1);
+  }
+  const otherList = Array.from(others, ([code, count]) => `${code} x${count}`).slice(0, 8).join(' ');
+  return `${alnum} alnum, ${underscores} _, other: ${otherList || 'none'}`;
+}
+
 /** What this function received (names and counts, never values) -- added to key errors. */
 export function envSummary(): string {
   const keys = Object.keys(process.env);
@@ -50,7 +67,7 @@ export function envSummary(): string {
   const raw = (process.env as Record<string, unknown>).STRIPE_SECRET_KEY;
   const shape =
     typeof raw === 'string'
-      ? `len ${raw.length}, starts ${JSON.stringify(raw.slice(0, 8))}, cleaned ${cleanSecretKey(raw, 'STRIPE_SECRET_KEY') ? 'ok' : 'FAIL'}`
+      ? `len ${raw.length}, starts ${JSON.stringify(raw.slice(0, 8))}, cleaned ${cleanSecretKey(raw, 'STRIPE_SECRET_KEY') ? 'ok' : 'FAIL'}, rest ${charMix(raw.slice(8))}`
       : typeof raw;
   return `${keys.length} vars; STRIPE_SECRET_KEY ${shape}; stripe: ${stripeNames.join(', ') || 'none'}`;
 }
